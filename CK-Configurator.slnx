@@ -8,9 +8,11 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/CK.Configurator.Catalog.Tests/CK.Configurator.Catalog.Tests.csproj" />
     <Project Path="Tests/CK.Configurator.Tests/CK.Configurator.Tests.csproj" />
+    <Project Path="Tests/CK.AppHost.Desktop.Tests/CK.AppHost.Desktop.Tests.csproj" />
   </Folder>
   <Project Path="CK.Configurator.Catalog/CK.Configurator.Catalog.csproj" />
   <Project Path="CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj" />
   <Project Path="CK.IO.Configurator/CK.IO.Configurator.csproj" />
   <Project Path="CK.Configurator/CK.Configurator.csproj" />
+  <Project Path="CK.AppHost.Desktop/CK.AppHost.Desktop.csproj" />
 </Solution>

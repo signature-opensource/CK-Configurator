@@ -8,3 +8,4 @@ The configurator: an application that edits the Unified Configuration of a CKomp
 | [CK.Configurator.Catalog.Worker](CK.Configurator.Catalog.Worker/README.md) | The analyzer that runs in the worker of a source. |
 | [CK.IO.Configurator](CK.IO.Configurator/README.md) | The commands of the configurator (the catalog). |
 | [CK.Configurator](CK.Configurator/README.md) | The backend: the command handlers and the opened catalogs. |
+| [CK.AppHost.Desktop](CK.AppHost.Desktop/README.md) | The "DesktopWindow" feature: a CKomposable application in a native window. |

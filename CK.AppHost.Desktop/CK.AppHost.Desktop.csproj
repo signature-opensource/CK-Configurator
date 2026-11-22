@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>The "DesktopWindow" feature of a party: the host opens a native window (InfiniFrame: WebView2 on Windows) on the endpoint of its "HttpEndpoint" feature; closing the window stops the host. A CKomposable application becomes a desktop application.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.0.ci.49" />
+    <PackageReference Include="InfiniLore.InfiniFrame" Version="0.62.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CK.AppHost.Desktop.Tests" />
+  </ItemGroup>
+</Project>
