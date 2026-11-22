@@ -9,11 +9,12 @@ discover mode on `AppContext.BaseDirectory`), maps each requested package to its
 the `CatalogCache`.
 
 The role of an assembly is its `AssemblyKind` (engine, model, model definer, or basic). Only the types of a model are
-analyzed: its type set when the assembly cache computed it, its exported types otherwise.
+analyzed: its type set when the assembly cache computed it, its exported types otherwise. The assembly attributes are
+read on every assembly: an engine declares the structure it reads.
 
 The attributes of CK.ResourceSpace.Abstractions (the configurable types, the `[Configuration...]` attributes, the
 topology) are read as known types. The attributes and interfaces of the packages that the analyzer doesn't reference
-are read by their full name: `CK.AppIdentity.PartyClientFactAttribute`, `CK.TypeScript.TypeScriptPackageAttribute`
+are read by their full name: `CK.Core.CentralConfigurationKeyAttribute` (an older profile doesn't have it), `CK.AppIdentity.IPartyComponentOption<TOwner>`, `CK.AppIdentity.PartyClientFactAttribute`, `CK.TypeScript.TypeScriptPackageAttribute`
 (and its specializations), `CK.Cris.IAbstractCommand`, `CK.Cris.ICommandPart`, `CK.Cris.InternalAttribute` and
 `CK.Cris.PrivateAttribute`.
 

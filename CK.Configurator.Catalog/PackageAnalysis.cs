@@ -17,7 +17,7 @@ public sealed class PackageAnalysis
     /// The format of the analyses. It is part of the key of an analysis in the cache: an analysis written by an older
     /// analyzer is not read, the package is analyzed again.
     /// </summary>
-    public const int Format = 2;
+    public const int Format = 3;
 
     /// <summary>
     /// Gets the package identifier.
@@ -67,6 +67,33 @@ public sealed class AssemblyAnalysis
     /// <see cref="AssemblyRole.Model"/> are analyzed.
     /// </summary>
     public IReadOnlyList<TypeAnalysis> Types { get => field ?? []; init; }
+
+    /// <summary>
+    /// Gets the values per deployment of the parties declared by the assembly
+    /// (<c>[assembly: ConfigurationPerDeployment( "Remote:Address" )]</c>: the kind of the parties, then the path in
+    /// the party). An engine of the structure of the parties declares them.
+    /// </summary>
+    public IReadOnlyList<string> PerDeployment { get => field ?? []; init; }
+
+    /// <summary>
+    /// Gets the root keys of the central configuration that the assembly declares (<c>[assembly: CentralConfigurationKey]</c>):
+    /// the keys that its engine reads.
+    /// </summary>
+    public IReadOnlyList<CentralKey> CentralKeys { get => field ?? []; init; }
+}
+
+/// <summary>
+/// A root key of the central configuration.
+/// </summary>
+/// <param name="Key">The root key.</param>
+/// <param name="PerDeployment">The patterns of its values per deployment, relative to the key.</param>
+public sealed record CentralKey( string Key, IReadOnlyList<string> PerDeployment )
+{
+    /// <summary>
+    /// Gets the patterns of the values per deployment, relative to the key (an empty list is not written in the JSON:
+    /// it is read as null).
+    /// </summary>
+    public IReadOnlyList<string> PerDeployment { get; init; } = PerDeployment ?? [];
 }
 
 /// <summary>

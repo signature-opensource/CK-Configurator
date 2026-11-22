@@ -24,6 +24,9 @@ sealed class TypeAnalyzer
     const string _internal = "CK.Cris.InternalAttribute";
     const string _private = "CK.Cris.PrivateAttribute";
     const string _externalName = "CK.Core.ExternalNameAttribute";
+    const string _componentOption = "CK.AppIdentity.IPartyComponentOption`1";
+    // Read by name: an older CK.ResourceSpace.Abstractions (in an older profile) doesn't have it.
+    const string _centralKey = "CK.Core.CentralConfigurationKeyAttribute";
 
     static readonly Dictionary<Type, (string Kind, bool Optional)> _nameRelations = new()
     {
@@ -86,12 +89,31 @@ sealed class TypeAnalyzer
                 if( a != null ) types.Add( a );
             }
         }
+        // The assembly declarations: read on any assembly (an engine declares the structure it reads).
+        var perDeployment = new List<string>();
+        var centralKeys = new List<CentralKey>();
+        foreach( var a in assembly.CustomAttributes )
+        {
+            if( a.AttributeType == typeof( ConfigurationPerDeploymentAttribute ) )
+            {
+                perDeployment.Add( (string)a.ConstructorArguments[0].Value! );
+            }
+            else if( a.AttributeType.FullName == _centralKey )
+            {
+                var patterns = GetNamed( a, "PerDeployment" ) is IReadOnlyCollection<CustomAttributeTypedArgument> p
+                                ? p.Select( v => (string)v.Value! ).ToList()
+                                : [];
+                centralKeys.Add( new CentralKey( (string)a.ConstructorArguments[0].Value!, patterns ) );
+            }
+        }
         return new AssemblyAnalysis
         {
             Name = assembly.Name,
             Role = role,
             RequiredEngines = assembly.RequiredEngines.Select( e => new RequiredEngine( e.Name, e.VersionRange ) ).ToList(),
-            Types = types
+            Types = types,
+            PerDeployment = perDeployment,
+            CentralKeys = centralKeys
         };
     }
 
@@ -251,6 +273,16 @@ sealed class TypeAnalyzer
                                               externalName?.Trim() );
         }
 
+        List<string>? optionOwners = null;
+        foreach( var i in t.Interfaces )
+        {
+            if( i.Type.IsGenericType && i.Type.GetGenericTypeDefinition().FullName == _componentOption )
+            {
+                var owner = i.Type.GetGenericArguments()[0].FullName;
+                if( owner != null ) (optionOwners ??= []).Add( owner );
+            }
+        }
+
         var groupKind = typeof( IResourcePackage ).IsAssignableFrom( type )
                             ? ResourceGroupKind.Package
                             : typeof( IResourceGroup ).IsAssignableFrom( type )
@@ -259,6 +291,7 @@ sealed class TypeAnalyzer
 
         if( configurable == null && section == null && locks == null && secrets == null && perDeployment == null
             && relations == null && facts == null && typeScriptPackage == null && levels == null && command == null
+            && optionOwners == null
             && groupKind == ResourceGroupKind.None )
         {
             return null;
@@ -276,6 +309,7 @@ sealed class TypeAnalyzer
             PropertyLevels = (IReadOnlyList<PropertyLevel>?)levels ?? [],
             Relations = (IReadOnlyList<TypeRelation>?)relations ?? [],
             Facts = (IReadOnlyList<ClientFact>?)facts ?? [],
+            OptionOwners = (IReadOnlyList<string>?)optionOwners ?? [],
             TypeScriptPackage = typeScriptPackage,
             Command = command
         };

@@ -137,6 +137,10 @@ public class CatalogTests
         var http = catalog.FindConfigurable( "HttpEndpoint" ).ShouldHaveSingleItem();
         http.Type.PerDeployment.ShouldContain( "Party:Urls" );
 
+        // An option knows its owner (an abstract option base too: it stands for its concrete owners).
+        catalog.FindConfigurable( "ForwardedHeaders" ).ShouldHaveSingleItem()
+               .Type.OptionOwners.ShouldBe( ["CK.AppIdentity.HttpEndpointFeatureDriver"] );
+
         // The DynamicConfiguration commands are declared (their families are the catalog's work).
         var dynamic = catalog.Packages.Single( p => p.PackageId == "CK.IO.DynamicConfiguration" );
         dynamic.Assemblies.SelectMany( a => a.Types ).Where( t => t.Command != null ).ShouldNotBeEmpty();
@@ -169,7 +173,8 @@ public class CatalogTests
         var profilePath = System.Environment.GetEnvironmentVariable( "CK_CATALOG_PROFILE" );
         Assume.That( profilePath, Is.Not.Null, "The CK_CATALOG_PROFILE environment variable is not set." );
         var profile = PublishedProfile.Parse( File.ReadAllBytes( profilePath! ) );
-        var source = new CatalogSource( profile, CreateSource().Feeds );
+        // The feeds of the profile when it has some.
+        var source = new CatalogSource( profile, profile.Feeds.Length > 0 ? null : CreateSource().Feeds );
         var cache = new CatalogCache( CatalogCache.DefaultRoot );
         var analyzer = AnalyzerReference.FromProject( Path.Combine( TestHelper.SolutionFolder,
                                                                     "CK.Configurator.Catalog.Worker",
@@ -186,6 +191,13 @@ public class CatalogTests
         {
             keyEvents.Exposure.ShouldBe( "Internal" );
         }
+        // The declarations of the engines (when the profile has the AppIdentity engine).
+        var centralKeys = catalog.Packages.SelectMany( p => p.Assemblies ).SelectMany( a => a.CentralKeys.Select( k => $"{a.Name}:{k.Key}" ) );
+        TestHelper.Monitor.Info( $"Central keys: '{centralKeys.Concatenate( "', '" )}'." );
+        var partyKeys = catalog.Packages.SelectMany( p => p.Assemblies ).SelectMany( a => a.PerDeployment.Select( k => $"{a.Name}:{k}" ) );
+        TestHelper.Monitor.Info( $"Party values per deployment: '{partyKeys.Concatenate( "', '" )}'." );
+        if( catalog.Packages.FirstOrDefault( p => p.PackageId == "CK.AppIdentity.HttpEndpoint" ) == null ) return;
+
         // The Hosting client feature requires the HTTP endpoint and a IWebAppBuild (a single abstraction).
         await using var server = (await CatalogWorker.StartServerAsync( TestHelper.Monitor, source, worker, analyzer )).ShouldNotBeNull();
         var kept = (await server.GetClosureAsync( TestHelper.Monitor,
