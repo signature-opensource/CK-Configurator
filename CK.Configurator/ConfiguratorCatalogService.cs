@@ -55,7 +55,6 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
     /// Gets the configured root of the cache of the analyses ("Configurator:CacheRoot"). When null,
     /// <see cref="CatalogCache.DefaultRoot"/> is used.
     /// </summary>
-    [ConfigurationLevel( ConfigurationLevel.Init )]
     public string? CacheRoot { get; }
 
     /// <summary>
@@ -63,7 +62,6 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
     /// project, absolute or relative to the folder of the development solution). A development build of the configurator
     /// (the zero version: there is no worker package of its version) sets it.
     /// </summary>
-    [ConfigurationLevel( ConfigurationLevel.Init )]
     public string? AnalyzerProject { get; }
 
     /// <summary>

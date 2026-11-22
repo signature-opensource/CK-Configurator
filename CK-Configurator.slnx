@@ -5,6 +5,11 @@
     <File Path="Directory.Build.props" />
     <File Path="nuget.config" />
   </Folder>
+  <Folder Name="/Configurator/">
+    <Project Path="Configurator/Configurator.App/Configurator.App.csproj" />
+    <Project Path="Configurator/Configurator.Builder/Configurator.Builder.csproj" />
+    <Project Path="Configurator/Configurator.Host/Configurator.Host.csproj" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/CK.Configurator.Catalog.Tests/CK.Configurator.Catalog.Tests.csproj" />
     <Project Path="Tests/CK.Configurator.Tests/CK.Configurator.Tests.csproj" />
@@ -15,4 +20,5 @@
   <Project Path="CK.IO.Configurator/CK.IO.Configurator.csproj" />
   <Project Path="CK.Configurator/CK.Configurator.csproj" />
   <Project Path="CK.AppHost.Desktop/CK.AppHost.Desktop.csproj" />
+  <Project Path="CK.Ng.Configurator/CK.Ng.Configurator.csproj" />
 </Solution>

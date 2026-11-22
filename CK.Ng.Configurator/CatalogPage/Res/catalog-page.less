@@ -1,0 +1,39 @@
+.ck-catalog-page {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+
+    .ck-catalog-source {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        .ck-catalog-stack { flex: 3; }
+        .ck-catalog-branch { flex: 1; }
+    }
+
+    .ck-catalog-types {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+        nz-table { flex: 3; }
+        .ck-catalog-detail {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            dt { font-weight: 600; margin-top: 8px; }
+            dd { margin: 0; }
+        }
+    }
+
+    .ck-catalog-row { cursor: pointer; }
+    .ck-catalog-current { background: rgba( 0, 0, 0, 0.06 ); }
+
+    .ck-catalog-closure {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 12px;
+    }
+}

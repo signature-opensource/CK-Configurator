@@ -1,0 +1,36 @@
+{
+  // The central configuration of the solution: one party, the configurator ("CK/$Configurator"), a desktop application.
+  // The ckonf.json of its builder is generated from its entry below when the builder runs (then the appsettings.json of
+  // its host): edit this file, not the projections.
+  "Domain": "CK",
+  // The App is named after its party: "Configurator" (Configurator.App, Configurator.Builder, Configurator.Host).
+  "GlobalDomainPrefix": "CK",
+
+  "Defaults": {
+    "App": {
+      "Logging": { "LogLevel": { "Default": "Warning" } },
+      "CK-Monitoring": {
+        "GlobalDefaultFilter": "Debug",
+        "GrandOutput": { "Handlers": { "Console": true, "TextFile": { "Path": "Text" } } }
+      }
+    }
+  },
+
+  "Builders": {
+    "Configurator/Configurator.Builder": {
+      "App": {
+        "Local": {
+          // A random local port: the desktop window shows the actual one.
+          "HttpEndpoint": { "Urls": "http://127.0.0.1:0" },
+          // Its client application (Configurator.Host/Clients/App), served at "/".
+          "PartyClient": { "App": { "NgApp": true, "Hosting": { "RequestPath": "/", "DevServerPort": 4500 } } },
+          // The application is a desktop application (CK.AppHost.Desktop): closing its window stops it.
+          "DesktopWindow": { "Title": "CK Configurator" }
+        },
+        // The development build has no worker package of its version: the workers reference the analyzer project of
+        // this solution.
+        "Configurator": { "AnalyzerProject": "CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj" }
+      }
+    }
+  }
+}

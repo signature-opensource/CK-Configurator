@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>CK.Configurator.App</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="CK.AppIdentity.Hosting" Version="3.0.0-0.uc.0.ci.151" />
+    <PackageReference Include="CK.AspNet" Version="25.0.0-0.uc.0.ci.49" />
+    <!-- The "/.cris" endpoint: the client application sends the commands of the configurator. -->
+    <PackageReference Include="CK.Cris.AspNet" Version="3.0.0-0.uc.0.ci.186" />
+    <!-- Serves the client application (its dev server in Development, its "dist" otherwise). -->
+    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.0.ci.111" />
+    <!-- The catalog page and its backend. -->
+    <ProjectReference Include="..\..\CK.Ng.Configurator\CK.Ng.Configurator.csproj" />
+    <ProjectReference Include="..\..\CK.Configurator\CK.Configurator.csproj" />
+    <!-- The "DesktopWindow" feature (and the "HttpEndpoint" one): a desktop application. -->
+    <ProjectReference Include="..\..\CK.AppHost.Desktop\CK.AppHost.Desktop.csproj" />
+  </ItemGroup>
+</Project>

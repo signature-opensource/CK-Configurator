@@ -1,0 +1,42 @@
+// Generated from ../../ckonf.json: do not edit.
+{
+  "App": {
+    "FullName": "CK/$Configurator/#Dev",
+    "Local": {
+      "HttpEndpoint": {
+        "Urls": "http://127.0.0.1:0"
+      },
+      "PartyClient": {
+        "App": {
+          "NgApp": true,
+          "Hosting": {
+            "RequestPath": "/",
+            "DevServerPort": 4500
+          }
+        }
+      },
+      "DesktopWindow": {
+        "Title": "CK Configurator"
+      }
+    },
+    "Configurator": {
+      "AnalyzerProject": "CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj"
+    },
+    "Logging": {
+      "LogLevel": {
+        "Default": "Warning"
+      }
+    },
+    "CK-Monitoring": {
+      "GlobalDefaultFilter": "Debug",
+      "GrandOutput": {
+        "Handlers": {
+          "Console": true,
+          "TextFile": {
+            "Path": "Text"
+          }
+        }
+      }
+    }
+  }
+}

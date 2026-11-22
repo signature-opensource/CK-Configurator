@@ -1,0 +1,106 @@
+<div class="ck-catalog-page">
+    <span class="header">{{ 'CK.Configurator.Catalog.Title' | translate }}</span>
+    <div class="ck-catalog-source">
+        <input nz-input class="ck-catalog-stack" [(ngModel)]="stack" [placeholder]="'CK.Configurator.Catalog.Stack' | translate" />
+        <input nz-input class="ck-catalog-branch" [(ngModel)]="branch" [placeholder]="'CK.Configurator.Catalog.Branch' | translate" />
+        <label nz-checkbox [(ngModel)]="isCI">{{ 'CK.Configurator.Catalog.CI' | translate }}</label>
+        <button nz-button nzType="primary" class="ck-catalog-open" [nzLoading]="loading()" (click)="openAsync()">
+            {{ 'CK.Configurator.Catalog.Open' | translate }}
+        </button>
+    </div>
+    @if ( loading() && !info() ) {
+        <span class="sub">{{ 'CK.Configurator.Catalog.Opening' | translate }}</span>
+    }
+    @if ( error() ) {
+        <nz-alert nzType="error" [nzMessage]="error()!" nzShowIcon />
+    }
+    @if ( info(); as i ) {
+        <span class="sub ck-catalog-info">{{ 'CK.Configurator.Catalog.Info' | translate: { version: i.profileVersion, packages: i.packageCount, types: i.configurableTypeCount, commands: i.commandCount } }}</span>
+        <nz-tabs>
+            <nz-tab [nzTitle]="'CK.Configurator.Catalog.Types' | translate">
+                <div class="ck-catalog-types">
+                    <nz-table #typesTable nzSize="small" [nzData]="rows()" [nzShowPagination]="false" [nzFrontPagination]="false">
+                        <thead>
+                            <tr>
+                                <th nzWidth="40px"></th>
+                                <th>{{ 'CK.Configurator.Catalog.Name' | translate }}</th>
+                                <th>{{ 'CK.Configurator.Catalog.Kind' | translate }}</th>
+                                <th>{{ 'CK.Configurator.Catalog.Activation' | translate }}</th>
+                                <th>{{ 'CK.Configurator.Catalog.Package' | translate }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for ( r of typesTable.data; track r.type.typeName ) {
+                                <tr class="ck-catalog-row" [class.ck-catalog-current]="current() === r.type" (click)="current.set( r.type )">
+                                    <td [nzChecked]="selection().has( r.type.typeName )" (nzCheckedChange)="toggle( r.type, $event )" (click)="$event.stopPropagation()"></td>
+                                    <td [style.padding-left.px]="8 + r.depth * 24">{{ r.type.name }}</td>
+                                    <td>{{ r.type.kind }}</td>
+                                    <td>{{ r.type.activation }}</td>
+                                    <td>{{ r.type.packageId }}</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </nz-table>
+                    @if ( current(); as t ) {
+                        <div class="ck-catalog-detail">
+                            <span class="header">{{ t.name }}</span>
+                            <span class="sub">{{ t.typeName }}</span>
+                            <dl>
+                                <dt>{{ 'CK.Configurator.Catalog.Section' | translate }}</dt><dd>{{ t.section ?? t.name }}</dd>
+                                @if ( t.optionOwners.length > 0 ) {
+                                    <dt>{{ 'CK.Configurator.Catalog.OptionOf' | translate }}</dt>
+                                    <dd>@for ( o of t.optionOwners; track o ) { <nz-tag>{{ displayName( o ) }}</nz-tag> }</dd>
+                                }
+                                @if ( t.perDeployment.length > 0 ) {
+                                    <dt>{{ 'CK.Configurator.Catalog.PerDeployment' | translate }}</dt>
+                                    <dd>@for ( p of t.perDeployment; track p ) { <nz-tag>{{ p }}</nz-tag> }</dd>
+                                }
+                                @if ( t.secrets.length > 0 ) {
+                                    <dt>{{ 'CK.Configurator.Catalog.Secrets' | translate }}</dt>
+                                    <dd>@for ( s of t.secrets; track s ) { <nz-tag>{{ s }}</nz-tag> }</dd>
+                                }
+                                @if ( t.locks.length > 0 ) {
+                                    <dt>{{ 'CK.Configurator.Catalog.Locks' | translate }}</dt>
+                                    <dd>@for ( l of t.locks; track l.path ) { <nz-tag>{{ l.path }}: {{ l.level }}{{ l.value ? ' = ' + l.value : '' }}</nz-tag> }</dd>
+                                }
+                                @if ( t.propertyLevels.length > 0 ) {
+                                    <dt>{{ 'CK.Configurator.Catalog.Levels' | translate }}</dt>
+                                    <dd>@for ( p of t.propertyLevels; track p.property ) { <nz-tag>{{ p.property }}: {{ p.level }}</nz-tag> }</dd>
+                                }
+                            </dl>
+                        </div>
+                    }
+                </div>
+                <div class="ck-catalog-closure">
+                    <button nz-button class="ck-catalog-closure-button" [disabled]="selection().size === 0" [nzLoading]="loading()" (click)="closureAsync()">
+                        {{ 'CK.Configurator.Catalog.Closure' | translate: { count: selection().size } }}
+                    </button>
+                    @if ( closure(); as c ) {
+                        <span class="sub">{{ 'CK.Configurator.Catalog.ClosureResult' | translate: { count: c.length } }}</span>
+                        <div>@for ( k of c; track k ) { <nz-tag>{{ displayName( k ) }}</nz-tag> }</div>
+                    }
+                </div>
+            </nz-tab>
+            <nz-tab [nzTitle]="'CK.Configurator.Catalog.Commands' | translate">
+                <nz-table #commandsTable nzSize="small" [nzData]="commands()" [nzShowPagination]="false" [nzFrontPagination]="false">
+                    <thead>
+                        <tr>
+                            <th>{{ 'CK.Configurator.Catalog.Name' | translate }}</th>
+                            <th>{{ 'CK.Configurator.Catalog.Exposure' | translate }}</th>
+                            <th>{{ 'CK.Configurator.Catalog.Packages' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for ( c of commandsTable.data; track c.name ) {
+                            <tr>
+                                <td>{{ c.name }}</td>
+                                <td><nz-tag [nzColor]="c.exposure === 'Public' ? 'green' : c.exposure === 'Internal' ? 'orange' : 'red'">{{ c.exposure }}</nz-tag></td>
+                                <td>{{ c.packages.join( ', ' ) }}</td>
+                            </tr>
+                        }
+                    </tbody>
+                </nz-table>
+            </nz-tab>
+        </nz-tabs>
+    }
+</div>

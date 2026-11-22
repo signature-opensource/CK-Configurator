@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>The Angular component of the configurator: the catalog page (the configurable types, the closure of a selection, the commands) of a published profile of a Stack. Its backend is CK.Configurator.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.0.ci.186" />
+    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.0.ci.95" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
+  </ItemGroup>
+</Project>
