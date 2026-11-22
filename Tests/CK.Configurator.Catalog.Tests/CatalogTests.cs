@@ -143,6 +143,19 @@ public class CatalogTests
 
         // A second run has nothing to do.
         (await CatalogWorker.AnalyzeAsync( TestHelper.Monitor, source, cache, Path.Combine( bin, "Worker" ), analyzer )).ShouldBeTrue();
+
+        // The worker as a server: the closure of the transport alone (the HTTP endpoint is optional: not kept).
+        await using var server = (await CatalogWorker.StartServerAsync( TestHelper.Monitor, source, Path.Combine( bin, "Worker" ), analyzer ))
+                                    .ShouldNotBeNull();
+        var kept = await server.GetClosureAsync( TestHelper.Monitor,
+                                                 ["CK.AppIdentity.TransportLayer.TransportFeatureDriver"],
+                                                 ["CK.AppIdentity.TransportLayer", "CK.AppIdentity.HttpEndpoint"] );
+        kept.ShouldBe( ["CK.AppIdentity.TransportLayer.TransportFeatureDriver"] );
+
+        // An error is a null result (the errors are logged); the server goes on.
+        (await server.GetClosureAsync( TestHelper.Monitor, ["No.Such.Type"], ["CK.AppIdentity.TransportLayer"] )).ShouldBeNull();
+        (await server.GetClosureAsync( TestHelper.Monitor, [], ["CK.AppIdentity.TransportLayer"] )).ShouldBeEmpty();
+        server.IsRunning.ShouldBeTrue();
     }
 
     /// <summary>
@@ -173,5 +186,15 @@ public class CatalogTests
         {
             keyEvents.Exposure.ShouldBe( "Internal" );
         }
+        // The Hosting client feature requires the HTTP endpoint and a IWebAppBuild (a single abstraction).
+        await using var server = (await CatalogWorker.StartServerAsync( TestHelper.Monitor, source, worker, analyzer )).ShouldNotBeNull();
+        var kept = (await server.GetClosureAsync( TestHelper.Monitor,
+                                                  ["CK.TypeScript.HostingClientFeature"],
+                                                  ["CK.TS.AspNet.Clients", "CK.AppIdentity.HttpEndpoint", "CK.AppIdentity.PartyClient", "CK.TS.Angular"] ))
+                    .ShouldNotBeNull();
+        TestHelper.Monitor.Info( $"Closure of the Hosting client feature: '{kept.Concatenate( "', '" )}'." );
+        kept.ShouldContain( "CK.TypeScript.HostingClientFeature" );
+        kept.ShouldContain( "CK.AppIdentity.HttpEndpointFeatureDriver" );
+        kept.ShouldNotContain( "CK.AppIdentity.ForwardedHeadersOption" );
     }
 }

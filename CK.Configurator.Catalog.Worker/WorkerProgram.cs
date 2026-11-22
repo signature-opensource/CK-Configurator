@@ -22,11 +22,24 @@ public static class WorkerProgram
     /// <returns>The exit code: 0 on success.</returns>
     public static int Run( string[] args )
     {
+        bool serve = Array.IndexOf( args, CatalogWorker.Arguments.Serve ) >= 0;
         var monitor = new ActivityMonitor( "CK.Configurator.Catalog.Worker" );
-        monitor.Output.RegisterClient( new ActivityMonitorConsoleClient() );
+        // A server answers on its standard output: its logs go to its standard error.
+        monitor.Output.RegisterClient( serve
+                                        ? new ActivityMonitorTextWriterClient( Console.Error.Write )
+                                        : new ActivityMonitorConsoleClient() );
         try
         {
             var assets = GetArgument( args, CatalogWorker.Arguments.Assets );
+            if( serve )
+            {
+                if( assets == null )
+                {
+                    monitor.Error( $"Usage: {CatalogWorker.Arguments.Serve} {CatalogWorker.Arguments.Assets} <project.assets.json>" );
+                    return 1;
+                }
+                return WorkerServer.Run( monitor, ReadPackageAssemblies( assets ) ) ? 0 : 2;
+            }
             var cacheRoot = GetArgument( args, CatalogWorker.Arguments.Cache );
             var packagesFile = GetArgument( args, CatalogWorker.Arguments.Packages );
             if( assets == null || cacheRoot == null || packagesFile == null )
@@ -92,10 +105,12 @@ public static class WorkerProgram
         return result;
     }
 
-    static bool Analyze( IActivityMonitor monitor,
-                         CatalogCache cache,
-                         List<(string Id, string Version)> requested,
-                         Dictionary<string, List<string>> packageAssemblies )
+    /// <summary>
+    /// Loads the assemblies of the worker's folder (the discover mode of the assembly cache on its base directory).
+    /// </summary>
+    /// <param name="monitor">The monitor to use.</param>
+    /// <returns>The assembly cache result or null on error.</returns>
+    internal static AssemblyCache.Result? LoadTypes( IActivityMonitor monitor )
     {
         var config = new EngineConfiguration();
         config.FirstBinPath.Path = AppContext.BaseDirectory;
@@ -104,8 +119,18 @@ public static class WorkerProgram
         if( !result.Success )
         {
             monitor.Error( "The assembly cache failed on the worker's folder." );
-            return false;
+            return null;
         }
+        return result;
+    }
+
+    static bool Analyze( IActivityMonitor monitor,
+                         CatalogCache cache,
+                         List<(string Id, string Version)> requested,
+                         Dictionary<string, List<string>> packageAssemblies )
+    {
+        var result = LoadTypes( monitor );
+        if( result == null ) return false;
         var analyzer = new TypeAnalyzer( monitor, result.TypeCache );
         bool success = true;
         foreach( var (id, version) in requested )

@@ -40,6 +40,12 @@ public static class CatalogWorker
         /// The path of a text file: one "PackageId@Version" per line, the packages to analyze.
         /// </summary>
         public const string Packages = "--packages";
+
+        /// <summary>
+        /// Runs the worker as a server (see <see cref="CatalogWorkerServer"/>): it answers the <see cref="WorkerRequest"/>
+        /// lines of its standard input until it is closed.
+        /// </summary>
+        public const string Serve = "--serve";
     }
 
     /// <summary>
@@ -70,22 +76,13 @@ public static class CatalogWorker
         using( monitor.OpenInfo( $"Analyzing {missing.Count} packages (out of {packages.Count}) of '{source.Profile}' in '{workerFolder}'." ) )
         {
             workerFolder = Path.GetFullPath( workerFolder );
-            Directory.CreateDirectory( workerFolder );
-            WriteProject( workerFolder, source, packages.Select( p => (p.PackageId, p.Version.ToString()) ), analyzer );
+            if( !await BuildAsync( monitor, source, workerFolder, analyzer, cancel ).ConfigureAwait( false ) ) return false;
             var packagesFile = Path.Combine( workerFolder, "packages.txt" );
             File.WriteAllLines( packagesFile, missing.Select( p => $"{p.PackageId}@{p.Version}" ) );
-
-            if( !await RunAsync( monitor, workerFolder, "dotnet", ["build", "-c", "Release", "-nologo", "-v:q"], cancel ).ConfigureAwait( false ) )
-            {
-                monitor.Error( "The worker project failed to build." );
-                return false;
-            }
-            var exe = Path.Combine( workerFolder, "bin", "Release", "net10.0", OperatingSystem.IsWindows() ? "CatalogWorker.exe" : "CatalogWorker" );
-            var assets = Path.Combine( workerFolder, "obj", "project.assets.json" );
             if( !await RunAsync( monitor,
                                  workerFolder,
-                                 exe,
-                                 [Arguments.Assets, assets, Arguments.Cache, cache.Root, Arguments.Packages, packagesFile],
+                                 GetExecutablePath( workerFolder ),
+                                 [Arguments.Assets, GetAssetsPath( workerFolder ), Arguments.Cache, cache.Root, Arguments.Packages, packagesFile],
                                  cancel ).ConfigureAwait( false ) )
             {
                 monitor.Error( "The worker failed." );
@@ -100,6 +97,54 @@ public static class CatalogWorker
             return true;
         }
     }
+
+    /// <summary>
+    /// Starts the worker of a source as a server: the worker project is generated and built (when needed), the worker
+    /// process loads the packages once and answers the requests until the returned server is disposed.
+    /// </summary>
+    /// <param name="monitor">The monitor to use.</param>
+    /// <param name="source">The source.</param>
+    /// <param name="workerFolder">The folder of the worker project (one per source).</param>
+    /// <param name="analyzer">How the worker project references the analyzer.</param>
+    /// <param name="cancel">Optional cancellation token.</param>
+    /// <returns>The server or null on error.</returns>
+    public static async Task<CatalogWorkerServer?> StartServerAsync( IActivityMonitor monitor,
+                                                                    CatalogSource source,
+                                                                    string workerFolder,
+                                                                    AnalyzerReference analyzer,
+                                                                    CancellationToken cancel = default )
+    {
+        workerFolder = Path.GetFullPath( workerFolder );
+        if( !await BuildAsync( monitor, source, workerFolder, analyzer, cancel ).ConfigureAwait( false ) ) return null;
+        return CatalogWorkerServer.Start( monitor,
+                                          workerFolder,
+                                          GetExecutablePath( workerFolder ),
+                                          [Arguments.Serve, Arguments.Assets, GetAssetsPath( workerFolder )] );
+    }
+
+    static async Task<bool> BuildAsync( IActivityMonitor monitor,
+                                        CatalogSource source,
+                                        string workerFolder,
+                                        AnalyzerReference analyzer,
+                                        CancellationToken cancel )
+    {
+        Directory.CreateDirectory( workerFolder );
+        WriteProject( workerFolder, source, source.CatalogPackages.Select( p => (p.PackageId, p.Version.ToString()) ), analyzer );
+        if( !await RunAsync( monitor, workerFolder, "dotnet", ["build", "-c", "Release", "-nologo", "-v:q"], cancel ).ConfigureAwait( false ) )
+        {
+            monitor.Error( "The worker project failed to build." );
+            return false;
+        }
+        return true;
+    }
+
+    static string GetExecutablePath( string workerFolder ) => Path.Combine( workerFolder,
+                                                                            "bin",
+                                                                            "Release",
+                                                                            "net10.0",
+                                                                            OperatingSystem.IsWindows() ? "CatalogWorker.exe" : "CatalogWorker" );
+
+    static string GetAssetsPath( string workerFolder ) => Path.Combine( workerFolder, "obj", "project.assets.json" );
 
     /// <summary>
     /// Writes the worker project: its csproj, its program, its nuget.config (the feeds of the source) and empty

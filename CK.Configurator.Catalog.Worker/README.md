@@ -16,3 +16,8 @@ topology) are read as known types. The attributes and interfaces of the packages
 are read by their full name: `CK.AppIdentity.PartyClientFactAttribute`, `CK.TypeScript.TypeScriptPackageAttribute`
 (and its specializations), `CK.Cris.IAbstractCommand`, `CK.Cris.ICommandPart`, `CK.Cris.InternalAttribute` and
 `CK.Cris.PrivateAttribute`.
+
+With `--serve` (`CatalogWorker.Arguments.Serve`), `WorkerProgram.Run` loads the assemblies once and answers the
+`WorkerRequest` lines of its standard input (its logs go to its standard error) until the input is closed. A
+`ClosureRequest` runs `ResPackageClosure.Compute` (CK.ResourceSpace) on the concrete resource groups of the models of
+the requested packages (an abstraction is never a candidate).

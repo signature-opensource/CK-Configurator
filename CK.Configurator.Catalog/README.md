@@ -54,6 +54,21 @@ runs the code of the engines), so it runs in a process whose folder holds exactl
 
 One source, one worker process: another source is another worker, nothing is unloaded.
 
+### The worker as a server
+
+`CatalogWorker.StartServerAsync` builds the worker of a source (when needed) and starts it as a server
+(`CatalogWorker.Arguments.Serve`): the packages are loaded once and the rules run on their real types. The returned
+`CatalogWorkerServer` sends the requests one at a time: a `WorkerRequest` is a JSON line on the standard input of the
+worker, its `WorkerResponse` a JSON line on its standard output (`WorkerProtocol`); the logs of the worker are its
+standard error, relayed to the monitor of the request. Disposing the server closes the input: the worker exits. This
+channel is internal to the configurator's backend, it is never exposed.
+
+| Request | Result |
+|---|---|
+| `ClosureRequest` (`CatalogWorkerServer.GetClosureAsync`) | The packages that a ResourceSpace keeps (`ResPackageClosure.Compute` of CK.ResourceSpace): the `Roots` (full names) are kept, every resource group of the models of the `Packages` (package identifiers) is a candidate. |
+
+A request that logs an error answers its errors (`WorkerResponse.Errors`) and no result.
+
 ## The catalog
 
 `Catalog.Load` reads the analyses of the catalog packages of a source from the cache (they must all be there) and

@@ -80,12 +80,7 @@ sealed class TypeAnalyzer
         var types = new List<TypeAnalysis>();
         if( role == AssemblyRole.Model )
         {
-            // The type set of the model (its [RegisterCKType]/[ExcludeCKType] applied) when the assembly cache computed it,
-            // its exported types otherwise (a model that no head uses).
-            IEnumerable<ICachedType> candidates = assembly.Types != null
-                                                    ? assembly.Types.AllTypes.Where( t => t.Assembly == assembly )
-                                                    : assembly.Assembly.GetExportedTypes().Select( _typeCache.Get );
-            foreach( var t in candidates.OrderBy( t => t.Type.FullName, StringComparer.Ordinal ) )
+            foreach( var t in GetModelTypes( assembly, _typeCache ).OrderBy( t => t.Type.FullName, StringComparer.Ordinal ) )
             {
                 var a = AnalyzeType( t );
                 if( a != null ) types.Add( a );
@@ -98,6 +93,20 @@ sealed class TypeAnalyzer
             RequiredEngines = assembly.RequiredEngines.Select( e => new RequiredEngine( e.Name, e.VersionRange ) ).ToList(),
             Types = types
         };
+    }
+
+    /// <summary>
+    /// Gets the types of a model: its type set (its [RegisterCKType]/[ExcludeCKType] applied) when the assembly cache
+    /// computed it, its exported types otherwise (a model that no head uses).
+    /// </summary>
+    /// <param name="assembly">The model assembly.</param>
+    /// <param name="typeCache">The type cache.</param>
+    /// <returns>The types of the model.</returns>
+    public static IEnumerable<ICachedType> GetModelTypes( CachedAssembly assembly, GlobalTypeCache typeCache )
+    {
+        return assembly.Types != null
+                ? assembly.Types.AllTypes.Where( t => t.Assembly == assembly )
+                : assembly.Assembly.GetExportedTypes().Select( typeCache.Get );
     }
 
     TypeAnalysis? AnalyzeType( ICachedType t )
