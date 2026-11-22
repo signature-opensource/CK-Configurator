@@ -165,5 +165,13 @@ public class CatalogTests
         (await CatalogWorker.AnalyzeAsync( TestHelper.Monitor, source, cache, worker, analyzer )).ShouldBeTrue();
         var catalog = Catalog.Load( TestHelper.Monitor, source, cache ).ShouldNotBeNull();
         TestHelper.Monitor.Info( $"{catalog.Packages.Count} packages, configurable types: '{catalog.ConfigurableNames.Order().Concatenate( "', '" )}'." );
+        var byExposure = catalog.Commands.Values.GroupBy( c => c.Exposure ).Select( g => $"{g.Key}: {g.Count()}" );
+        TestHelper.Monitor.Info( $"{catalog.Commands.Count} commands ({byExposure.Concatenate()}), "
+                                 + $"{catalog.Commands.Values.Count( c => c.Interfaces.Select( i => i.Package ).Distinct().Count() > 1 )} extended by another package." );
+        // An [Internal] command of CK.AppIdentity.Cris (when the profile has it).
+        if( catalog.FindCommandByInterface( "CK.AppIdentity.Cris.IGetKeyEventsQCommand" ) is { } keyEvents )
+        {
+            keyEvents.Exposure.ShouldBe( "Internal" );
+        }
     }
 }

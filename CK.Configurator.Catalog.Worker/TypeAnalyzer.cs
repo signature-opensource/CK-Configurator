@@ -23,6 +23,7 @@ sealed class TypeAnalyzer
     const string _commandPart = "CK.Cris.ICommandPart";
     const string _internal = "CK.Cris.InternalAttribute";
     const string _private = "CK.Cris.PrivateAttribute";
+    const string _externalName = "CK.Core.ExternalNameAttribute";
 
     static readonly Dictionary<Type, (string Kind, bool Optional)> _nameRelations = new()
     {
@@ -102,7 +103,13 @@ sealed class TypeAnalyzer
     TypeAnalysis? AnalyzeType( ICachedType t )
     {
         var type = t.Type;
-        if( type.FullName == null || t.IsTypeDefiner || t.IsSuperTypeDefiner ) return null;
+        if( type.FullName == null ) return null;
+        // A command interface is analyzed even when it is abstract (a definer: a command part, a base like
+        // ICommandTargetParty): the exposure of a family is the most restrictive one of all its interfaces.
+        bool isCommandInterface = type.IsInterface
+                                  && t.Interfaces.Any( i => i.Type.FullName == _abstractCommand || i.Type.FullName == _commandPart );
+        bool isAbstract = t.IsTypeDefiner || t.IsSuperTypeDefiner;
+        if( isAbstract && !isCommandInterface ) return null;
 
         ConfigurableType? configurable = null;
         if( !t.TryGetConfigurableType( _monitor, out var c ) )
@@ -123,6 +130,7 @@ sealed class TypeAnalyzer
         TypeScriptPackage? typeScriptPackage = null;
         bool isInternal = false;
         bool isPrivate = false;
+        string? externalName = null;
 
         foreach( var a in t.AttributesData )
         {
@@ -181,6 +189,10 @@ sealed class TypeAnalyzer
             {
                 isPrivate = true;
             }
+            else if( IsOrSpecializes( aType, _externalName ) )
+            {
+                externalName = (string?)a.ConstructorArguments[0].Value;
+            }
             else if( IsOrSpecializes( aType, _typeScriptPackage ) )
             {
                 typeScriptPackage = new TypeScriptPackage( WithoutAttributeSuffix( aType.Name ),
@@ -221,17 +233,13 @@ sealed class TypeAnalyzer
         }
 
         CommandDeclaration? command = null;
-        if( type.IsInterface )
+        if( isCommandInterface )
         {
-            bool isCommand = t.Interfaces.Any( i => i.Type.FullName == _abstractCommand );
-            bool isPart = !isCommand && t.Interfaces.Any( i => i.Type.FullName == _commandPart );
-            if( isCommand || isPart )
-            {
-                command = new CommandDeclaration( isPart,
-                                                  // A generic base (ICommand<TResult>) by its C# name: its full name is assembly qualified.
-                                                  t.DirectInterfaces.Select( i => i.Type.IsGenericType ? i.CSharpName : i.Type.FullName ?? i.CSharpName ).ToList(),
-                                                  isPrivate ? "Private" : isInternal ? "Internal" : "Public" );
-            }
+            command = new CommandDeclaration( isAbstract,
+                                              // A generic base (ICommand<TResult>) by its C# name: its full name is assembly qualified.
+                                              t.DirectInterfaces.Select( i => i.Type.IsGenericType ? i.CSharpName : i.Type.FullName ?? i.CSharpName ).ToList(),
+                                              isPrivate ? "Private" : isInternal ? "Internal" : "Public",
+                                              externalName?.Trim() );
         }
 
         var groupKind = typeof( IResourcePackage ).IsAssignableFrom( type )

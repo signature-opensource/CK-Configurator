@@ -1,6 +1,7 @@
 using CK.Core;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace CK.Configurator.Catalog;
 
@@ -12,8 +13,10 @@ public sealed class Catalog
     readonly IReadOnlyList<PackageAnalysis> _packages;
     readonly Dictionary<string, (PackageAnalysis Package, AssemblyAnalysis Assembly, TypeAnalysis Type)> _types;
     readonly Dictionary<string, List<(PackageAnalysis Package, TypeAnalysis Type)>> _configurables;
+    readonly Dictionary<string, CommandFamily> _commandsByInterface;
+    readonly Dictionary<string, CommandFamily> _commandsByName;
 
-    Catalog( CatalogSource source, IReadOnlyList<PackageAnalysis> packages )
+    Catalog( IActivityMonitor monitor, CatalogSource source, IReadOnlyList<PackageAnalysis> packages )
     {
         Source = source;
         _packages = packages;
@@ -35,6 +38,15 @@ public sealed class Catalog
                         list.Add( (p, t) );
                     }
                 }
+            }
+        }
+        _commandsByInterface = CommandFamily.Compute( monitor, _types );
+        _commandsByName = new Dictionary<string, CommandFamily>( StringComparer.Ordinal );
+        foreach( var f in _commandsByInterface.Values.Distinct() )
+        {
+            if( !_commandsByName.TryAdd( f.Name, f ) )
+            {
+                monitor.Warn( $"Two commands are named '{f.Name}': '{_commandsByName[f.Name].Primary.Type.CSharpName}' and '{f.Primary.Type.CSharpName}'." );
             }
         }
     }
@@ -64,7 +76,7 @@ public sealed class Catalog
                 packages.Add( a );
             }
         }
-        return success ? new Catalog( source, packages ) : null;
+        return success ? new Catalog( monitor, source, packages ) : null;
     }
 
     /// <summary>
@@ -81,6 +93,18 @@ public sealed class Catalog
     /// Gets the configuration names of the configurable types.
     /// </summary>
     public IEnumerable<string> ConfigurableNames => _configurables.Keys;
+
+    /// <summary>
+    /// Gets the commands, by name.
+    /// </summary>
+    public IReadOnlyDictionary<string, CommandFamily> Commands => _commandsByName;
+
+    /// <summary>
+    /// Finds the command of one of its interfaces.
+    /// </summary>
+    /// <param name="interfaceFullName">The full name of a command interface (the primary one or an extension).</param>
+    /// <returns>The command or null.</returns>
+    public CommandFamily? FindCommandByInterface( string interfaceFullName ) => _commandsByInterface.GetValueOrDefault( interfaceFullName );
 
     /// <summary>
     /// Finds a type by its full name.

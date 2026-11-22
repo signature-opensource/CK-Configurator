@@ -69,7 +69,7 @@ public sealed class TypeAnalysis
     public TypeScriptPackage? TypeScriptPackage { get; init; }
 
     /// <summary>
-    /// Gets the command declaration when the type is a command interface (or a command part).
+    /// Gets the command declaration when the type is a command interface.
     /// </summary>
     public CommandDeclaration? Command { get; init; }
 
@@ -148,9 +148,20 @@ public sealed record ClientFact( string Key, string Value );
 public sealed record TypeScriptPackage( string Kind, bool IsOptional, string? TypeScriptFolder );
 
 /// <summary>
-/// A command interface (or a command part) as declared: the families are computed by the catalog.
+/// A command interface as declared (a command, a command part, an abstract base): the families are computed by the
+/// catalog (see <see cref="CommandFamily"/>).
 /// </summary>
-/// <param name="IsPart">True for a command part (<c>ICommandPart</c>).</param>
+/// <param name="IsAbstract">
+/// True for an abstract interface (a definer: a command part, a base like <c>ICommandTargetParty</c>): it is never a
+/// member of a family, it only takes part in the exposure of the families that extend it.
+/// </param>
 /// <param name="Bases">The full names of the direct base interfaces (the C# name of a generic one: <c>CK.Cris.ICommand&lt;CK.Cris.ICrisBasicCommandResult&gt;</c>).</param>
 /// <param name="Exposure">"Public", "Internal" or "Private" (the declaration on this interface only).</param>
-public sealed record CommandDeclaration( bool IsPart, IReadOnlyList<string> Bases, string Exposure );
+/// <param name="ExternalName">The name of the <c>[ExternalName]</c> of the interface (only the primary interface of a family should have one).</param>
+public sealed record CommandDeclaration( bool IsAbstract, IReadOnlyList<string> Bases, string Exposure, string? ExternalName )
+{
+    /// <summary>
+    /// Gets the full names of the direct base interfaces (an empty list is not written in the JSON: it is read as null).
+    /// </summary>
+    public IReadOnlyList<string> Bases { get; init; } = Bases ?? [];
+}

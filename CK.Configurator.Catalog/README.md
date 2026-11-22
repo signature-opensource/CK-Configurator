@@ -21,7 +21,7 @@ A `PackageAnalysis` is what a package version declares, nothing more:
 |---|---|
 | `PackageAnalysis` | `PackageId`, `Version`, its `Assemblies` (its runtime assemblies). |
 | `AssemblyAnalysis` | `Name`, `Role` (`Basic`, `Model`, `ModelDefiner`, `Engine`), `RequiredEngines`, `Types` (the types of a model that declare something). |
-| `TypeAnalysis` | `FullName` (the name by which the ResourceSpace identifies a package), `CSharpName`, `ResourceGroup` (`None`, `Group`, `Package`), `Configurable` (`IConfigurableTypeAttribute`: its kind, name and activation), `Section`, `Locks`, `Secrets`, `PerDeployment`, `PropertyLevels` (the `[Configuration...]` attributes), `Relations` (the topology attributes as declared: `[Requires]`, `[RequiredBy]`, `[Children]`, `[Groups]`, `[Package]`, their `[Optional...]` forms, `IResourceGroupTopologyAttribute`), `Facts` (`[PartyClientFact]`), `TypeScriptPackage` (`[TypeScriptPackage]` and its specializations), `Command` (a command interface or a command part: its direct bases and its own `[Internal]`/`[Private]`). |
+| `TypeAnalysis` | `FullName` (the name by which the ResourceSpace identifies a package), `CSharpName`, `ResourceGroup` (`None`, `Group`, `Package`), `Configurable` (`IConfigurableTypeAttribute`: its kind, name and activation), `Section`, `Locks`, `Secrets`, `PerDeployment`, `PropertyLevels` (the `[Configuration...]` attributes), `Relations` (the topology attributes as declared: `[Requires]`, `[RequiredBy]`, `[Children]`, `[Groups]`, `[Package]`, their `[Optional...]` forms, `IResourceGroupTopologyAttribute`), `Facts` (`[PartyClientFact]`), `TypeScriptPackage` (`[TypeScriptPackage]` and its specializations), `Command` (a command interface, abstract or not: its direct bases, its own `[Internal]`/`[Private]`, its `[ExternalName]`). |
 
 What depends on the other packages that are present is not in an analysis: the closures of the relations and the
 command families are computed from the analyses of a catalog.
@@ -59,3 +59,14 @@ One source, one worker process: another source is another worker, nothing is unl
 `Catalog.Load` reads the analyses of the catalog packages of a source from the cache (they must all be there) and
 indexes them in memory: `Catalog.FindType` by full name, `Catalog.FindConfigurable` by configuration name (case
 insensitive), `Catalog.ConfigurableNames`.
+
+### The commands
+
+`Catalog.Commands` (by name) and `Catalog.FindCommandByInterface` give the `CommandFamily` of the command interfaces,
+computed with the rules of the Poco and Cris engines:
+- the primary interface of a non abstract command interface is the single primary interface of its non abstract
+  command bases, or itself when it has none (two different ones: a warning, the interface is in no family);
+- the family is the primary interface and the interfaces whose primary interface it is, from any package;
+- its name (`CommandFamily.Name`) is the `[ExternalName]` of the primary interface, its C# name otherwise;
+- its exposure (`CommandFamily.Exposure`) is the most restrictive one declared by its interfaces and all their bases,
+  the abstract ones included (a command part): `Private`, then `Internal`, then `Public`.
