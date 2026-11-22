@@ -3,6 +3,7 @@ using CK.Core;
 using CK.Cris;
 using CK.IO.Configurator;
 using CK.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using Shouldly;
@@ -76,16 +77,19 @@ public class ConfiguratorCommandsTests
                                               typeof( ILockInfo ),
                                               typeof( IPropertyLevelInfo ),
                                               typeof( ICommandInfo ) );
+        // A development build: the workers reference the analyzer project (relative to the solution).
+        var config = new ConfigurationBuilder().AddInMemoryCollection( new Dictionary<string, string?>
+        {
+            ["Configurator:CacheRoot"] = Path.Combine( TestHelper.TestProjectFolder, "bin", "Cache" ),
+            ["Configurator:AnalyzerProject"] = "CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj"
+        } ).Build();
         await using var auto = (await configuration.RunSuccessfullyAsync()).CreateAutomaticServices( configureServices: services =>
         {
+            services.AddSingleton<IConfiguration>( config );
             services.AddScoped<IActivityMonitor>( s => TestHelper.Monitor );
         } );
-        // A development build: the workers reference the analyzer project.
         var catalogs = auto.Services.GetRequiredService<ConfiguratorCatalogService>();
-        catalogs.Cache = new CatalogCache( Path.Combine( TestHelper.TestProjectFolder, "bin", "Cache" ) );
-        catalogs.Analyzer = AnalyzerReference.FromProject( Path.Combine( TestHelper.SolutionFolder,
-                                                                         "CK.Configurator.Catalog.Worker",
-                                                                         "CK.Configurator.Catalog.Worker.csproj" ) );
+        catalogs.Analyzer!.ProjectPath.ShouldBe( Path.GetFullPath( Path.Combine( TestHelper.SolutionFolder, "CK.Configurator.Catalog.Worker", "CK.Configurator.Catalog.Worker.csproj" ) ) );
         using var scope = auto.Services.CreateScope();
         var services = scope.ServiceProvider;
 

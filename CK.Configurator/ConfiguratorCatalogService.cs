@@ -1,5 +1,6 @@
 using CK.Configurator.Catalog;
 using CK.Core;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,7 +16,12 @@ namespace CK.Configurator;
 /// The opened catalogs of the configurator, by their source (a Stack, a branch, a CI flag): the catalog of a source is
 /// opened once (its packages analyzed when needed) and its worker server is started on its first request. The workers
 /// are stopped when this service is disposed (with the application).
+/// <para>
+/// Its "Configurator" section is read at start: <c>"Configurator": { "CacheRoot": "...", "AnalyzerProject": "..." }</c>
+/// (see <see cref="CacheRoot"/> and <see cref="AnalyzerProject"/>).
+/// </para>
 /// </summary>
+[ConfigurationSection( "Configurator" )]
 public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDisposable
 {
     readonly SemaphoreSlim _gate;
@@ -24,14 +30,41 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
     AnalyzerReference? _analyzer;
 
     /// <summary>
-    /// Initializes the service with the default cache (<see cref="CatalogCache.DefaultRoot"/>).
+    /// Initializes the service from its "Configurator" section.
     /// </summary>
-    public ConfiguratorCatalogService()
+    /// <param name="configuration">The configuration of the application.</param>
+    public ConfiguratorCatalogService( IConfiguration configuration )
     {
         _gate = new SemaphoreSlim( 1, 1 );
         _catalogs = new Dictionary<string, OpenedCatalog>( StringComparer.OrdinalIgnoreCase );
-        _cache = new CatalogCache( CatalogCache.DefaultRoot );
+        var section = configuration.GetSection( "Configurator" );
+        CacheRoot = section["CacheRoot"];
+        AnalyzerProject = section["AnalyzerProject"];
+        _cache = new CatalogCache( CacheRoot ?? CatalogCache.DefaultRoot );
+        if( AnalyzerProject != null )
+        {
+            // Relative to the solution of the development (the solution of CK-Configurator).
+            var path = Path.IsPathRooted( AnalyzerProject ) || LocalDevSolution.SolutionFolder.IsEmptyPath
+                        ? AnalyzerProject
+                        : Path.Combine( LocalDevSolution.SolutionFolder, AnalyzerProject );
+            _analyzer = AnalyzerReference.FromProject( path );
+        }
     }
+
+    /// <summary>
+    /// Gets the configured root of the cache of the analyses ("Configurator:CacheRoot"). When null,
+    /// <see cref="CatalogCache.DefaultRoot"/> is used.
+    /// </summary>
+    [ConfigurationLevel( ConfigurationLevel.Init )]
+    public string? CacheRoot { get; }
+
+    /// <summary>
+    /// Gets the configured analyzer project ("Configurator:AnalyzerProject": the path of the CK.Configurator.Catalog.Worker
+    /// project, absolute or relative to the folder of the development solution). A development build of the configurator
+    /// (the zero version: there is no worker package of its version) sets it.
+    /// </summary>
+    [ConfigurationLevel( ConfigurationLevel.Init )]
+    public string? AnalyzerProject { get; }
 
     /// <summary>
     /// Gets or sets the cache of the analyses (the workers of the sources are in its "sources" folder). Set by the host
