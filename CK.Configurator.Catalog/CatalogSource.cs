@@ -8,11 +8,9 @@ namespace CK.Configurator.Catalog;
 
 /// <summary>
 /// The source of a catalog: a published profile (one version of each package of a World) and the NuGet feeds from
-/// which its packages are restored.
-/// <para>
-/// The feeds will come from the profile itself once CKli writes them (a Stack URL, a branch and a CI flag will then be
-/// enough to obtain a source); until then, they are given.
-/// </para>
+/// which its packages are restored: the feeds of the profile (<see cref="PublishedProfile.Feeds"/>) unless others are
+/// given (a profile written before the profiles carried their feeds has none). See <see cref="CatalogSources"/> to
+/// obtain the source of a branch of a Stack.
 /// </summary>
 public sealed class CatalogSource
 {
@@ -20,13 +18,16 @@ public sealed class CatalogSource
     /// Initializes a new source.
     /// </summary>
     /// <param name="profile">The published profile.</param>
-    /// <param name="feeds">The feeds (a URL or a local folder each).</param>
-    public CatalogSource( PublishedProfile profile, IReadOnlyList<CatalogFeed> feeds )
+    /// <param name="feeds">The feeds to use instead of the ones of the profile.</param>
+    public CatalogSource( PublishedProfile profile, IReadOnlyList<PublishedFeed>? feeds = null )
     {
         ArgumentNullException.ThrowIfNull( profile );
-        ArgumentNullException.ThrowIfNull( feeds );
         Profile = profile;
-        Feeds = feeds;
+        Feeds = feeds ?? (IReadOnlyList<PublishedFeed>)profile.Feeds;
+        if( Feeds.Count == 0 )
+        {
+            throw new ArgumentException( $"The profile '{profile}' has no feeds (it predates them): the feeds must be given.", nameof( feeds ) );
+        }
     }
 
     /// <summary>
@@ -35,9 +36,11 @@ public sealed class CatalogSource
     public PublishedProfile Profile { get; }
 
     /// <summary>
-    /// Gets the feeds.
+    /// Gets the feeds (a URL or a local folder each). Their secrets, when they need some, are never here: NuGet finds
+    /// them where it always does (the user's NuGet configuration, the environment). The public read credentials (not
+    /// secrets) are written in the nuget.config of the worker.
     /// </summary>
-    public IReadOnlyList<CatalogFeed> Feeds { get; }
+    public IReadOnlyList<PublishedFeed> Feeds { get; }
 
     /// <summary>
     /// Gets the packages of the profile that the catalog considers (see <see cref="IsCatalogPackage(string)"/>),
@@ -60,11 +63,3 @@ public sealed class CatalogSource
                && !packageId.Equals( "CK.AppBuilder", StringComparison.OrdinalIgnoreCase );
     }
 }
-
-/// <summary>
-/// A NuGet feed of a <see cref="CatalogSource"/>. Its credentials, when it needs some, are found where NuGet finds them
-/// (the user's NuGet configuration, the environment): never here.
-/// </summary>
-/// <param name="Name">The feed name (the key of the source in the generated nuget.config).</param>
-/// <param name="Url">The feed URL or a local folder.</param>
-public sealed record CatalogFeed( string Name, string Url );

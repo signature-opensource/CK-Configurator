@@ -7,8 +7,14 @@ Unified Configuration: the catalog tells it which configurable types exist, what
 ## The source
 
 A `CatalogSource` is a `PublishedProfile` (CK.Packaging.Abstractions: one version of each package produced by a
-World) and its feeds (`CatalogFeed`: a name and a URL or a local folder). The credentials of a feed are never in the
-source: NuGet finds them where it always does (the user's NuGet configuration, the environment).
+World) and the `PublishedFeed`s from which its packages are restored: the feeds of the profile, unless others are
+given (a profile that predates them has none). The secrets of a feed are never in the source: NuGet finds them where it
+always does (the user's NuGet configuration, the environment); the public read credentials (not secrets) are written in
+the nuget.config of the worker.
+
+`CatalogSources.ResolveAsync` obtains the source of a branch of a Stack: its `Published/index.json` gives the latest
+alive profile of the branch ("stable", "alpha"... "explo/{name}") or of its CI builds. The Stack is the URL of its GitHub
+repository (the raw content of its `main` branch is read, `CatalogSources.GetRawUrl`) or the local folder of its clone.
 
 `CatalogSource.CatalogPackages` are the produced packages that the catalog considers. `CatalogSource.IsCatalogPackage`
 excludes the test packages (`CK.Testing.*`, `*.Tests`) and `CK.AppBuilder`.

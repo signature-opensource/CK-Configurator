@@ -36,8 +36,8 @@ public class CatalogTests
 
     static CatalogSource CreateSource() => new CatalogSource( PublishedProfile.Parse( Encoding.UTF8.GetBytes( _profile ) ),
                                                               [
-                                                                  new CatalogFeed( "NuGet", "https://api.nuget.org/v3/index.json" ),
-                                                                  new CatalogFeed( "Signature-OpenSource", "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" )
+                                                                  new PublishedFeed( "NuGet", "https://api.nuget.org/v3/index.json" ),
+                                                                  new PublishedFeed( "Signature-OpenSource", "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" )
                                                               ] );
 
     [TestCase( "CK.Testing.Nunit", false )]

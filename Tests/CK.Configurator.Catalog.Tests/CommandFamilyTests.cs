@@ -52,7 +52,7 @@ public class CommandFamilyTests
         var cache = new CatalogCache( root );
         cache.Save( a );
         cache.Save( b );
-        var source = new CatalogSource( PublishedProfile.Parse( Encoding.UTF8.GetBytes( _profile ) ), [] );
+        var source = new CatalogSource( PublishedProfile.Parse( Encoding.UTF8.GetBytes( _profile ) ), [new PublishedFeed( "NuGet", "https://api.nuget.org/v3/index.json" )] );
         return Catalog.Load( TestHelper.Monitor, source, cache ).ShouldNotBeNull();
     }
 

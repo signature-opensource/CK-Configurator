@@ -8,6 +8,7 @@ using System.Security;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 
 namespace CK.Configurator.Catalog;
 
@@ -208,10 +209,22 @@ public static class CatalogWorker
         {
             n.AppendLine( $"""    <add key="{SecurityElement.Escape( f.Name )}" value="{SecurityElement.Escape( f.Url )}" />""" );
         }
-        n.AppendLine( """
-              </packageSources>
-            </configuration>
-            """ );
+        n.AppendLine( "  </packageSources>" );
+        // The public read credentials are not secrets (a GitHub public feed requires an authentication).
+        var publicRead = source.Feeds.Where( f => f.PublicReadUserName != null ).ToList();
+        if( publicRead.Count > 0 )
+        {
+            n.AppendLine( "  <packageSourceCredentials>" );
+            foreach( var f in publicRead )
+            {
+                n.AppendLine( $"""    <{XmlConvert.EncodeLocalName( f.Name )}>""" );
+                n.AppendLine( $"""      <add key="Username" value="{SecurityElement.Escape( f.PublicReadUserName )}" />""" );
+                n.AppendLine( $"""      <add key="ClearTextPassword" value="{SecurityElement.Escape( f.PublicReadPassword )}" />""" );
+                n.AppendLine( $"""    </{XmlConvert.EncodeLocalName( f.Name )}>""" );
+            }
+            n.AppendLine( "  </packageSourceCredentials>" );
+        }
+        n.AppendLine( "</configuration>" );
         WriteIfChanged( Path.Combine( folder, "nuget.config" ), n.ToString() );
 
         static void WriteIfChanged( string path, string content )
