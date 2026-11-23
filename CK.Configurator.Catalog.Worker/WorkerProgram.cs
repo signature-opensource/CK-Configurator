@@ -53,7 +53,8 @@ public static class WorkerProgram
                                 .Select( l => { int i = l.LastIndexOf( '@' ); return (Id: l[..i], Version: l[(i + 1)..]); } )
                                 .ToList();
             var packageAssemblies = ReadPackageAssemblies( assets );
-            return Analyze( monitor, new CatalogCache( cacheRoot ), requested, packageAssemblies ) ? 0 : 2;
+            var readmes = ReadPackageReadmes( monitor, assets );
+            return Analyze( monitor, new CatalogCache( cacheRoot ), requested, packageAssemblies, readmes ) ? 0 : 2;
         }
         catch( Exception ex )
         {
@@ -106,6 +107,45 @@ public static class WorkerProgram
     }
 
     /// <summary>
+    /// Finds the readme of each package ("PackageId/Version" lower case) of a project.assets.json: the file that the
+    /// <c>&lt;readme&gt;</c> of its nuspec names, in its folder of the package folders.
+    /// </summary>
+    /// <param name="monitor">The monitor to use.</param>
+    /// <param name="assetsPath">The project.assets.json path.</param>
+    /// <returns>The readme file path of the packages that have one.</returns>
+    public static Dictionary<string, string> ReadPackageReadmes( IActivityMonitor monitor, string assetsPath )
+    {
+        var result = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
+        using var doc = JsonDocument.Parse( File.ReadAllBytes( assetsPath ) );
+        var packageFolders = doc.RootElement.GetProperty( "packageFolders" ).EnumerateObject().Select( f => f.Name ).ToList();
+        foreach( var lib in doc.RootElement.GetProperty( "libraries" ).EnumerateObject() )
+        {
+            if( lib.Value.GetProperty( "type" ).GetString() != "package"
+                || !lib.Value.TryGetProperty( "path", out var pathElement )
+                || pathElement.GetString() is not string path )
+            {
+                continue;
+            }
+            var folder = packageFolders.Select( f => Path.Combine( f, path ) ).FirstOrDefault( Directory.Exists );
+            if( folder == null ) continue;
+            var nuspec = Directory.EnumerateFiles( folder, "*.nuspec" ).FirstOrDefault();
+            if( nuspec == null ) continue;
+            try
+            {
+                var readme = System.Xml.Linq.XDocument.Load( nuspec ).Descendants().FirstOrDefault( e => e.Name.LocalName == "readme" )?.Value;
+                if( string.IsNullOrWhiteSpace( readme ) ) continue;
+                var file = Path.Combine( folder, readme.Replace( '\\', Path.DirectorySeparatorChar ).Replace( '/', Path.DirectorySeparatorChar ) );
+                if( File.Exists( file ) ) result[lib.Name] = file;
+            }
+            catch( Exception ex )
+            {
+                monitor.Warn( $"Unable to read the nuspec '{nuspec}'.", ex );
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Loads the assemblies of the worker's folder (the discover mode of the assembly cache on its base directory).
     /// </summary>
     /// <param name="monitor">The monitor to use.</param>
@@ -127,7 +167,8 @@ public static class WorkerProgram
     static bool Analyze( IActivityMonitor monitor,
                          CatalogCache cache,
                          List<(string Id, string Version)> requested,
-                         Dictionary<string, List<string>> packageAssemblies )
+                         Dictionary<string, List<string>> packageAssemblies,
+                         Dictionary<string, string> readmes )
     {
         var result = LoadTypes( monitor );
         if( result == null ) return false;
@@ -153,7 +194,8 @@ public static class WorkerProgram
                     }
                     assemblies.Add( analyzer.Analyze( cached ) );
                 }
-                cache.Save( new PackageAnalysis { PackageId = id, Version = version, Assemblies = assemblies } );
+                var readme = readmes.TryGetValue( $"{id}/{version}", out var readmeFile ) ? File.ReadAllText( readmeFile ) : null;
+                cache.Save( new PackageAnalysis { PackageId = id, Version = version, Assemblies = assemblies, Readme = readme } );
             }
         }
         return success && analyzer.Success;

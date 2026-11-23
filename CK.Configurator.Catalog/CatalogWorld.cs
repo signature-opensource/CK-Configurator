@@ -47,6 +47,25 @@ public sealed class CatalogWorld : IEquatable<CatalogWorld>
     public string? LTSName => _ltsName;
 
     /// <summary>
+    /// Gets the default World of the Stack (this World when it is the default one).
+    /// </summary>
+    public CatalogWorld DefaultWorld => _ltsName == null ? this : new CatalogWorld( _stack, null, _gitHubPath );
+
+    /// <summary>
+    /// Gets a World of the same Stack.
+    /// </summary>
+    /// <param name="ltsName">The LTS name ("@net8") of the World, null for the default World.</param>
+    /// <returns>The World.</returns>
+    public CatalogWorld GetWorld( string? ltsName )
+    {
+        if( ltsName != null && !WorldName.IsValidLTSName( ltsName ) )
+        {
+            throw new ArgumentException( $"Invalid LTS name '{ltsName}'.", nameof( ltsName ) );
+        }
+        return ltsName == _ltsName ? this : new CatalogWorld( _stack, ltsName, _gitHubPath );
+    }
+
+    /// <summary>
     /// Gets whether the Stack is a local folder.
     /// </summary>
     public bool IsLocal => _gitHubPath == null;

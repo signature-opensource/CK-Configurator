@@ -31,6 +31,14 @@ public interface ICommandCatalogSource : ICommandCatalogWorld
 }
 
 /// <summary>
+/// Lists the Worlds of the Stack of a World: its default World first, then its Long Term Support Worlds (the ones that
+/// the index of the default World names). Returns the Worlds as <see cref="ICommandCatalogWorld.World"/> expects them.
+/// </summary>
+public interface IGetWorldsQCommand : ICommand<IList<string>>, ICommandCatalogWorld
+{
+}
+
+/// <summary>
 /// Lists the branches of a World, each with its latest profile (its regular and CI builds together): the stable line
 /// first, then by name.
 /// </summary>
@@ -210,6 +218,16 @@ public interface IConfigurableTypeInfo : IPoco
     /// Gets the full names of the components of which it is an option (empty when it is not an option).
     /// </summary>
     IList<string> OptionOwners { get; }
+
+    /// <summary>
+    /// Gets or sets the summary of the type (its Xml documentation, in Markdown).
+    /// </summary>
+    string? Summary { get; set; }
+
+    /// <summary>
+    /// Gets or sets the remarks of the type (its Xml documentation, in Markdown).
+    /// </summary>
+    string? Remarks { get; set; }
 }
 
 /// <summary>
@@ -298,4 +316,46 @@ public interface ICommandInfo : IPoco
     /// Gets the NuGet packages of its interfaces (the primary one first).
     /// </summary>
     IList<string> Packages { get; }
+
+    /// <summary>
+    /// Gets or sets the summary of its primary interface (its Xml documentation, in Markdown).
+    /// </summary>
+    string? Summary { get; set; }
+
+    /// <summary>
+    /// Gets or sets the remarks of its primary interface (its Xml documentation, in Markdown).
+    /// </summary>
+    string? Remarks { get; set; }
+}
+
+/// <summary>
+/// Gets a package of a catalog.
+/// </summary>
+public interface IGetPackageQCommand : ICommand<IPackageInfo>, ICommandCatalogSource
+{
+    /// <summary>
+    /// Gets or sets the package identifier.
+    /// </summary>
+    string PackageId { get; set; }
+}
+
+/// <summary>
+/// A package of a catalog.
+/// </summary>
+public interface IPackageInfo : IPoco
+{
+    /// <summary>
+    /// Gets or sets the package identifier.
+    /// </summary>
+    string PackageId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the package version.
+    /// </summary>
+    string Version { get; set; }
+
+    /// <summary>
+    /// Gets or sets its readme (the NuGet readme of the package, in Markdown). Null when it has none.
+    /// </summary>
+    string? Readme { get; set; }
 }

@@ -1,9 +1,11 @@
+using CK.CodeGen;
 using CK.Core;
 using CK.TypeCache;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace CK.Configurator.Catalog.Worker;
 
@@ -13,6 +15,11 @@ namespace CK.Configurator.Catalog.Worker;
 /// The attributes of CK.ResourceSpace.Abstractions (the configurable types, the configuration declarations, the
 /// topology) are known types. The ones of the packages that the analyzer doesn't reference (CK.AppIdentity's
 /// <c>[PartyClientFact]</c>, CK.TypeScript's <c>[TypeScriptPackage]</c>, CK.Cris' commands) are read by their name.
+/// </para>
+/// <para>
+/// The Xml documentation of a type (the ".xml" file next to its assembly: the worker project copies the documentation
+/// files of the packages) is read by CK.CodeGen's <see cref="XmlDocumentationReader"/> and its &lt;summary&gt; and
+/// &lt;remarks&gt; are converted to Markdown by its <see cref="DocumentationTextBuilder"/>.
 /// </para>
 /// </summary>
 sealed class TypeAnalyzer
@@ -24,7 +31,7 @@ sealed class TypeAnalyzer
     const string _internal = "CK.Cris.InternalAttribute";
     const string _private = "CK.Cris.PrivateAttribute";
     const string _externalName = "CK.Core.ExternalNameAttribute";
-    const string _componentOption = "CK.AppIdentity.IPartyComponentOption`1";
+    const string _configurableOption = "CK.Core.IConfigurableOption`1";
     // Read by name: an older CK.ResourceSpace.Abstractions (in an older profile) doesn't have it.
     const string _centralKey = "CK.Core.CentralConfigurationKeyAttribute";
 
@@ -56,12 +63,14 @@ sealed class TypeAnalyzer
 
     readonly IActivityMonitor _monitor;
     readonly GlobalTypeCache _typeCache;
+    readonly Dictionary<object, object?> _documentationCache;
     bool _success;
 
     public TypeAnalyzer( IActivityMonitor monitor, GlobalTypeCache typeCache )
     {
         _monitor = monitor;
         _typeCache = typeCache;
+        _documentationCache = new Dictionary<object, object?>();
         _success = true;
     }
 
@@ -276,7 +285,7 @@ sealed class TypeAnalyzer
         List<string>? optionOwners = null;
         foreach( var i in t.Interfaces )
         {
-            if( i.Type.IsGenericType && i.Type.GetGenericTypeDefinition().FullName == _componentOption )
+            if( i.Type.IsGenericType && i.Type.GetGenericTypeDefinition().FullName == _configurableOption )
             {
                 var owner = i.Type.GetGenericArguments()[0].FullName;
                 if( owner != null ) (optionOwners ??= []).Add( owner );
@@ -296,6 +305,7 @@ sealed class TypeAnalyzer
         {
             return null;
         }
+        var documentation = XmlDocumentationReader.GetDocumentationFor( _monitor, type, _documentationCache );
         return new TypeAnalysis
         {
             FullName = type.FullName,
@@ -311,8 +321,17 @@ sealed class TypeAnalyzer
             Facts = (IReadOnlyList<ClientFact>?)facts ?? [],
             OptionOwners = (IReadOnlyList<string>?)optionOwners ?? [],
             TypeScriptPackage = typeScriptPackage,
-            Command = command
+            Command = command,
+            Summary = ToMarkdown( documentation?.Element( "summary" ) ),
+            Remarks = ToMarkdown( documentation?.Element( "remarks" ) )
         };
+    }
+
+    static string? ToMarkdown( XElement? e )
+    {
+        if( e == null ) return null;
+        var text = new DocumentationTextBuilder().AppendLinesFromXElement( e ).ToString();
+        return text.Length == 0 ? null : text;
     }
 
     static void AddTypes( ref List<TypeRelation>? relations, string kind, bool optional, ReadOnlySpan<Type> types )

@@ -148,6 +148,23 @@ public sealed class CatalogSources : IDisposable
     }
 
     /// <summary>
+    /// Gets the Worlds of the Stack of a World: its default World, then the LTS Worlds that the index of the default World
+    /// names (<see cref="PublishedIndex.LTSWorlds"/>, empty when it was written before CKli listed them).
+    /// </summary>
+    /// <param name="monitor">The monitor to use.</param>
+    /// <param name="world">A World of the Stack.</param>
+    /// <param name="cancel">Optional cancellation token.</param>
+    /// <returns>The Worlds or null when the index of the default World can't be read.</returns>
+    public async Task<IReadOnlyList<CatalogWorld>?> GetWorldsAsync( IActivityMonitor monitor, CatalogWorld world, CancellationToken cancel = default )
+    {
+        ArgumentNullException.ThrowIfNull( world );
+        var defaultWorld = world.DefaultWorld;
+        var index = await ReadIndexAsync( monitor, defaultWorld, cancel ).ConfigureAwait( false );
+        if( index == null ) return null;
+        return [defaultWorld, .. index.LTSWorlds.Select( defaultWorld.GetWorld )];
+    }
+
+    /// <summary>
     /// Gets the branches of a World, each with its latest profile (its regular and CI builds together), the stable line
     /// first, then by name. A branch whose profiles are all deprecated is listed only when <paramref name="includeDeprecated"/>
     /// is true.

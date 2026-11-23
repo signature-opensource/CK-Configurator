@@ -59,9 +59,9 @@ public sealed class TypeAnalysis
     public IReadOnlyList<TypeRelation> Relations { get => field ?? []; init; }
 
     /// <summary>
-    /// Gets the full names of the components (a party feature, a client feature) of which the type is an option
-    /// (<c>IPartyComponentOption&lt;TOwner&gt;</c>): the AppIdentity engine attaches an option to its owner (a relation
-    /// that the ResourceSpace doesn't see). An abstract owner stands for each of its concrete implementations.
+    /// Gets the full names of the owners (an aspect, a party feature, a client feature) of which the type is an option
+    /// (<c>IConfigurableOption&lt;TOwner&gt;</c>): the engine of a level attaches an option to its owner (a relation that
+    /// the ResourceSpace doesn't see). An abstract owner stands for each of its concrete implementations.
     /// </summary>
     public IReadOnlyList<string> OptionOwners { get => field ?? []; init; }
 
@@ -79,6 +79,16 @@ public sealed class TypeAnalysis
     /// Gets the command declaration when the type is a command interface.
     /// </summary>
     public CommandDeclaration? Command { get; init; }
+
+    /// <summary>
+    /// Gets the &lt;summary&gt; of the Xml documentation of the type, in Markdown (null when it has none).
+    /// </summary>
+    public string? Summary { get; init; }
+
+    /// <summary>
+    /// Gets the &lt;remarks&gt; of the Xml documentation of the type, in Markdown (null when it has none).
+    /// </summary>
+    public string? Remarks { get; init; }
 
     /// <summary>
     /// Returns the <see cref="CSharpName"/>.

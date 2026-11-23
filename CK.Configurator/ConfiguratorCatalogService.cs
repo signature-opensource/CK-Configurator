@@ -88,6 +88,22 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
     static CatalogSources CreateSources( CatalogCache cache ) => new CatalogSources( cacheFolder: Path.Combine( cache.Root, "profiles" ) );
 
     /// <summary>
+    /// Gets the Worlds of the Stack of a World: its default World first, then its LTS Worlds.
+    /// See <see cref="CatalogSources.GetWorldsAsync(IActivityMonitor, CatalogWorld, CancellationToken)"/>.
+    /// </summary>
+    /// <param name="monitor">The monitor to use.</param>
+    /// <param name="world">A World of the Stack (see <see cref="CatalogWorld.TryParse(string?, out CatalogWorld?)"/>).</param>
+    /// <param name="cancel">Optional cancellation token.</param>
+    /// <returns>The Worlds or null on error (errors are logged).</returns>
+    public Task<IReadOnlyList<CatalogWorld>?> GetWorldsAsync( IActivityMonitor monitor, string world, CancellationToken cancel = default )
+    {
+        var w = ParseWorld( monitor, world );
+        return w == null
+                ? Task.FromResult<IReadOnlyList<CatalogWorld>?>( null )
+                : _sources.GetWorldsAsync( monitor, w, cancel );
+    }
+
+    /// <summary>
     /// Gets the branches of a World, each with its latest profile.
     /// See <see cref="CatalogSources.GetBranchesAsync(IActivityMonitor, CatalogWorld, bool, CancellationToken)"/>.
     /// </summary>

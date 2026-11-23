@@ -173,6 +173,8 @@ public static class CatalogWorker
                 <!-- The packages of a profile are coherent, not necessarily without downgrade warnings. -->
                 <WarningsNotAsErrors>NU1605;NU1608</WarningsNotAsErrors>
                 <NoWarn>$(NoWarn);NU1603;NU1605;NU1608;NU1701</NoWarn>
+                <!-- The Xml documentation files of the packages are next to their assemblies: the analyzer reads them. -->
+                <CopyDocumentationFilesFromPackages>true</CopyDocumentationFilesFromPackages>
               </PropertyGroup>
               <ItemGroup>
             """ );

@@ -1,6 +1,9 @@
 {
     "CK.Configurator.Catalog.Title": "Le catalogue",
     "CK.Configurator.Catalog.World": "Le World (le dépôt GitHub de sa Stack, suivi de /tree/main/@{LTS} pour un World LTS, ou un dossier local)",
+    "CK.Configurator.Catalog.WorldList": "Le World",
+    "CK.Configurator.Catalog.DefaultWorld": "World par défaut",
+    "CK.Configurator.Catalog.NoReadme": "Ce package n'a pas de readme.",
     "CK.Configurator.Catalog.Load": "Charger",
     "CK.Configurator.Catalog.ShowDeprecated": "Afficher les profils dépréciés",
     "CK.Configurator.Catalog.Branch": "La branche",

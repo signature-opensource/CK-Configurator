@@ -5,6 +5,13 @@
         <button nz-button class="ck-catalog-load" [nzLoading]="listing()" (click)="loadBranchesAsync()">
             {{ 'CK.Configurator.Catalog.Load' | translate }}
         </button>
+        @if ( worlds().length > 1 ) {
+            <nz-select class="ck-catalog-lts" [ngModel]="listedWorld()" (ngModelChange)="selectWorldAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.WorldList' | translate">
+                @for ( w of worlds(); track w ) {
+                    <nz-option [nzValue]="w" [nzLabel]="worldLabel( w )" />
+                }
+            </nz-select>
+        }
         <nz-select class="ck-catalog-branch" [ngModel]="branch()" (ngModelChange)="selectBranchAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.Branch' | translate" [nzDisabled]="!branches()?.length">
             @for ( b of branches() ?? []; track b.name ) {
                 <nz-option [nzValue]="b.name" [nzLabel]="b.name + ' - ' + profileLabel( b.latest )" />
@@ -54,7 +61,7 @@
                                     <td [style.padding-left.px]="8 + r.depth * 24">{{ r.type.name }}</td>
                                     <td>{{ r.type.kind }}</td>
                                     <td>{{ r.type.activation }}</td>
-                                    <td>{{ r.type.packageId }}</td>
+                                    <td><a class="ck-catalog-package" (click)="openPackageAsync( r.type.packageId ); $event.stopPropagation()">{{ r.type.packageId }}</a></td>
                                 </tr>
                             }
                         </tbody>
@@ -65,7 +72,13 @@
                         <div class="ck-catalog-detail">
                             <span class="header">{{ t.name }}</span>
                             <span class="sub">{{ t.typeName }}</span>
+                            <ck-markdown [text]="t.summary" />
+                            @if ( t.remarks ) {
+                                <ck-markdown class="ck-catalog-remarks" [text]="t.remarks" />
+                            }
                             <dl>
+                                <dt>{{ 'CK.Configurator.Catalog.Package' | translate }}</dt>
+                                <dd><a class="ck-catalog-package" (click)="openPackageAsync( t.packageId )">{{ t.packageId }}</a></dd>
                                 <dt>{{ 'CK.Configurator.Catalog.Section' | translate }}</dt><dd>{{ t.section ?? t.name }}</dd>
                                 @if ( t.optionOwners.length > 0 ) {
                                     <dt>{{ 'CK.Configurator.Catalog.OptionOf' | translate }}</dt>
@@ -113,9 +126,18 @@
                     <tbody>
                         @for ( c of commandsTable.data; track c.name ) {
                             <tr>
-                                <td>{{ c.name }}</td>
+                                <td>
+                                    {{ c.name }}
+                                    @if ( c.summary ) {
+                                        <ck-markdown class="sub ck-catalog-command-summary" [text]="c.summary" />
+                                    }
+                                </td>
                                 <td><nz-tag [nzColor]="c.exposure === 'Public' ? 'green' : c.exposure === 'Internal' ? 'orange' : 'red'">{{ c.exposure }}</nz-tag></td>
-                                <td>{{ c.packages.join( ', ' ) }}</td>
+                                <td>
+                                    @for ( p of c.packages; track p ) {
+                                        <a class="ck-catalog-package" (click)="openPackageAsync( p )">{{ p }}</a>{{ $last ? '' : ', ' }}
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -123,4 +145,13 @@
             </nz-tab>
         </nz-tabs>
     }
+    <nz-modal [nzVisible]="!!package()" [nzTitle]="package() ? package()!.packageId + ' ' + package()!.version : ''" [nzFooter]="null" nzWidth="860px" (nzOnCancel)="package.set( undefined )">
+        <ng-container *nzModalContent>
+            @if ( package()?.readme ) {
+                <ck-markdown [text]="package()!.readme" />
+            } @else {
+                <span class="sub">{{ 'CK.Configurator.Catalog.NoReadme' | translate }}</span>
+            }
+        </ng-container>
+    </nz-modal>
 </div>

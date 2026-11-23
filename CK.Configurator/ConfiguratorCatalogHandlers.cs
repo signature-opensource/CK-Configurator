@@ -34,6 +34,21 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
     }
 
     /// <summary>
+    /// Lists the Worlds of a Stack.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="command">The query.</param>
+    /// <param name="service">The opened catalogs.</param>
+    /// <returns>The Worlds.</returns>
+    [CommandHandler]
+    public async Task<IList<string>> HandleAsync( IActivityMonitor monitor, IGetWorldsQCommand command, ConfiguratorCatalogService service )
+    {
+        var worlds = await service.GetWorldsAsync( monitor, command.World ).ConfigureAwait( false )
+                     ?? throw new CKException( $"Unable to list the Worlds of '{command.World}' (see the logs)." );
+        return worlds.Select( w => w.ToString() ).ToList();
+    }
+
+    /// <summary>
     /// Lists the branches of a World.
     /// </summary>
     /// <param name="monitor">The monitor.</param>
@@ -132,6 +147,8 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
             i.Locks.AddRange( type.Locks.Select( l => pocos.Create<ILockInfo>( x => { x.Path = l.Path; x.Level = l.Level; x.Value = l.Value; } ) ) );
             i.PropertyLevels.AddRange( type.PropertyLevels.Select( p => pocos.Create<IPropertyLevelInfo>( x => { x.Property = p.Property; x.Level = p.Level; } ) ) );
             i.OptionOwners.AddRange( type.OptionOwners );
+            i.Summary = type.Summary;
+            i.Remarks = type.Remarks;
         } );
     }
 
@@ -176,7 +193,30 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
                              i.Exposure = f.Exposure;
                              i.PrimaryInterface = f.Primary.Type.FullName;
                              i.Packages.AddRange( f.Interfaces.Select( x => x.Package.PackageId ).Distinct() );
+                             i.Summary = f.Primary.Type.Summary;
+                             i.Remarks = f.Primary.Type.Remarks;
                          } ) )
                          .ToList();
+    }
+
+    /// <summary>
+    /// Gets a package of a catalog.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="command">The query.</param>
+    /// <param name="service">The opened catalogs.</param>
+    /// <returns>The package.</returns>
+    [CommandHandler]
+    public async Task<IPackageInfo> HandleAsync( IActivityMonitor monitor, IGetPackageQCommand command, ConfiguratorCatalogService service )
+    {
+        var c = (await OpenAsync( monitor, command, service ).ConfigureAwait( false )).Catalog;
+        var p = c.Packages.FirstOrDefault( p => p.PackageId.Equals( command.PackageId, System.StringComparison.OrdinalIgnoreCase ) )
+                ?? throw new CKException( $"The package '{command.PackageId}' is not in the catalog of the profile '{command.Version}'." );
+        return command.CreateResult( r =>
+        {
+            r.PackageId = p.PackageId;
+            r.Version = p.Version;
+            r.Readme = p.Readme;
+        } );
     }
 }

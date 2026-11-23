@@ -17,7 +17,7 @@ public sealed class PackageAnalysis
     /// The format of the analyses. It is part of the key of an analysis in the cache: an analysis written by an older
     /// analyzer is not read, the package is analyzed again.
     /// </summary>
-    public const int Format = 3;
+    public const int Format = 4;
 
     /// <summary>
     /// Gets the package identifier.
@@ -34,6 +34,12 @@ public sealed class PackageAnalysis
     /// tombstone, a meta package).
     /// </summary>
     public IReadOnlyList<AssemblyAnalysis> Assemblies { get => field ?? []; init; }
+
+    /// <summary>
+    /// Gets the readme of the package (its NuGet readme, the <c>docs/Package.md</c> of a project of the stack), in
+    /// Markdown. Null when the package has none.
+    /// </summary>
+    public string? Readme { get; init; }
 
     /// <summary>
     /// Returns "PackageId@Version".

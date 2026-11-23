@@ -5,11 +5,12 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { BranchInfo, CatalogInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetProfilesQCommand, HttpCrisEndpoint, OpenCatalogCommand, ProfileInfo } from '@local/ck-gen';
+import { BranchInfo, CatalogInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetPackageQCommand, GetProfilesQCommand, GetWorldsQCommand, HttpCrisEndpoint, MarkdownComponent, OpenCatalogCommand, PackageInfo, ProfileInfo } from '@local/ck-gen';
 
 /** A configurable type and its depth in the list: an option is shown under its owner. */
 export interface CatalogRow {
@@ -48,6 +49,8 @@ function levelOf( kind: string ): string {
         NzButtonModule,
         NzCheckboxModule,
         NzInputModule,
+        NzModalModule,
+        MarkdownComponent,
         NzSelectModule,
         NzTableModule,
         NzTabsModule,
@@ -66,8 +69,12 @@ export class CatalogPage {
     world = 'https://github.com/signature-opensource/CK-Stack';
     /** The selected profile version. */
     version: string | undefined;
+    /** The Worlds of the Stack of the World input: its default World, then its LTS Worlds. */
+    readonly worlds = signal<ReadonlyArray<string>>( [] );
     /** The World whose branches are listed (the input may have changed since). */
-    #listedWorld = '';
+    readonly listedWorld = signal( '' );
+    /** The package whose readme is shown. */
+    readonly package = signal<PackageInfo | undefined>( undefined );
 
     /** Whether the deprecated profiles are listed. */
     readonly includeDeprecated = signal( false );
@@ -139,8 +146,35 @@ export class CatalogPage {
         return label;
     }
 
-    /** Lists the branches of the World and selects the first one. */
+    /** "CK" for the default World of a Stack, its LTS name ("@net8") otherwise. */
+    worldLabel( world: string ): string {
+        const lts = /[\\/](@[^\\/]+)$/.exec( world );
+        return lts ? lts[1] : this.#translate.instant( 'CK.Configurator.Catalog.DefaultWorld' );
+    }
+
+    /** Lists the Worlds of the Stack of the World input, then the branches of the World input. */
     async loadBranchesAsync(): Promise<void> {
+        this.listing.set( true );
+        this.error.set( null );
+        this.worlds.set( [] );
+        try {
+            const c = new GetWorldsQCommand();
+            c.world = this.world;
+            const worlds = await this.#cris.sendOrThrowAsync( c ) ?? [];
+            this.worlds.set( worlds );
+            // The World of the input (when it is one of them, in its canonical form), the default World otherwise.
+            const input = this.world.trim().replace( /[\\/]+$/, '' ).toLowerCase();
+            const selected = worlds.find( w => w.toLowerCase() === input ) ?? worlds.find( w => input.endsWith( this.worldLabel( w ).toLowerCase() ) ) ?? worlds[0];
+            if( selected ) await this.selectWorldAsync( selected );
+        } catch( e ) {
+            this.error.set( String( e ) );
+        } finally {
+            this.listing.set( false );
+        }
+    }
+
+    /** Lists the branches of a World and selects the first one. */
+    async selectWorldAsync( world: string ): Promise<void> {
         this.listing.set( true );
         this.error.set( null );
         this.branches.set( undefined );
@@ -148,9 +182,9 @@ export class CatalogPage {
         this.profiles.set( [] );
         this.version = undefined;
         try {
-            this.#listedWorld = this.world;
+            this.listedWorld.set( world );
             const c = new GetBranchesQCommand();
-            c.world = this.#listedWorld;
+            c.world = this.listedWorld();
             c.includeDeprecated = this.includeDeprecated();
             const branches = await this.#cris.sendOrThrowAsync( c ) ?? [];
             this.branches.set( branches );
@@ -171,7 +205,7 @@ export class CatalogPage {
         this.version = undefined;
         try {
             const c = new GetProfilesQCommand();
-            c.world = this.#listedWorld;
+            c.world = this.listedWorld();
             c.branch = branch;
             c.includeDeprecated = this.includeDeprecated();
             const profiles = await this.#cris.sendOrThrowAsync( c ) ?? [];
@@ -186,12 +220,24 @@ export class CatalogPage {
 
     async setIncludeDeprecated( include: boolean ): Promise<void> {
         this.includeDeprecated.set( include );
-        if( this.branches() ) await this.loadBranchesAsync();
+        if( this.branches() ) await this.selectWorldAsync( this.listedWorld() );
+    }
+
+    /** Shows the readme of a package of the opened catalog. */
+    async openPackageAsync( packageId: string ): Promise<void> {
+        this.error.set( null );
+        try {
+            const c = this.#source( new GetPackageQCommand() );
+            c.packageId = packageId;
+            this.package.set( await this.#cris.sendOrThrowAsync( c ) );
+        } catch( e ) {
+            this.error.set( String( e ) );
+        }
     }
 
     async openAsync(): Promise<void> {
         if( !this.version ) return;
-        this.opened.set( { world: this.#listedWorld, version: this.version } );
+        this.opened.set( { world: this.listedWorld(), version: this.version } );
         this.info.set( undefined );
         this.loading.set( true );
         this.error.set( null );
