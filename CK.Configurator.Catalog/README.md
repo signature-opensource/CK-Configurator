@@ -12,9 +12,38 @@ given (a profile that predates them has none). The secrets of a feed are never i
 always does (the user's NuGet configuration, the environment); the public read credentials (not secrets) are written in
 the nuget.config of the worker.
 
-`CatalogSources.ResolveAsync` obtains the source of a branch of a Stack: its `Published/index.json` gives the latest
-alive profile of the branch ("stable", "alpha"... "explo/{name}") or of its CI builds. The Stack is the URL of its GitHub
-repository (the raw content of its `main` branch is read, `CatalogSources.GetRawUrl`) or the local folder of its clone.
+### The World of a source
+
+A `CatalogWorld` is where the profiles are published: a Stack and, for a Long Term Support World, its LTS name.
+`CatalogWorld.Parse` reads:
+
+| World | Its `Published` folder |
+|---|---|
+| `https://github.com/signature-opensource/CK-Stack` (the default World) | `Published/` of the `main` branch |
+| `https://github.com/signature-opensource/CK-Stack/tree/main/@net8` (the `CK@net8` LTS World) | `@net8/Published/` of the `main` branch |
+| a local folder (the clone of a Stack), or its `@net8` sub folder | `Published/`, `@net8/Published/` |
+
+`CatalogWorld.GetLocation` gives the raw content URL (GitHub) or the file path (local) of a file of that folder.
+
+### Reading a World
+
+`CatalogSources` reads the `Published` folder of a World:
+
+- `CatalogSources.ReadIndexAsync`: its `index.json`, read each time (it changes with every publication);
+- `CatalogSources.ReadProfileAsync`: a profile, read once and kept (in memory, and as a file under the cache folder
+  given to the constructor for a remote World). A profile never changes, except its deprecation, which is read from the
+  index. The file of a profile published before the `TimeVersion` is found by its legacy name
+  (`PublishedProfile.GetLegacyProfilePath`);
+- `CatalogSources.GetBranchesAsync`: the branches ("stable", "alpha"... "explo/{name}"), each with its latest profile
+  (a `CatalogBranch`), the stable line first;
+- `CatalogSources.GetProfilesAsync`: the profiles of a branch, its regular and CI builds together, the latest first
+  (a `CatalogProfileEntry`: its version, whether it is deprecated, whether it has feeds).
+
+The deprecated profiles are left out unless asked for. A profile without feeds (published before the profiles carried
+them, or that can't be read) is listed: a catalog can't be opened on it unless feeds are given.
+
+`CatalogSources.ResolveAsync` obtains the source of a profile of a World, given its version (the branch and the CI build
+are in the version).
 
 `CatalogSource.CatalogPackages` are the produced packages that the catalog considers. `CatalogSource.IsCatalogPackage`
 excludes the test packages (`CK.Testing.*`, `*.Tests`) and `CK.AppBuilder`.

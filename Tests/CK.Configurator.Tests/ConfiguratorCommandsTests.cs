@@ -25,7 +25,7 @@ public class ConfiguratorCommandsTests
         var published = Path.Combine( stack, "Published" );
         Directory.CreateDirectory( Path.Combine( published, "explo", "uc" ) );
         File.WriteAllText( Path.Combine( published, "index.json" ), """
-            { "Alive": { "explo/uc-ci": [ "2026.11.22-0.uc.0.ci.0" ] }, "Deprecated": {} }
+            { "Alive": { "explo/uc-ci": [ "2026.11.22-0.uc.0.ci.0" ] }, "Deprecated": { "explo/uc-ci": [ "2026.11.21-0.uc.0.ci.0" ] } }
             """ );
         File.WriteAllText( Path.Combine( published, "explo", "uc", "v2026.11.22-0.uc.0.ci.0.json" ), """
             {
@@ -72,6 +72,10 @@ public class ConfiguratorCommandsTests
                                               typeof( IGetConfigurableTypesQCommand ),
                                               typeof( IGetClosureQCommand ),
                                               typeof( IGetCommandsQCommand ),
+                                              typeof( IGetBranchesQCommand ),
+                                              typeof( IGetProfilesQCommand ),
+                                              typeof( IBranchInfo ),
+                                              typeof( IProfileInfo ),
                                               typeof( ICatalogInfo ),
                                               typeof( IConfigurableTypeInfo ),
                                               typeof( ILockInfo ),
@@ -93,15 +97,32 @@ public class ConfiguratorCommandsTests
         using var scope = auto.Services.CreateScope();
         var services = scope.ServiceProvider;
 
+        var branches = (IList<IBranchInfo>)(await ExecuteAsync<IGetBranchesQCommand>( services, c => c.World = stack ))!;
+        var uc = branches.ShouldHaveSingleItem();
+        uc.Name.ShouldBe( "explo/uc" );
+        uc.Latest.Version.ShouldBe( "2026.11.22-0.uc.0.ci.0" );
+        uc.Latest.Date.ShouldBe( "2026.11.22" );
+        uc.Latest.IsCI.ShouldBeTrue();
+        uc.Latest.HasFeeds.ShouldBeTrue();
+
+        var profiles = (IList<IProfileInfo>)(await ExecuteAsync<IGetProfilesQCommand>( services, c =>
+        {
+            c.World = stack;
+            c.Branch = "explo/uc";
+            c.IncludeDeprecated = true;
+        } ))!;
+        // The deprecated profile is listed by the index. Its file is missing: it is listed without feeds (it can't be opened).
+        profiles.Select( p => p.Version ).ShouldBe( ["2026.11.22-0.uc.0.ci.0", "2026.11.21-0.uc.0.ci.0"] );
+        profiles[1].IsDeprecated.ShouldBeTrue();
+        profiles[1].HasFeeds.ShouldBeFalse();
+
         void Source( ICommandCatalogSource s )
         {
-            s.Stack = stack;
-            s.Branch = "explo/uc";
-            s.IsCI = true;
+            s.World = stack;
+            s.Version = "2026.11.22-0.uc.0.ci.0";
         }
 
         var info = (ICatalogInfo)(await ExecuteAsync<IOpenCatalogCommand>( services, Source ))!;
-        info.ProfileVersion.ShouldBe( "2026.11.22-0.uc.0.ci.0" );
         info.PackageCount.ShouldBe( 4 );
 
         var types = (IList<IConfigurableTypeInfo>)(await ExecuteAsync<IGetConfigurableTypesQCommand>( services, Source ))!;
@@ -126,8 +147,10 @@ public class ConfiguratorCommandsTests
         commands.Select( c => c.PrimaryInterface ).ShouldContain( "CK.IO.DynamicConfiguration.IConfigurePropertyCommand" );
         commands.ShouldAllBe( c => c.Packages.Contains( "CK.IO.DynamicConfiguration" ) );
 
-        // An unknown Stack is an error result, not an exception.
-        var command = services.GetRequiredService<PocoDirectory>().Create<IOpenCatalogCommand>( c => { c.Stack = Path.Combine( stack, "Nope" ); c.Branch = "explo/uc"; } );
+        // An unknown World or version is an error result, not an exception.
+        var command = services.GetRequiredService<PocoDirectory>().Create<IOpenCatalogCommand>( c => { c.World = Path.Combine( stack, "Nope" ); c.Version = "2026.11.22-0.uc.0.ci.0"; } );
+        (await services.GetRequiredService<RawCrisExecutor>().RawExecuteAsync( services, command )).Result.ShouldBeAssignableTo<ICrisResultError>();
+        command = services.GetRequiredService<PocoDirectory>().Create<IOpenCatalogCommand>( c => { c.World = stack; c.Version = "2026.11.23-0.uc.0.ci.0"; } );
         (await services.GetRequiredService<RawCrisExecutor>().RawExecuteAsync( services, command )).Result.ShouldBeAssignableTo<ICrisResultError>();
     }
 }

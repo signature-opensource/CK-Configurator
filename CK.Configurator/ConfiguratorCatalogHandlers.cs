@@ -18,8 +18,62 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
                                                                           ICommandCatalogSource source,
                                                                           ConfiguratorCatalogService service )
     {
-        return await service.OpenAsync( monitor, source.Stack, source.Branch, source.IsCI ).ConfigureAwait( false )
-               ?? throw new CKException( $"Unable to open the catalog of '{source.Branch}{(source.IsCI ? " (CI)" : "")}' from '{source.Stack}' (see the logs)." );
+        return await service.OpenAsync( monitor, source.World, source.Version ).ConfigureAwait( false )
+               ?? throw new CKException( $"Unable to open the catalog of the profile '{source.Version}' of '{source.World}' (see the logs)." );
+    }
+
+    static void Fill( IProfileInfo info, CatalogProfileEntry entry )
+    {
+        var v = entry.Version;
+        info.Version = v.ToString();
+        info.Date = $"{v.Year}.{v.Month}.{v.Day}";
+        info.ClashNumber = v.ClashNumber;
+        info.IsCI = v.IsCI;
+        info.IsDeprecated = entry.IsDeprecated;
+        info.HasFeeds = entry.HasFeeds;
+    }
+
+    /// <summary>
+    /// Lists the branches of a World.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="command">The query.</param>
+    /// <param name="service">The opened catalogs.</param>
+    /// <param name="pocos">The poco directory.</param>
+    /// <returns>The branches.</returns>
+    [CommandHandler]
+    public async Task<IList<IBranchInfo>> HandleAsync( IActivityMonitor monitor,
+                                                       IGetBranchesQCommand command,
+                                                       ConfiguratorCatalogService service,
+                                                       PocoDirectory pocos )
+    {
+        var branches = await service.GetBranchesAsync( monitor, command.World, command.IncludeDeprecated ).ConfigureAwait( false )
+                       ?? throw new CKException( $"Unable to list the branches of '{command.World}' (see the logs)." );
+        return branches.Select( b => pocos.Create<IBranchInfo>( i =>
+                                {
+                                    i.Name = b.Name;
+                                    Fill( i.Latest, b.Latest );
+                                } ) )
+                       .ToList();
+    }
+
+    /// <summary>
+    /// Lists the profiles of a branch of a World.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="command">The query.</param>
+    /// <param name="service">The opened catalogs.</param>
+    /// <param name="pocos">The poco directory.</param>
+    /// <returns>The profiles, the latest first.</returns>
+    [CommandHandler]
+    public async Task<IList<IProfileInfo>> HandleAsync( IActivityMonitor monitor,
+                                                        IGetProfilesQCommand command,
+                                                        ConfiguratorCatalogService service,
+                                                        PocoDirectory pocos )
+    {
+        var profiles = await service.GetProfilesAsync( monitor, command.World, command.Branch, command.IncludeDeprecated ).ConfigureAwait( false )
+                       ?? throw new CKException( $"Unable to list the profiles of '{command.Branch}' of '{command.World}' (see the logs)." );
+        return profiles.Select( p => pocos.Create<IProfileInfo>( i => Fill( i, p ) ) ).ToList();
     }
 
     /// <summary>
@@ -35,7 +89,6 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
         var c = (await OpenAsync( monitor, command, service ).ConfigureAwait( false )).Catalog;
         return command.CreateResult( r =>
         {
-            r.ProfileVersion = c.Source.Profile.Version.ToString();
             r.PackageCount = c.Packages.Count;
             r.ConfigurableTypeCount = c.ConfigurableNames.Sum( n => c.FindConfigurable( n ).Count );
             r.CommandCount = c.Commands.Count;

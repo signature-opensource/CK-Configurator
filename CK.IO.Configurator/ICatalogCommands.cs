@@ -5,26 +5,111 @@ using System.Collections.Generic;
 namespace CK.IO.Configurator;
 
 /// <summary>
-/// The catalog that a command targets: the latest alive published profile of a branch of a Stack (or of its CI
-/// builds). The backend keeps the opened catalogs by their source.
+/// The World that a command targets: a Stack and, for a Long Term Support World, its LTS name.
 /// </summary>
-public interface ICommandCatalogSource : ICommandPart
+public interface ICommandCatalogWorld : ICommandPart
 {
     /// <summary>
-    /// Gets or sets the Stack: the URL of its GitHub repository ("https://github.com/signature-opensource/CK-Stack") or
-    /// the local folder of its clone.
+    /// Gets or sets the World: the URL of the GitHub repository of its Stack ("https://github.com/signature-opensource/CK-Stack"
+    /// is its default World, ".../CK-Stack/tree/main/@net8" its "@net8" LTS World) or the local folder of the clone of
+    /// the Stack (its "@net8" sub folder for the LTS World).
     /// </summary>
-    string Stack { get; set; }
+    string World { get; set; }
+}
 
+/// <summary>
+/// The catalog that a command targets: a published profile of a World (its version names its branch and its CI build).
+/// The backend keeps the opened catalogs by their source.
+/// </summary>
+[CKTypeDefiner]
+public interface ICommandCatalogSource : ICommandCatalogWorld
+{
+    /// <summary>
+    /// Gets or sets the version of the profile ("2026.11.23-0.uc.0.ci.0").
+    /// </summary>
+    string Version { get; set; }
+}
+
+/// <summary>
+/// Lists the branches of a World, each with its latest profile (its regular and CI builds together): the stable line
+/// first, then by name.
+/// </summary>
+public interface IGetBranchesQCommand : ICommand<IList<IBranchInfo>>, ICommandCatalogWorld
+{
+    /// <summary>
+    /// Gets or sets whether the deprecated profiles are considered (a branch whose profiles are all deprecated is
+    /// listed only then).
+    /// </summary>
+    bool IncludeDeprecated { get; set; }
+}
+
+/// <summary>
+/// A branch of a World.
+/// </summary>
+public interface IBranchInfo : IPoco
+{
+    /// <summary>
+    /// Gets or sets the branch name: "stable" for the stable line, "alpha" to "zulu", "explo/{name}".
+    /// </summary>
+    string Name { get; set; }
+
+    /// <summary>
+    /// Gets its latest profile.
+    /// </summary>
+    IProfileInfo Latest { get; }
+}
+
+/// <summary>
+/// Lists the profiles of a branch of a World (its regular and CI builds together), the latest first.
+/// </summary>
+public interface IGetProfilesQCommand : ICommand<IList<IProfileInfo>>, ICommandCatalogWorld
+{
     /// <summary>
     /// Gets or sets the branch: "stable" (or empty) for the stable line, "alpha" to "zulu", "explo/{name}".
     /// </summary>
     string Branch { get; set; }
 
     /// <summary>
-    /// Gets or sets whether the CI builds of the branch are considered instead of its regular ones.
+    /// Gets or sets whether the deprecated profiles are listed.
+    /// </summary>
+    bool IncludeDeprecated { get; set; }
+}
+
+/// <summary>
+/// A published profile of a World.
+/// </summary>
+public interface IProfileInfo : IPoco
+{
+    /// <summary>
+    /// Gets or sets the version of the profile (the <see cref="ICommandCatalogSource.Version"/> of a catalog).
+    /// </summary>
+    string Version { get; set; }
+
+    /// <summary>
+    /// Gets or sets the day of the publication ("2026.11.23").
+    /// </summary>
+    string Date { get; set; }
+
+    /// <summary>
+    /// Gets or sets the number that tells apart the publications of the same day (0 for the first one).
+    /// </summary>
+    int ClashNumber { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the profile is a CI build.
     /// </summary>
     bool IsCI { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the profile is deprecated.
+    /// </summary>
+    bool IsDeprecated { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the profile has its feeds: a profile published before the profiles carried their feeds has
+    /// none (nor has a profile that can't be read), a catalog can't be opened on it.
+    /// </summary>
+    bool HasFeeds { get; set; }
 }
 
 /// <summary>
@@ -40,11 +125,6 @@ public interface IOpenCatalogCommand : ICommand<ICatalogInfo>, ICommandCatalogSo
 /// </summary>
 public interface ICatalogInfo : IPoco
 {
-    /// <summary>
-    /// Gets or sets the version of the published profile.
-    /// </summary>
-    string ProfileVersion { get; set; }
-
     /// <summary>
     /// Gets or sets the number of packages of the catalog.
     /// </summary>

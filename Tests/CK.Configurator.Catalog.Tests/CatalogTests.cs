@@ -181,7 +181,7 @@ public class CatalogTests
         var analyzer = AnalyzerReference.FromProject( Path.Combine( TestHelper.SolutionFolder,
                                                                     "CK.Configurator.Catalog.Worker",
                                                                     "CK.Configurator.Catalog.Worker.csproj" ) );
-        var worker = Path.Combine( CatalogCache.DefaultRoot, "sources", profile.Version.ToString() );
+        var worker = Path.Combine( CatalogCache.DefaultRoot, "sources", profile.World.FullName, profile.Version.ToString() );
         (await CatalogWorker.AnalyzeAsync( TestHelper.Monitor, source, cache, worker, analyzer )).ShouldBeTrue();
         var catalog = Catalog.Load( TestHelper.Monitor, source, cache ).ShouldNotBeNull();
         TestHelper.Monitor.Info( $"{catalog.Packages.Count} packages, configurable types: '{catalog.ConfigurableNames.Order().Concatenate( "', '" )}'." );

@@ -3,9 +3,12 @@
 The backend of the configurator: it handles the commands of [CK.IO.Configurator](../CK.IO.Configurator/README.md) with
 the catalogs of [CK.Configurator.Catalog](../CK.Configurator.Catalog/README.md).
 
-- `ConfiguratorCatalogService` (a singleton) keeps the opened catalogs by their source: `ConfiguratorCatalogService.OpenAsync`
-  resolves the source, analyzes what is missing and loads the catalog once; `OpenedCatalog.GetServerAsync` starts its
-  worker server on the first request that needs it (a closure). The workers stop when the service is disposed. Its
+- `ConfiguratorCatalogService` (a singleton) keeps the opened catalogs by their source (a World and a profile version):
+  `ConfiguratorCatalogService.OpenAsync` resolves the source, analyzes what is missing and loads the catalog once;
+  `OpenedCatalog.GetServerAsync` starts its worker server on the first request that needs it (a closure). The workers
+  stop when the service is disposed. `ConfiguratorCatalogService.GetBranchesAsync` and
+  `ConfiguratorCatalogService.GetProfilesAsync` list what a World published (the profiles read are kept in the
+  `profiles` folder of the cache). Its
   "Configurator" section is read at start:
   `"Configurator": { "CacheRoot": "...", "AnalyzerProject": "CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj" }`.
   The cache defaults to `CatalogCache.DefaultRoot`; the analyzer defaults to the CK.Configurator.Catalog.Worker package

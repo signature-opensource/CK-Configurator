@@ -12,6 +12,8 @@ namespace CK.Ng.Configurator;
 /// </summary>
 [TypeScriptPackage]
 [Requires<CrisAspNetPackage, ZorroPackage>]
+[RegisterTypeScriptType( typeof( IGetBranchesQCommand ) )]
+[RegisterTypeScriptType( typeof( IGetProfilesQCommand ) )]
 [RegisterTypeScriptType( typeof( IOpenCatalogCommand ) )]
 [RegisterTypeScriptType( typeof( IGetConfigurableTypesQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetClosureQCommand ) )]

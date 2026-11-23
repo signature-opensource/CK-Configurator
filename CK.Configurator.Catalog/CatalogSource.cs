@@ -10,7 +10,7 @@ namespace CK.Configurator.Catalog;
 /// The source of a catalog: a published profile (one version of each package of a World) and the NuGet feeds from
 /// which its packages are restored: the feeds of the profile (<see cref="PublishedProfile.Feeds"/>) unless others are
 /// given (a profile written before the profiles carried their feeds has none). See <see cref="CatalogSources"/> to
-/// obtain the source of a branch of a Stack.
+/// obtain the source of a profile of a <see cref="CatalogWorld"/>.
 /// </summary>
 public sealed class CatalogSource
 {

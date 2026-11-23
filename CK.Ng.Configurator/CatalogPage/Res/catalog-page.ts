@@ -1,14 +1,15 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { CatalogInfo, CommandInfo, ConfigurableTypeInfo, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, HttpCrisEndpoint, OpenCatalogCommand } from '@local/ck-gen';
+import { BranchInfo, CatalogInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetProfilesQCommand, HttpCrisEndpoint, OpenCatalogCommand, ProfileInfo } from '@local/ck-gen';
 
 /** A configurable type and its depth in the list: an option is shown under its owner. */
 export interface CatalogRow {
@@ -17,7 +18,7 @@ export interface CatalogRow {
 }
 
 /**
- * The catalog page: a source (a Stack, a branch, its CI builds) is opened, its configurable types are listed (the
+ * The catalog page: a source (a World, then one of its branches, then one of its profiles) is opened, its configurable types are listed (the
  * options under their owners), the selected ones show what they bring in (their closure) and the commands are listed.
  */
 @Component( {
@@ -29,6 +30,7 @@ export interface CatalogRow {
         NzButtonModule,
         NzCheckboxModule,
         NzInputModule,
+        NzSelectModule,
         NzTableModule,
         NzTabsModule,
         NzTagModule
@@ -38,13 +40,30 @@ export interface CatalogRow {
 export class CatalogPage {
     // <PreDependencyInjection revert />
     readonly #cris = inject( HttpCrisEndpoint );
+    readonly #translate = inject( TranslateService );
     // <PostDependencyInjection />
 
     // <PreLocalVariables revert />
-    /** The source. */
-    stack = 'https://github.com/signature-opensource/CK-Stack';
-    branch = 'explo/uc';
-    isCI = true;
+    /** The World: a Stack url (its default World), followed by "/tree/main/@{LTS}" for an LTS World, or a local folder. */
+    world = 'https://github.com/signature-opensource/CK-Stack';
+    /** The selected profile version. */
+    version: string | undefined;
+    /** The World whose branches are listed (the input may have changed since). */
+    #listedWorld = '';
+
+    /** Whether the deprecated profiles are listed. */
+    readonly includeDeprecated = signal( false );
+    /** The branches of the World (undefined before they are listed). */
+    readonly branches = signal<ReadonlyArray<BranchInfo> | undefined>( undefined );
+    /** The selected branch. */
+    readonly branch = signal<string | undefined>( undefined );
+    /** The profiles of the selected branch, the latest first. */
+    readonly profiles = signal<ReadonlyArray<ProfileInfo>>( [] );
+    /** True while the branches or the profiles are listed. */
+    readonly listing = signal( false );
+    /** The World and the version of the opened catalog. */
+    readonly opened = signal<{ world: string, version: string } | undefined>( undefined );
+    readonly openedVersion = computed( () => this.opened()?.version );
 
     readonly loading = signal( false );
     readonly error = signal<string | null>( null );
@@ -85,7 +104,69 @@ export class CatalogPage {
     } );
     // <PostLocalVariables />
 
+    /** "2026.11.23", the clash number if any ("2026.11.23 (1)"), then the CI and deprecated tags. */
+    profileLabel( p: ProfileInfo ): string {
+        let label = p.clashNumber > 0 ? `${p.date} (${p.clashNumber})` : p.date;
+        if( p.isCI ) label += ' - CI';
+        if( p.isDeprecated ) label += ` - ${this.#translate.instant( 'CK.Configurator.Catalog.Deprecated' )}`;
+        if( !p.hasFeeds ) label += ` - ${this.#translate.instant( 'CK.Configurator.Catalog.NoFeeds' )}`;
+        return label;
+    }
+
+    /** Lists the branches of the World and selects the first one. */
+    async loadBranchesAsync(): Promise<void> {
+        this.listing.set( true );
+        this.error.set( null );
+        this.branches.set( undefined );
+        this.branch.set( undefined );
+        this.profiles.set( [] );
+        this.version = undefined;
+        try {
+            this.#listedWorld = this.world;
+            const c = new GetBranchesQCommand();
+            c.world = this.#listedWorld;
+            c.includeDeprecated = this.includeDeprecated();
+            const branches = await this.#cris.sendOrThrowAsync( c ) ?? [];
+            this.branches.set( branches );
+            if( branches.length > 0 ) await this.selectBranchAsync( branches[0].name );
+        } catch( e ) {
+            this.error.set( String( e ) );
+        } finally {
+            this.listing.set( false );
+        }
+    }
+
+    /** Lists the profiles of a branch and selects the latest one that can be opened. */
+    async selectBranchAsync( branch: string ): Promise<void> {
+        this.listing.set( true );
+        this.error.set( null );
+        this.branch.set( branch );
+        this.profiles.set( [] );
+        this.version = undefined;
+        try {
+            const c = new GetProfilesQCommand();
+            c.world = this.#listedWorld;
+            c.branch = branch;
+            c.includeDeprecated = this.includeDeprecated();
+            const profiles = await this.#cris.sendOrThrowAsync( c ) ?? [];
+            this.profiles.set( profiles );
+            this.version = profiles.find( p => p.hasFeeds )?.version;
+        } catch( e ) {
+            this.error.set( String( e ) );
+        } finally {
+            this.listing.set( false );
+        }
+    }
+
+    async setIncludeDeprecated( include: boolean ): Promise<void> {
+        this.includeDeprecated.set( include );
+        if( this.branches() ) await this.loadBranchesAsync();
+    }
+
     async openAsync(): Promise<void> {
+        if( !this.version ) return;
+        this.opened.set( { world: this.#listedWorld, version: this.version } );
+        this.info.set( undefined );
         this.loading.set( true );
         this.error.set( null );
         this.closure.set( undefined );
@@ -130,10 +211,11 @@ export class CatalogPage {
         return this.types().find( t => t.typeName === typeName )?.name ?? typeName;
     }
 
-    #source<T extends { stack: string, branch: string, isCI: boolean }>( c: T ): T {
-        c.stack = this.stack;
-        c.branch = this.branch;
-        c.isCI = this.isCI;
+    /** Sets the source of the opened catalog (not the one being chosen). */
+    #source<T extends { world: string, version: string }>( c: T ): T {
+        const o = this.opened()!;
+        c.world = o.world;
+        c.version = o.version;
         return c;
     }
 }

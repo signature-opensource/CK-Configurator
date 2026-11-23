@@ -1,13 +1,32 @@
 <div class="ck-catalog-page">
     <span class="header">{{ 'CK.Configurator.Catalog.Title' | translate }}</span>
     <div class="ck-catalog-source">
-        <input nz-input class="ck-catalog-stack" [(ngModel)]="stack" [placeholder]="'CK.Configurator.Catalog.Stack' | translate" />
-        <input nz-input class="ck-catalog-branch" [(ngModel)]="branch" [placeholder]="'CK.Configurator.Catalog.Branch' | translate" />
-        <label nz-checkbox [(ngModel)]="isCI">{{ 'CK.Configurator.Catalog.CI' | translate }}</label>
-        <button nz-button nzType="primary" class="ck-catalog-open" [nzLoading]="loading()" (click)="openAsync()">
-            {{ 'CK.Configurator.Catalog.Open' | translate }}
+        <input nz-input class="ck-catalog-world" [(ngModel)]="world" (keyup.enter)="loadBranchesAsync()" [placeholder]="'CK.Configurator.Catalog.World' | translate" />
+        <button nz-button class="ck-catalog-load" [nzLoading]="listing()" (click)="loadBranchesAsync()">
+            {{ 'CK.Configurator.Catalog.Load' | translate }}
         </button>
+        <label nz-checkbox [ngModel]="includeDeprecated()" (ngModelChange)="setIncludeDeprecated( $event )">{{ 'CK.Configurator.Catalog.ShowDeprecated' | translate }}</label>
     </div>
+    @if ( branches(); as bs ) {
+        <div class="ck-catalog-source">
+            <nz-select class="ck-catalog-branch" [ngModel]="branch()" (ngModelChange)="selectBranchAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.Branch' | translate">
+                @for ( b of bs; track b.name ) {
+                    <nz-option [nzValue]="b.name" [nzLabel]="b.name + ' - ' + profileLabel( b.latest )" />
+                }
+            </nz-select>
+            <nz-select class="ck-catalog-version" [(ngModel)]="version" [nzPlaceHolder]="'CK.Configurator.Catalog.Version' | translate" [nzDisabled]="profiles().length === 0">
+                @for ( p of profiles(); track p.version ) {
+                    <nz-option [nzValue]="p.version" [nzLabel]="profileLabel( p )" [nzDisabled]="!p.hasFeeds" />
+                }
+            </nz-select>
+            <button nz-button nzType="primary" class="ck-catalog-open" [disabled]="!version" [nzLoading]="loading()" (click)="openAsync()">
+                {{ 'CK.Configurator.Catalog.Open' | translate }}
+            </button>
+        </div>
+        @if ( bs.length === 0 ) {
+            <span class="sub">{{ 'CK.Configurator.Catalog.NoBranch' | translate }}</span>
+        }
+    }
     @if ( loading() && !info() ) {
         <span class="sub">{{ 'CK.Configurator.Catalog.Opening' | translate }}</span>
     }
@@ -15,7 +34,7 @@
         <nz-alert nzType="error" [nzMessage]="error()!" nzShowIcon />
     }
     @if ( info(); as i ) {
-        <span class="sub ck-catalog-info">{{ 'CK.Configurator.Catalog.Info' | translate: { version: i.profileVersion, packages: i.packageCount, types: i.configurableTypeCount, commands: i.commandCount } }}</span>
+        <span class="sub ck-catalog-info">{{ 'CK.Configurator.Catalog.Info' | translate: { version: openedVersion(), packages: i.packageCount, types: i.configurableTypeCount, commands: i.commandCount } }}</span>
         <nz-tabs>
             <nz-tab [nzTitle]="'CK.Configurator.Catalog.Types' | translate">
                 <div class="ck-catalog-types">
