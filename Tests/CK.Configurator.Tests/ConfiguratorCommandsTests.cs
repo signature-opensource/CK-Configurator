@@ -43,7 +43,9 @@ public class ConfiguratorCommandsTests
                 { "Url": "https://github.com/signature-opensource/CK-AspNet", "Id": "R-8R-4qqyVc",
                   "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.HttpEndpoint" )}}" ] },
                 { "Url": "https://github.com/signature-opensource/CK-Cris-Abstractions", "Id": "NuqgNBQFZL0",
-                  "Packages": [ "{{FixturePackages.Pin( "CK.IO.DynamicConfiguration" )}}" ] }
+                  "Packages": [ "{{FixturePackages.Pin( "CK.IO.DynamicConfiguration" )}}" ] },
+                { "Url": "https://github.com/signature-opensource/CK-Globalization-Engine", "Id": "2fEdV71a5BA",
+                  "Packages": [ "{{FixturePackages.Pin( "CK.Globalization.StObj" )}}" ] }
               ],
               "Feeds": [
                 {{localFeed}}
