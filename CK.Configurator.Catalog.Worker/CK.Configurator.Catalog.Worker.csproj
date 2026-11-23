@@ -3,9 +3,9 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeCache" Version="36.0.2-0.uc.0.ci.49" />
+    <PackageReference Include="CK.TypeCache" Version="36.0.2-0.uc.0.ci.51" />
     <!-- ResPackageClosure: the closure requests of the server mode. -->
-    <PackageReference Include="CK.ResourceSpace" Version="36.0.2-0.uc.0.ci.49" />
+    <PackageReference Include="CK.ResourceSpace" Version="36.0.2-0.uc.0.ci.51" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.Configurator.Catalog\CK.Configurator.Catalog.csproj" />
