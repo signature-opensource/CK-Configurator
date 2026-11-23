@@ -6,6 +6,12 @@
   <ItemGroup>
     <PackageReference Include="CK.Testing.Engine" Version="37.0.0-0.uc.0.ci.48" />
     <PackageReference Include="CK.Cris.Executor.Engine" Version="3.0.0-0.uc.0.ci.187" />
+    <!-- The packages of the test profiles (FixturePackages): their versions are the ones of the profiles. -->
+    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.uc.0.ci.158" />
+    <PackageReference Include="CK.AppIdentity.TransportLayer" Version="4.0.0-0.uc.0.ci.64" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.0.ci.53" />
+    <PackageReference Include="CK.IO.DynamicConfiguration" Version="3.0.0-0.uc.0.ci.109" />
+    <Compile Include="..\CK.Configurator.Catalog.Tests\FixturePackages.cs" Link="FixturePackages.cs" />
     <PackageReference Include="CK.Testing.Nunit" Version="18.0.0-0.uc" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" PrivateAssets="all" />
     <PackageReference Include="NUnit3TestAdapter" Version="6.3.1" />

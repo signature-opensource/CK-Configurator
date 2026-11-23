@@ -18,8 +18,8 @@ namespace CK.Configurator.Tests;
 [TestFixture]
 public class ConfiguratorCommandsTests
 {
-    // A local Stack whose explo/uc CI profile has 4 packages of the explo/uc line, built on the configuration contracts of
-    // CK.Abstractions (the analyzer's line): the ones that are not published yet are in the local feed of the Stack.
+    // A local Stack whose explo/uc CI profile has the packages of FixturePackages (at the versions that this project
+    // references); the local feed of the Stack (when it exists) has the ones that are not published yet.
     static string CreateStack()
     {
         var stack = Path.Combine( TestHelper.TestProjectFolder, "bin", "Stack" );
@@ -28,7 +28,8 @@ public class ConfiguratorCommandsTests
         File.WriteAllText( Path.Combine( published, "index.json" ), """
             { "Alive": { "explo/uc-ci": [ "2026.11.22-0.uc.0.ci.0" ] }, "Deprecated": { "explo/uc-ci": [ "2026.11.21-0.uc.0.ci.0" ] } }
             """ );
-        File.WriteAllText( Path.Combine( published, "explo", "uc", "v2026.11.22-0.uc.0.ci.0.json" ), """
+        var localFeed = FixturePackages.LocalFeed is string local ? $"{{ \"Name\": \"Local\", \"Url\": \"{local}\" }}," : "";
+        File.WriteAllText( Path.Combine( published, "explo", "uc", "v2026.11.22-0.uc.0.ci.0.json" ), $$"""
             {
               "StackUrl": "https://github.com/signature-opensource/CK-Stack",
               "World": "CK",
@@ -36,21 +37,21 @@ public class ConfiguratorCommandsTests
               "IsDeprecated": false,
               "Repositories": [
                 { "Url": "https://github.com/signature-opensource/CK-AppIdentity", "Id": "19avtIQaSUE",
-                  "Packages": [ "CK.AppIdentity.PartyClient@3.0.0-0.uc.0.ci.156" ] },
+                  "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.PartyClient" )}}" ] },
                 { "Url": "https://github.com/signature-opensource/CK-AppIdentity-Transport", "Id": "rzheU9-ntBE",
-                  "Packages": [ "CK.AppIdentity.TransportLayer@4.0.0-0.uc.0.ci.62" ] },
+                  "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.TransportLayer" )}}" ] },
                 { "Url": "https://github.com/signature-opensource/CK-AspNet", "Id": "R-8R-4qqyVc",
-                  "Packages": [ "CK.AppIdentity.HttpEndpoint@25.0.0-0.uc.0.ci.51" ] },
+                  "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.HttpEndpoint" )}}" ] },
                 { "Url": "https://github.com/signature-opensource/CK-Cris-Abstractions", "Id": "NuqgNBQFZL0",
-                  "Packages": [ "CK.IO.DynamicConfiguration@3.0.0-0.uc.0.ci.107" ] }
+                  "Packages": [ "{{FixturePackages.Pin( "CK.IO.DynamicConfiguration" )}}" ] }
               ],
               "Feeds": [
-                { "Name": "Local", "Url": "LOCAL_FEED" },
+                {{localFeed}}
                 { "Name": "NuGet", "Url": "https://api.nuget.org/v3/index.json" },
                 { "Name": "Signature-OpenSource", "Url": "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" }
               ]
             }
-            """.Replace( "LOCAL_FEED", Path.GetFullPath( Path.Combine( TestHelper.SolutionFolder, "..", ".PublicStack", "$Local", "NuGet" ) ).Replace( '\\', '/' ) ) );
+            """ );
         return stack;
     }
 
@@ -143,7 +144,7 @@ public class ConfiguratorCommandsTests
         http.Summary.ShouldNotBeNullOrWhiteSpace();
 
         var package = (IPackageInfo)(await ExecuteAsync<IGetPackageQCommand>( services, c => { Source( c ); c.PackageId = "CK.AppIdentity.HttpEndpoint"; } ))!;
-        package.Version.ShouldBe( "25.0.0-0.uc.0.ci.51" );
+        package.Version.ShouldBe( FixturePackages.GetVersion( "CK.AppIdentity.HttpEndpoint" ) );
         package.Readme.ShouldNotBeNullOrWhiteSpace();
         types.Single( t => t.Name == "ForwardedHeaders" ).OptionOwners.ShouldBe( [http.TypeName] );
 

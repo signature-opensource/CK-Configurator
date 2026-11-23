@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using CK.Configurator.Tests;
 using CK.Core;
 using CK.Packaging.Abstractions;
 using NUnit.Framework;
@@ -13,10 +15,9 @@ namespace CK.Configurator.Catalog.Tests;
 [TestFixture]
 public class CatalogTests
 {
-    // Packages of the explo/uc line that declare configurable types, configuration declarations, client facts and
-    // commands. They are built on the configuration contracts of CK.Abstractions (the analyzer's line): the ones that are
-    // not published yet are in the local feed of the Stack (see LocalFeed).
-    const string _profile = """
+    // The packages of FixturePackages (at the versions that this project references): they declare configurable types,
+    // configuration declarations, client facts and commands.
+    static string Profile => $$"""
         {
           "StackUrl": "https://github.com/signature-opensource/CK-Stack",
           "World": "CK",
@@ -24,29 +25,26 @@ public class CatalogTests
           "IsDeprecated": false,
           "Repositories": [
             { "Url": "https://github.com/signature-opensource/CK-AppIdentity", "Id": "19avtIQaSUE",
-              "Packages": [ "CK.AppIdentity.PartyClient@3.0.0-0.uc.0.ci.156" ] },
+              "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.PartyClient" )}}" ] },
             { "Url": "https://github.com/signature-opensource/CK-AppIdentity-Transport", "Id": "rzheU9-ntBE",
-              "Packages": [ "CK.AppIdentity.TransportLayer@4.0.0-0.uc.0.ci.62" ] },
+              "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.TransportLayer" )}}" ] },
             { "Url": "https://github.com/signature-opensource/CK-AspNet", "Id": "R-8R-4qqyVc",
-              "Packages": [ "CK.AppIdentity.HttpEndpoint@25.0.0-0.uc.0.ci.51" ] },
+              "Packages": [ "{{FixturePackages.Pin( "CK.AppIdentity.HttpEndpoint" )}}" ] },
             { "Url": "https://github.com/signature-opensource/CK-Cris-Abstractions", "Id": "NuqgNBQFZL0",
-              "Packages": [ "CK.IO.DynamicConfiguration@3.0.0-0.uc.0.ci.107" ] }
+              "Packages": [ "{{FixturePackages.Pin( "CK.IO.DynamicConfiguration" )}}" ] }
           ]
         }
         """;
 
-    /// <summary>
-    /// The local feed of the Stack ("$Local/NuGet" of the ".PublicStack" next to the repositories of the World): the
-    /// packages built by ckli and not published yet.
-    /// </summary>
-    internal static string LocalFeed => Path.GetFullPath( Path.Combine( TestHelper.SolutionFolder, "..", ".PublicStack", "$Local", "NuGet" ) ).Replace( '\\', '/' );
-
-    static CatalogSource CreateSource() => new CatalogSource( PublishedProfile.Parse( Encoding.UTF8.GetBytes( _profile ) ),
-                                                              [
-                                                                  new PublishedFeed( "Local", LocalFeed ),
-                                                                  new PublishedFeed( "NuGet", "https://api.nuget.org/v3/index.json" ),
-                                                                  new PublishedFeed( "Signature-OpenSource", "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" )
-                                                              ] );
+    // The local feed of the Stack (when it exists) has the packages built by ckli and not published yet.
+    static CatalogSource CreateSource()
+    {
+        var feeds = new List<PublishedFeed>();
+        if( FixturePackages.LocalFeed is string local ) feeds.Add( new PublishedFeed( "Local", local ) );
+        feeds.Add( new PublishedFeed( "NuGet", "https://api.nuget.org/v3/index.json" ) );
+        feeds.Add( new PublishedFeed( "Signature-OpenSource", "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" ) );
+        return new CatalogSource( PublishedProfile.Parse( Encoding.UTF8.GetBytes( Profile ) ), feeds );
+    }
 
     [TestCase( "CK.Testing.Nunit", false )]
     [TestCase( "CK.Sample.Tests", false )]
