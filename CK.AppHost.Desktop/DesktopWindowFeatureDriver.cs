@@ -4,6 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Globalization;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,6 +15,10 @@ namespace CK.AppIdentity;
 /// The "DesktopWindow" feature of the root party: once the host is started, a native window (InfiniFrame) shows the
 /// endpoint of its "HttpEndpoint" feature (its <see cref="RunningHttpEndpoint.DefaultUrl"/>: a port 0 is resolved).
 /// Closing the window stops the host; stopping the host closes the window.
+/// <para>
+/// The window first shows a waiting page and loads the endpoint once it answers without a server error (in Development, a
+/// client application is served by its dev server that compiles before it answers).
+/// </para>
 /// <para>
 /// Configuration ("Local:DesktopWindow"): <c>true</c>, or <c>{ "Title": "...", "Width": 1280, "Height": 800 }</c> (the
 /// title defaults to the party name, the size to 1280x800).
@@ -144,13 +150,16 @@ public sealed class DesktopWindowFeatureDriver : ApplicationIdentityStaticFeatur
     {
         try
         {
+            // The window opens on a waiting page: what the endpoint serves may not answer yet (in Development, a client
+            // application is served by its dev server, that compiles before it answers).
             var window = InfiniFrameWindowBuilder.Create()
                             .SetTitle( c.Title )
                             .SetSize( c.Width, c.Height )
-                            .SetStartPageUrl( url )
+                            .SetStartPageContent( WaitingPage( c.Title ) )
                             .Build();
             _window = window;
             started.TrySetResult();
+            _ = LoadWhenReadyAsync( window, url );
             window.WaitForClose();
         }
         catch( Exception ex )
@@ -165,6 +174,46 @@ public sealed class DesktopWindowFeatureDriver : ApplicationIdentityStaticFeatur
             lifetime?.StopApplication();
             _closed.TrySetResult();
         }
+    }
+
+    // Loads the url in the window once it answers (anything but a server error: a forwarder answers 502 while the dev
+    // server is not listening). After the delay, the url is loaded anyway: the window shows what it answers.
+    static async Task LoadWhenReadyAsync( IInfiniFrameWindow window, string url )
+    {
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds( 10 ) };
+            var limit = DateTime.UtcNow + _readyDelay;
+            while( !window.IsClosedOrClosing() && DateTime.UtcNow < limit )
+            {
+                try
+                {
+                    using var response = await http.GetAsync( url, HttpCompletionOption.ResponseHeadersRead ).ConfigureAwait( false );
+                    if( (int)response.StatusCode < 500 ) break;
+                }
+                catch( HttpRequestException ) { }
+                catch( TaskCanceledException ) { }
+                await Task.Delay( 500 ).ConfigureAwait( false );
+            }
+            if( !window.IsClosedOrClosing() ) window.Load( url );
+        }
+        catch( Exception ex )
+        {
+            ActivityMonitor.StaticLogger.Error( $"While loading '{url}' in the desktop window.", ex );
+        }
+    }
+
+    static readonly TimeSpan _readyDelay = TimeSpan.FromMinutes( 3 );
+
+    static string WaitingPage( string title )
+    {
+        var t = WebUtility.HtmlEncode( title );
+        return $$"""
+            <!DOCTYPE html>
+            <html><head><meta charset="utf-8"><title>{{t}}</title>
+            <style>body{font-family:Segoe UI,sans-serif;display:flex;height:100vh;margin:0;align-items:center;justify-content:center;color:#555}</style>
+            </head><body><div>{{t}}: starting...</div></body></html>
+            """;
     }
 
     // What a user does: closes the window (the tests).
