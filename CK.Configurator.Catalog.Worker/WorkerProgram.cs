@@ -108,7 +108,7 @@ public static class WorkerProgram
 
     /// <summary>
     /// Finds the readme of each package ("PackageId/Version" lower case) of a project.assets.json: the file that the
-    /// <c>&lt;readme&gt;</c> of its nuspec names, in its folder of the package folders.
+    /// <c>&lt;readme&gt;</c> of its nuspec names (its "Package.md" without one), in its folder of the package folders.
     /// </summary>
     /// <param name="monitor">The monitor to use.</param>
     /// <param name="assetsPath">The project.assets.json path.</param>
@@ -128,19 +128,26 @@ public static class WorkerProgram
             }
             var folder = packageFolders.Select( f => Path.Combine( f, path ) ).FirstOrDefault( Directory.Exists );
             if( folder == null ) continue;
+            string? file = null;
             var nuspec = Directory.EnumerateFiles( folder, "*.nuspec" ).FirstOrDefault();
-            if( nuspec == null ) continue;
-            try
+            if( nuspec != null )
             {
-                var readme = System.Xml.Linq.XDocument.Load( nuspec ).Descendants().FirstOrDefault( e => e.Name.LocalName == "readme" )?.Value;
-                if( string.IsNullOrWhiteSpace( readme ) ) continue;
-                var file = Path.Combine( folder, readme.Replace( '\\', Path.DirectorySeparatorChar ).Replace( '/', Path.DirectorySeparatorChar ) );
-                if( File.Exists( file ) ) result[lib.Name] = file;
+                try
+                {
+                    var readme = System.Xml.Linq.XDocument.Load( nuspec ).Descendants().FirstOrDefault( e => e.Name.LocalName == "readme" )?.Value;
+                    if( !string.IsNullOrWhiteSpace( readme ) )
+                    {
+                        file = Path.Combine( folder, readme.Replace( '\\', Path.DirectorySeparatorChar ).Replace( '/', Path.DirectorySeparatorChar ) );
+                    }
+                }
+                catch( Exception ex )
+                {
+                    monitor.Warn( $"Unable to read the nuspec '{nuspec}'.", ex );
+                }
             }
-            catch( Exception ex )
-            {
-                monitor.Warn( $"Unable to read the nuspec '{nuspec}'.", ex );
-            }
+            // Without a <readme>, the "Package.md" at the root of the package (the docs/Package.md of a project of the stack).
+            if( file == null || !File.Exists( file ) ) file = Path.Combine( folder, "Package.md" );
+            if( File.Exists( file ) ) result[lib.Name] = file;
         }
         return result;
     }

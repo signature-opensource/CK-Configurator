@@ -98,7 +98,8 @@ public class CatalogSourcesTests
               "Deprecated": {
                 "explo/uc-ci": [ "2026.11.22-0.uc.0.ci.0" ],
                 "explo/old": [ "2026.9.1-0.old" ]
-              }
+              },
+              "LTSWorlds": [ "@net8" ]
             }
             """,
         ["v2026.10.9.json"] = Profile( "2026.10.9", withFeeds: false ),
@@ -157,6 +158,12 @@ public class CatalogSourcesTests
         var world = CatalogWorld.Parse( stack );
         using var sources = new CatalogSources();
         await CheckListsAsync( sources, world );
+
+        // The Worlds of the Stack: its default World, then the LTS Worlds that its index names.
+        var worlds = (await sources.GetWorldsAsync( TestHelper.Monitor, world )).ShouldNotBeNull();
+        worlds.Select( w => w.LTSName ).ShouldBe( [null, "@net8"] );
+        worlds[1].ToString().ShouldBe( Path.Combine( world.Stack, "@net8" ) );
+        worlds[1].DefaultWorld.ShouldBe( world );
 
         var source = (await sources.ResolveAsync( TestHelper.Monitor, world, TimeVersion.Parse( "2026.11.23-0.uc.0.ci.0" ) )).ShouldNotBeNull();
         source.Profile.Version.ToString().ShouldBe( "2026.11.23-0.uc.0.ci.0" );

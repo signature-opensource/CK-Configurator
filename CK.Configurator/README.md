@@ -6,7 +6,7 @@ the catalogs of [CK.Configurator.Catalog](../CK.Configurator.Catalog/README.md).
 - `ConfiguratorCatalogService` (a singleton) keeps the opened catalogs by their source (a World and a profile version):
   `ConfiguratorCatalogService.OpenAsync` resolves the source, analyzes what is missing and loads the catalog once;
   `OpenedCatalog.GetServerAsync` starts its worker server on the first request that needs it (a closure). The workers
-  stop when the service is disposed. `ConfiguratorCatalogService.GetBranchesAsync` and
+  stop when the service is disposed. `ConfiguratorCatalogService.GetWorldsAsync`, `ConfiguratorCatalogService.GetBranchesAsync` and
   `ConfiguratorCatalogService.GetProfilesAsync` list what a World published (the profiles read are kept in the
   `profiles` folder of the cache). Its
   "Configurator" section is read at start:

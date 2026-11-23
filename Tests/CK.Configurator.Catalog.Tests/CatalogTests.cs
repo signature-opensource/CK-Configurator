@@ -13,8 +13,9 @@ namespace CK.Configurator.Catalog.Tests;
 [TestFixture]
 public class CatalogTests
 {
-    // A subset of the explo/uc CI profile of 2026-11-22: packages that declare configurable types, configuration
-    // declarations, client facts and commands.
+    // Packages of the explo/uc line that declare configurable types, configuration declarations, client facts and
+    // commands. They are built on the configuration contracts of CK.Abstractions (the analyzer's line): the ones that are
+    // not published yet are in the local feed of the Stack (see LocalFeed).
     const string _profile = """
         {
           "StackUrl": "https://github.com/signature-opensource/CK-Stack",
@@ -23,19 +24,26 @@ public class CatalogTests
           "IsDeprecated": false,
           "Repositories": [
             { "Url": "https://github.com/signature-opensource/CK-AppIdentity", "Id": "19avtIQaSUE",
-              "Packages": [ "CK.AppIdentity.PartyClient@3.0.0-0.uc.0.ci.151" ] },
+              "Packages": [ "CK.AppIdentity.PartyClient@3.0.0-0.uc.0.ci.156" ] },
             { "Url": "https://github.com/signature-opensource/CK-AppIdentity-Transport", "Id": "rzheU9-ntBE",
-              "Packages": [ "CK.AppIdentity.TransportLayer@4.0.0-0.uc.0.ci.60" ] },
+              "Packages": [ "CK.AppIdentity.TransportLayer@4.0.0-0.uc.0.ci.62" ] },
             { "Url": "https://github.com/signature-opensource/CK-AspNet", "Id": "R-8R-4qqyVc",
-              "Packages": [ "CK.AppIdentity.HttpEndpoint@25.0.0-0.uc.0.ci.49" ] },
+              "Packages": [ "CK.AppIdentity.HttpEndpoint@25.0.0-0.uc.0.ci.51" ] },
             { "Url": "https://github.com/signature-opensource/CK-Cris-Abstractions", "Id": "NuqgNBQFZL0",
-              "Packages": [ "CK.IO.DynamicConfiguration@3.0.0-0.uc.0.ci.105" ] }
+              "Packages": [ "CK.IO.DynamicConfiguration@3.0.0-0.uc.0.ci.107" ] }
           ]
         }
         """;
 
+    /// <summary>
+    /// The local feed of the Stack ("$Local/NuGet" of the ".PublicStack" next to the repositories of the World): the
+    /// packages built by ckli and not published yet.
+    /// </summary>
+    internal static string LocalFeed => Path.GetFullPath( Path.Combine( TestHelper.SolutionFolder, "..", ".PublicStack", "$Local", "NuGet" ) ).Replace( '\\', '/' );
+
     static CatalogSource CreateSource() => new CatalogSource( PublishedProfile.Parse( Encoding.UTF8.GetBytes( _profile ) ),
                                                               [
+                                                                  new PublishedFeed( "Local", LocalFeed ),
                                                                   new PublishedFeed( "NuGet", "https://api.nuget.org/v3/index.json" ),
                                                                   new PublishedFeed( "Signature-OpenSource", "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" )
                                                               ] );
@@ -138,6 +146,9 @@ public class CatalogTests
 
         var http = catalog.FindConfigurable( "HttpEndpoint" ).ShouldHaveSingleItem();
         http.Type.PerDeployment.ShouldContain( "Party:Urls" );
+        // The documentation of the types (Markdown) and the readme of the packages.
+        http.Type.Summary.ShouldNotBeNullOrWhiteSpace();
+        http.Package.Readme.ShouldNotBeNullOrWhiteSpace();
 
         // An option knows its owner (an abstract option base too: it stands for its concrete owners).
         catalog.FindConfigurable( "ForwardedHeaders" ).ShouldHaveSingleItem()

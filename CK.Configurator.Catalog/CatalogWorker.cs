@@ -212,6 +212,13 @@ public static class CatalogWorker
             n.AppendLine( $"""    <add key="{SecurityElement.Escape( f.Name )}" value="{SecurityElement.Escape( f.Url )}" />""" );
         }
         n.AppendLine( "  </packageSources>" );
+        // NuGet merges the nuget.config files of the parent folders (and the user's one): a package source mapping
+        // defined there would ignore the feeds of the source. The worker is isolated from them.
+        n.AppendLine( """
+              <packageSourceMapping>
+                <clear />
+              </packageSourceMapping>
+            """ );
         // The public read credentials are not secrets (a GitHub public feed requires an authentication).
         var publicRead = source.Feeds.Where( f => f.PublicReadUserName != null ).ToList();
         if( publicRead.Count > 0 )

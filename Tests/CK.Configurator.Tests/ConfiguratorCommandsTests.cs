@@ -18,7 +18,8 @@ namespace CK.Configurator.Tests;
 [TestFixture]
 public class ConfiguratorCommandsTests
 {
-    // A local Stack whose explo/uc CI profile has 4 packages of the explo/uc CI profile of 2026-11-22.
+    // A local Stack whose explo/uc CI profile has 4 packages of the explo/uc line, built on the configuration contracts of
+    // CK.Abstractions (the analyzer's line): the ones that are not published yet are in the local feed of the Stack.
     static string CreateStack()
     {
         var stack = Path.Combine( TestHelper.TestProjectFolder, "bin", "Stack" );
@@ -35,20 +36,21 @@ public class ConfiguratorCommandsTests
               "IsDeprecated": false,
               "Repositories": [
                 { "Url": "https://github.com/signature-opensource/CK-AppIdentity", "Id": "19avtIQaSUE",
-                  "Packages": [ "CK.AppIdentity.PartyClient@3.0.0-0.uc.0.ci.151" ] },
+                  "Packages": [ "CK.AppIdentity.PartyClient@3.0.0-0.uc.0.ci.156" ] },
                 { "Url": "https://github.com/signature-opensource/CK-AppIdentity-Transport", "Id": "rzheU9-ntBE",
-                  "Packages": [ "CK.AppIdentity.TransportLayer@4.0.0-0.uc.0.ci.60" ] },
+                  "Packages": [ "CK.AppIdentity.TransportLayer@4.0.0-0.uc.0.ci.62" ] },
                 { "Url": "https://github.com/signature-opensource/CK-AspNet", "Id": "R-8R-4qqyVc",
-                  "Packages": [ "CK.AppIdentity.HttpEndpoint@25.0.0-0.uc.0.ci.49" ] },
+                  "Packages": [ "CK.AppIdentity.HttpEndpoint@25.0.0-0.uc.0.ci.51" ] },
                 { "Url": "https://github.com/signature-opensource/CK-Cris-Abstractions", "Id": "NuqgNBQFZL0",
-                  "Packages": [ "CK.IO.DynamicConfiguration@3.0.0-0.uc.0.ci.105" ] }
+                  "Packages": [ "CK.IO.DynamicConfiguration@3.0.0-0.uc.0.ci.107" ] }
               ],
               "Feeds": [
+                { "Name": "Local", "Url": "LOCAL_FEED" },
                 { "Name": "NuGet", "Url": "https://api.nuget.org/v3/index.json" },
                 { "Name": "Signature-OpenSource", "Url": "https://pkgs.dev.azure.com/Signature-OpenSource/Feeds/_packaging/NetCore3/nuget/v3/index.json" }
               ]
             }
-            """ );
+            """.Replace( "LOCAL_FEED", Path.GetFullPath( Path.Combine( TestHelper.SolutionFolder, "..", ".PublicStack", "$Local", "NuGet" ) ).Replace( '\\', '/' ) ) );
         return stack;
     }
 
@@ -76,6 +78,9 @@ public class ConfiguratorCommandsTests
                                               typeof( IGetProfilesQCommand ),
                                               typeof( IBranchInfo ),
                                               typeof( IProfileInfo ),
+                                              typeof( IGetWorldsQCommand ),
+                                              typeof( IGetPackageQCommand ),
+                                              typeof( IPackageInfo ),
                                               typeof( ICatalogInfo ),
                                               typeof( IConfigurableTypeInfo ),
                                               typeof( ILockInfo ),
@@ -96,6 +101,10 @@ public class ConfiguratorCommandsTests
         catalogs.Analyzer!.ProjectPath.ShouldBe( Path.GetFullPath( Path.Combine( TestHelper.SolutionFolder, "CK.Configurator.Catalog.Worker", "CK.Configurator.Catalog.Worker.csproj" ) ) );
         using var scope = auto.Services.CreateScope();
         var services = scope.ServiceProvider;
+
+        // The local Stack has no LTS World: its default World only.
+        var worlds = (IList<string>)(await ExecuteAsync<IGetWorldsQCommand>( services, c => c.World = stack ))!;
+        worlds.ShouldBe( [Path.GetFullPath( stack )] );
 
         var branches = (IList<IBranchInfo>)(await ExecuteAsync<IGetBranchesQCommand>( services, c => c.World = stack ))!;
         var uc = branches.ShouldHaveSingleItem();
@@ -131,6 +140,11 @@ public class ConfiguratorCommandsTests
         http.Kind.ShouldBe( "PartyFeature" );
         http.PackageId.ShouldBe( "CK.AppIdentity.HttpEndpoint" );
         http.PerDeployment.ShouldBe( ["Party:Urls"] );
+        http.Summary.ShouldNotBeNullOrWhiteSpace();
+
+        var package = (IPackageInfo)(await ExecuteAsync<IGetPackageQCommand>( services, c => { Source( c ); c.PackageId = "CK.AppIdentity.HttpEndpoint"; } ))!;
+        package.Version.ShouldBe( "25.0.0-0.uc.0.ci.51" );
+        package.Readme.ShouldNotBeNullOrWhiteSpace();
         types.Single( t => t.Name == "ForwardedHeaders" ).OptionOwners.ShouldBe( [http.TypeName] );
 
         var kept = (IList<string>)(await ExecuteAsync<IGetClosureQCommand>( services, c =>
@@ -146,6 +160,7 @@ public class ConfiguratorCommandsTests
         commands.Count.ShouldBe( info.CommandCount );
         commands.Select( c => c.PrimaryInterface ).ShouldContain( "CK.IO.DynamicConfiguration.IConfigurePropertyCommand" );
         commands.ShouldAllBe( c => c.Packages.Contains( "CK.IO.DynamicConfiguration" ) );
+        commands.ShouldContain( c => c.Summary != null );
 
         // An unknown World or version is an error result, not an exception.
         var command = services.GetRequiredService<PocoDirectory>().Create<IOpenCatalogCommand>( c => { c.World = Path.Combine( stack, "Nope" ); c.Version = "2026.11.22-0.uc.0.ci.0"; } );

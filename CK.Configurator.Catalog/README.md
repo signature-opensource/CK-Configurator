@@ -29,6 +29,9 @@ A `CatalogWorld` is where the profiles are published: a Stack and, for a Long Te
 
 `CatalogSources` reads the `Published` folder of a World:
 
+- `CatalogSources.GetWorldsAsync`: the Worlds of the Stack of a World, its default World first, then the LTS Worlds that
+  the index of the default World names (`PublishedIndex.LTSWorlds`); `CatalogWorld.DefaultWorld` and
+  `CatalogWorld.GetWorld( ltsName )` move between them;
 - `CatalogSources.ReadIndexAsync`: its `index.json`, read each time (it changes with every publication);
 - `CatalogSources.ReadProfileAsync`: a profile, read once and kept (in memory, and as a file under the cache folder
   given to the constructor for a remote World). A profile never changes, except its deprecation, which is read from the
@@ -54,9 +57,9 @@ A `PackageAnalysis` is what a package version declares, nothing more:
 
 | Level | Content |
 |---|---|
-| `PackageAnalysis` | `PackageId`, `Version`, its `Assemblies` (its runtime assemblies). |
+| `PackageAnalysis` | `PackageId`, `Version`, its `Assemblies` (its runtime assemblies), its `Readme` (the file that the `<readme>` of its nuspec names, its root `Package.md` without one). |
 | `AssemblyAnalysis` | `Name`, `Role` (`Basic`, `Model`, `ModelDefiner`, `Engine`), `RequiredEngines`, `Types` (the types of a model that declare something), and what any assembly (an engine included) declares: `PerDeployment` (`[assembly: ConfigurationPerDeployment( "Remote:Address" )]`, a property of the parties of a kind) and `CentralKeys` (`[assembly: CentralConfigurationKey]`: the root keys of the central configuration that its engine reads, with their values per deployment). |
-| `TypeAnalysis` | `FullName` (the name by which the ResourceSpace identifies a package), `CSharpName`, `ResourceGroup` (`None`, `Group`, `Package`), `Configurable` (`IConfigurableTypeAttribute`: its kind, name and activation), `Section`, `Locks`, `Secrets`, `PerDeployment`, `PropertyLevels` (the `[Configuration...]` attributes), `Relations` (the topology attributes as declared: `[Requires]`, `[RequiredBy]`, `[Children]`, `[Groups]`, `[Package]`, their `[Optional...]` forms, `IResourceGroupTopologyAttribute`), `OptionOwners` (the owners of an option: `IPartyComponentOption<TOwner>`, a relation that the AppIdentity engine adds), `Facts` (`[PartyClientFact]`), `TypeScriptPackage` (`[TypeScriptPackage]` and its specializations), `Command` (a command interface, abstract or not: its direct bases, its own `[Internal]`/`[Private]`, its `[ExternalName]`). |
+| `TypeAnalysis` | `FullName` (the name by which the ResourceSpace identifies a package), `CSharpName`, `ResourceGroup` (`None`, `Group`, `Package`), `Configurable` (`IConfigurableTypeAttribute`: its kind, name and activation), `Section`, `Locks`, `Secrets`, `PerDeployment`, `PropertyLevels` (the `[Configuration...]` attributes), `Relations` (the topology attributes as declared: `[Requires]`, `[RequiredBy]`, `[Children]`, `[Groups]`, `[Package]`, their `[Optional...]` forms, `IResourceGroupTopologyAttribute`), `OptionOwners` (the owners of an option of any level: `IConfigurableOption<TOwner>`, a relation that the engine of the level adds), `Facts` (`[PartyClientFact]`), `TypeScriptPackage` (`[TypeScriptPackage]` and its specializations), `Command` (a command interface, abstract or not: its direct bases, its own `[Internal]`/`[Private]`, its `[ExternalName]`), `Summary` and `Remarks` (its Xml documentation in Markdown: CK.CodeGen's `XmlDocumentationReader` and `DocumentationTextBuilder`). |
 
 What depends on the other packages that are present is not in an analysis: the closures of the relations and the
 command families are computed from the analyses of a catalog.
@@ -80,7 +83,9 @@ runs the code of the engines), so it runs in a process whose folder holds exactl
 
 - `CatalogWorker.WriteProject` writes `CatalogWorker.csproj` (an executable that references the catalog packages of
   the source, at their exact versions, without their build files, and the analyzer), `Program.cs`, a `nuget.config`
-  with the feeds of the source and empty `Directory.Build.props`/`.targets` (nothing above the folder is imported).
+  with the feeds of the source (and an empty package source mapping: the mappings of the parent folders and of the user
+  don't apply) and empty `Directory.Build.props`/`.targets` (nothing above the folder is imported). The documentation
+  files of the packages are copied next to their assemblies (`CopyDocumentationFilesFromPackages`).
 - The project is built (`dotnet build -c Release`) and run with the `CatalogWorker.Arguments`: the
   `project.assets.json` of the build (it maps a package to its assemblies), the root of the cache and the packages to
   analyze.
