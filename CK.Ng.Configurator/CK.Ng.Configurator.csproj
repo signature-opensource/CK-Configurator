@@ -4,9 +4,9 @@
     <Description>The Angular component of the configurator: the catalog page (the configurable types, the closure of a selection, the commands) of a published profile of a World. Its backend is CK.Configurator.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.0.ci.190" />
-    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.0.ci.100" />
-    <PackageReference Include="CK.Ng.Markdown" Version="3.0.1-0.uc.0.ci.100" />
+    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.0.ci.191" />
+    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.0.ci.101" />
+    <PackageReference Include="CK.Ng.Markdown" Version="3.0.1-0.uc.0.ci.101" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
