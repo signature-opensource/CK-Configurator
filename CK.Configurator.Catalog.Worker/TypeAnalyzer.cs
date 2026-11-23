@@ -347,11 +347,11 @@ sealed class TypeAnalyzer
     {
         try
         {
-            if( modelType.GetProperty( "ModelDescription", BindingFlags.Public | BindingFlags.Static )?.GetValue( null ) is ConfigurationModelDescription d )
+            if( ConfigurationModelDescription.TryGet( modelType, out var d, out var error ) )
             {
                 return ConfigurationModelSchema.ToJsonSchema( d );
             }
-            _monitor.Warn( $"The configuration model '{modelType:N}' of '{type:N}' has no ModelDescription: its schema is unknown." );
+            _monitor.Warn( $"The schema of the configuration of '{type:N}' is unknown. {error}" );
         }
         catch( Exception ex )
         {
