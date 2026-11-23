@@ -6,8 +6,8 @@ CK.Ng.Cris.AspNet and the ng-zorro components of CK.Ng.Zorro, and registers the 
 
 ## The catalog page
 
-`CatalogPageComponent` is routed at the root of the client application (`Route = ""`). Its source form chooses a
-profile of a World:
+`CatalogPageComponent` is routed at the root of the client application (`Route = ""`). Its source form, on one line,
+chooses a profile of a World:
 
 - the World (the URL of the GitHub repository of a Stack, followed by `/tree/main/@{LTS}` for an LTS World, or a local
   folder): "Load" lists its branches (`IGetBranchesQCommand`), each with the date of its latest profile;
@@ -17,7 +17,8 @@ profile of a World:
 
 "Open" sends `IOpenCatalogCommand`, then lists:
 
-- **the configurable types**, each option under its owner (`IConfigurableTypeInfo.OptionOwners`), with a detail panel
+- **the configurable types**, by level (the Builder aspects, the App aspects, the party features, the client features),
+  each option under its owner (`IConfigurableTypeInfo.OptionOwners`) in the level of its owner, with a detail panel
   (section, values per deployment, secrets, restrictions, levels of the properties);
 - **what a selection brings in:** the checked types are the roots of `IGetClosureQCommand` (the candidates are the
   packages of the configurable types);

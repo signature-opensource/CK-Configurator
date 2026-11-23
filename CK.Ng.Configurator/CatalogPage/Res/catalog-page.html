@@ -5,27 +5,23 @@
         <button nz-button class="ck-catalog-load" [nzLoading]="listing()" (click)="loadBranchesAsync()">
             {{ 'CK.Configurator.Catalog.Load' | translate }}
         </button>
-        <label nz-checkbox [ngModel]="includeDeprecated()" (ngModelChange)="setIncludeDeprecated( $event )">{{ 'CK.Configurator.Catalog.ShowDeprecated' | translate }}</label>
+        <nz-select class="ck-catalog-branch" [ngModel]="branch()" (ngModelChange)="selectBranchAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.Branch' | translate" [nzDisabled]="!branches()?.length">
+            @for ( b of branches() ?? []; track b.name ) {
+                <nz-option [nzValue]="b.name" [nzLabel]="b.name + ' - ' + profileLabel( b.latest )" />
+            }
+        </nz-select>
+        <nz-select class="ck-catalog-version" [(ngModel)]="version" [nzPlaceHolder]="'CK.Configurator.Catalog.Version' | translate" [nzDisabled]="profiles().length === 0">
+            @for ( p of profiles(); track p.version ) {
+                <nz-option [nzValue]="p.version" [nzLabel]="profileLabel( p )" [nzDisabled]="!p.hasFeeds" />
+            }
+        </nz-select>
+        <label nz-checkbox class="ck-catalog-deprecated" [ngModel]="includeDeprecated()" (ngModelChange)="setIncludeDeprecated( $event )">{{ 'CK.Configurator.Catalog.ShowDeprecated' | translate }}</label>
+        <button nz-button nzType="primary" class="ck-catalog-open" [disabled]="!version" [nzLoading]="loading()" (click)="openAsync()">
+            {{ 'CK.Configurator.Catalog.Open' | translate }}
+        </button>
     </div>
-    @if ( branches(); as bs ) {
-        <div class="ck-catalog-source">
-            <nz-select class="ck-catalog-branch" [ngModel]="branch()" (ngModelChange)="selectBranchAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.Branch' | translate">
-                @for ( b of bs; track b.name ) {
-                    <nz-option [nzValue]="b.name" [nzLabel]="b.name + ' - ' + profileLabel( b.latest )" />
-                }
-            </nz-select>
-            <nz-select class="ck-catalog-version" [(ngModel)]="version" [nzPlaceHolder]="'CK.Configurator.Catalog.Version' | translate" [nzDisabled]="profiles().length === 0">
-                @for ( p of profiles(); track p.version ) {
-                    <nz-option [nzValue]="p.version" [nzLabel]="profileLabel( p )" [nzDisabled]="!p.hasFeeds" />
-                }
-            </nz-select>
-            <button nz-button nzType="primary" class="ck-catalog-open" [disabled]="!version" [nzLoading]="loading()" (click)="openAsync()">
-                {{ 'CK.Configurator.Catalog.Open' | translate }}
-            </button>
-        </div>
-        @if ( bs.length === 0 ) {
-            <span class="sub">{{ 'CK.Configurator.Catalog.NoBranch' | translate }}</span>
-        }
+    @if ( branches()?.length === 0 ) {
+        <span class="sub">{{ 'CK.Configurator.Catalog.NoBranch' | translate }}</span>
     }
     @if ( loading() && !info() ) {
         <span class="sub">{{ 'CK.Configurator.Catalog.Opening' | translate }}</span>
@@ -38,7 +34,10 @@
         <nz-tabs>
             <nz-tab [nzTitle]="'CK.Configurator.Catalog.Types' | translate">
                 <div class="ck-catalog-types">
-                    <nz-table #typesTable nzSize="small" [nzData]="rows()" [nzShowPagination]="false" [nzFrontPagination]="false">
+                    <div class="ck-catalog-levels">
+                    @for ( level of levels(); track level.kind ) {
+                    <span class="header ck-catalog-level">{{ ('CK.Configurator.Catalog.Level.' + level.kind) | translate }}</span>
+                    <nz-table #typesTable nzSize="small" [nzData]="level.rows" [nzShowPagination]="false" [nzFrontPagination]="false">
                         <thead>
                             <tr>
                                 <th nzWidth="40px"></th>
@@ -60,6 +59,8 @@
                             }
                         </tbody>
                     </nz-table>
+                    }
+                    </div>
                     @if ( current(); as t ) {
                         <div class="ck-catalog-detail">
                             <span class="header">{{ t.name }}</span>

@@ -8,16 +8,24 @@
         display: flex;
         gap: 8px;
         align-items: center;
+        > * { min-width: 0; }
         .ck-catalog-world { flex: 3; }
         .ck-catalog-branch { flex: 2; }
-        .ck-catalog-version { flex: 1; }
+        .ck-catalog-version { flex: 2; }
+        .ck-catalog-deprecated, button { flex: none; white-space: nowrap; }
     }
 
     .ck-catalog-types {
         display: flex;
         gap: 16px;
         align-items: flex-start;
-        nz-table { flex: 3; }
+        .ck-catalog-levels {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            .ck-catalog-level { margin-top: 8px; }
+        }
         .ck-catalog-detail {
             flex: 2;
             display: flex;

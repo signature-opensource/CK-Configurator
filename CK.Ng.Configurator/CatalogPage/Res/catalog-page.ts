@@ -18,6 +18,24 @@ export interface CatalogRow {
 }
 
 /**
+ * A level of the configuration: the Builder aspects, the App aspects, the party features or the client features (an
+ * option is in the level of its kind, under its owner), and "Other" for an unknown kind.
+ */
+export interface CatalogLevel {
+    readonly kind: string;
+    readonly rows: ReadonlyArray<CatalogRow>;
+}
+
+/** The levels, in the order of the configuration: the builder, an App, a party, a client application. */
+const levelKinds = ['AppBuilderAspect', 'AppAspect', 'PartyFeature', 'PartyClientFeature'];
+
+/** The level of a kind: an option ("PartyFeatureOption") is in the level of its owners ("PartyFeature"). */
+function levelOf( kind: string ): string {
+    const k = kind.endsWith( 'Option' ) ? kind.substring( 0, kind.length - 6 ) : kind;
+    return levelKinds.includes( k ) ? k : 'Other';
+}
+
+/**
  * The catalog page: a source (a World, then one of its branches, then one of its profiles) is opened, its configurable types are listed (the
  * options under their owners), the selected ones show what they bring in (their closure) and the commands are listed.
  */
@@ -78,8 +96,11 @@ export class CatalogPage {
     /** The closure of the selection (undefined before it is computed). */
     readonly closure = signal<ReadonlyArray<string> | undefined>( undefined );
 
-    /** The configurable types, each option under its owner (an option of an unknown owner is at the root). */
-    readonly rows = computed( () => {
+    /**
+     * The configurable types by level (the empty levels are omitted), each option under its owner (an option of an
+     * unknown owner is at the root of its level).
+     */
+    readonly levels = computed( () => {
         const types = this.types();
         const byTypeName = new Map( types.map( t => [t.typeName, t] ) );
         const options = new Map<string, ConfigurableTypeInfo[]>();
@@ -100,7 +121,12 @@ export class CatalogPage {
             for( const o of options.get( t.typeName ) ?? [] ) add( o, depth + 1 );
         };
         for( const t of roots ) add( t, 0 );
-        return rows;
+        const levels: CatalogLevel[] = [];
+        for( const kind of [...levelKinds, 'Other'] ) {
+            const levelRows = rows.filter( r => levelOf( r.type.kind ) === kind );
+            if( levelRows.length > 0 ) levels.push( { kind, rows: levelRows } );
+        }
+        return levels;
     } );
     // <PostLocalVariables />
 
