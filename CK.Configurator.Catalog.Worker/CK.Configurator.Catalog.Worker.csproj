@@ -7,9 +7,9 @@
     <!-- ResPackageClosure: the closure requests of the server mode. -->
     <PackageReference Include="CK.ResourceSpace" Version="36.0.2-0.uc.1.ci.59" />
     <!-- The Xml documentation of the types (XmlDocumentationReader, DocumentationTextBuilder). -->
-    <PackageReference Include="CK.CodeGen" Version="18.0.0-0.uc.1.ci.17" />
+    <PackageReference Include="CK.CodeGen" Version="18.0.0-0.uc.1.ci.18" />
     <!-- The JSON Schema of the configuration models (ConfigurationModelSchema). -->
-    <PackageReference Include="CK.ConfigurationModel" Version="0.0.0-0.uc.0.ci.7" />
+    <PackageReference Include="CK.ConfigurationModel" Version="0.0.0-0.uc.0.ci.9" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.Configurator.Catalog\CK.Configurator.Catalog.csproj" />
