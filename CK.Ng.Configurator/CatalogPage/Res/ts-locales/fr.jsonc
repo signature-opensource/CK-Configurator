@@ -33,6 +33,8 @@
     "CK.Configurator.Catalog.Secrets": "Secrets",
     "CK.Configurator.Catalog.Locks": "Restrictions",
     "CK.Configurator.Catalog.Levels": "Niveaux de ses propriétés",
+    "CK.Configurator.Catalog.Model": "Le modèle de configuration",
+    "CK.Configurator.Catalog.Schema": "Son schéma JSON",
     "CK.Configurator.Catalog.Closure": "Ce qu'apportent les {{count}} types sélectionnés",
     "CK.Configurator.Catalog.ClosureResult": "{{count}} packages sont conservés :"
 }

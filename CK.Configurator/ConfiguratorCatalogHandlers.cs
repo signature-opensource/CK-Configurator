@@ -131,6 +131,8 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
                                   .ToList();
     }
 
+    static readonly System.Text.Json.JsonSerializerOptions _indented = new() { WriteIndented = true };
+
     static IConfigurableTypeInfo ToInfo( PocoDirectory pocos, PackageAnalysis package, TypeAnalysis type )
     {
         var configurable = type.Configurable!;
@@ -149,6 +151,8 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
             i.OptionOwners.AddRange( type.OptionOwners );
             i.Summary = type.Summary;
             i.Remarks = type.Remarks;
+            i.ConfigurationModel = type.ConfigurationModel;
+            i.ConfigurationSchema = type.ConfigurationSchema?.ToJsonString( _indented );
         } );
     }
 

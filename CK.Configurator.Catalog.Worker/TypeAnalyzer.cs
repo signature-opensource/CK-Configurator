@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json.Nodes;
 using System.Xml.Linq;
 
 namespace CK.Configurator.Catalog.Worker;
@@ -15,6 +16,10 @@ namespace CK.Configurator.Catalog.Worker;
 /// The attributes of CK.ResourceSpace.Abstractions (the configurable types, the configuration declarations, the
 /// topology) are known types. The ones of the packages that the analyzer doesn't reference (CK.AppIdentity's
 /// <c>[PartyClientFact]</c>, CK.TypeScript's <c>[TypeScriptPackage]</c>, CK.Cris' commands) are read by their name.
+/// </para>
+/// <para>
+/// The configuration model of a type (<c>[Configuration&lt;TModel&gt;]</c>, read by its name) gives its JSON Schema:
+/// <see cref="ConfigurationModelSchema"/> on the generated <c>ModelDescription</c> of the model.
 /// </para>
 /// <para>
 /// The Xml documentation of a type (the ".xml" file next to its assembly: the worker project copies the documentation
@@ -34,6 +39,8 @@ sealed class TypeAnalyzer
     const string _configurableOption = "CK.Core.IConfigurableOption`1";
     // Read by name: an older CK.ResourceSpace.Abstractions (in an older profile) doesn't have it.
     const string _centralKey = "CK.Core.CentralConfigurationKeyAttribute";
+    // Read by name: an older CK.Abstractions (in an older profile) doesn't have it.
+    const string _configuration = "CK.Core.ConfigurationAttribute`1";
 
     static readonly Dictionary<Type, (string Kind, bool Optional)> _nameRelations = new()
     {
@@ -171,6 +178,7 @@ sealed class TypeAnalyzer
         bool isInternal = false;
         bool isPrivate = false;
         string? externalName = null;
+        Type? modelType = null;
 
         foreach( var a in t.AttributesData )
         {
@@ -203,6 +211,10 @@ sealed class TypeAnalyzer
                         (relations ??= []).Add( new TypeRelation( nameRelation.Kind, name, nameRelation.Optional ) );
                     }
                 }
+            }
+            else if( aType.IsGenericType && aType.GetGenericTypeDefinition().FullName == _configuration )
+            {
+                modelType = aType.GetGenericArguments()[0];
             }
             else if( aType == typeof( PackageAttribute ) )
             {
@@ -300,12 +312,13 @@ sealed class TypeAnalyzer
 
         if( configurable == null && section == null && locks == null && secrets == null && perDeployment == null
             && relations == null && facts == null && typeScriptPackage == null && levels == null && command == null
-            && optionOwners == null
+            && optionOwners == null && modelType == null
             && groupKind == ResourceGroupKind.None )
         {
             return null;
         }
         var documentation = XmlDocumentationReader.GetDocumentationFor( _monitor, type, _documentationCache );
+        var schema = modelType != null ? GetSchema( type, modelType ) : null;
         return new TypeAnalysis
         {
             FullName = type.FullName,
@@ -322,9 +335,29 @@ sealed class TypeAnalyzer
             OptionOwners = (IReadOnlyList<string>?)optionOwners ?? [],
             TypeScriptPackage = typeScriptPackage,
             Command = command,
+            ConfigurationModel = modelType?.FullName,
+            ConfigurationSchema = schema,
             Summary = ToMarkdown( documentation?.Element( "summary" ) ),
             Remarks = ToMarkdown( documentation?.Element( "remarks" ) )
         };
+    }
+
+    // The generated description of a model (its static ModelDescription) gives its JSON Schema.
+    JsonObject? GetSchema( Type type, Type modelType )
+    {
+        try
+        {
+            if( modelType.GetProperty( "ModelDescription", BindingFlags.Public | BindingFlags.Static )?.GetValue( null ) is ConfigurationModelDescription d )
+            {
+                return ConfigurationModelSchema.ToJsonSchema( d );
+            }
+            _monitor.Warn( $"The configuration model '{modelType:N}' of '{type:N}' has no ModelDescription: its schema is unknown." );
+        }
+        catch( Exception ex )
+        {
+            _monitor.Warn( $"Unable to get the schema of the configuration model '{modelType:N}' of '{type:N}'.", ex );
+        }
+        return null;
     }
 
     static string? ToMarkdown( XElement? e )

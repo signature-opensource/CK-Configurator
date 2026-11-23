@@ -20,7 +20,8 @@ static class FixturePackages
     public static readonly IReadOnlyList<string> Ids = ["CK.AppIdentity.PartyClient",
                                                         "CK.AppIdentity.TransportLayer",
                                                         "CK.AppIdentity.HttpEndpoint",
-                                                        "CK.IO.DynamicConfiguration"];
+                                                        "CK.IO.DynamicConfiguration",
+                                                        "CK.Globalization.StObj"];
 
     /// <summary>
     /// Gets the version of a package: the informational version ("Version/Sha/Date") of its assembly.

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 
 namespace CK.Configurator.Catalog;
 
@@ -52,6 +53,18 @@ public sealed class TypeAnalysis
     /// Gets the capabilities of the properties of the type (<c>[ConfigurationLevel]</c>).
     /// </summary>
     public IReadOnlyList<PropertyLevel> PropertyLevels { get => field ?? []; init; }
+
+    /// <summary>
+    /// Gets the full name of the configuration model of the type (<c>[Configuration&lt;TModel&gt;]</c>): the type
+    /// receives its configuration as this model. Null when the type has none.
+    /// </summary>
+    public string? ConfigurationModel { get; init; }
+
+    /// <summary>
+    /// Gets the JSON Schema (2020-12 with the <c>x-ck-*</c> vocabulary) of the <see cref="ConfigurationModel"/>: the
+    /// shape of the section of the type. Null when the type has no model.
+    /// </summary>
+    public JsonObject? ConfigurationSchema { get; init; }
 
     /// <summary>
     /// Gets the topology relations of the type, as declared.

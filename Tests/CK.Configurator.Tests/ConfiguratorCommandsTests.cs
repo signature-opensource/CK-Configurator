@@ -133,7 +133,7 @@ public class ConfiguratorCommandsTests
         }
 
         var info = (ICatalogInfo)(await ExecuteAsync<IOpenCatalogCommand>( services, Source ))!;
-        info.PackageCount.ShouldBe( 4 );
+        info.PackageCount.ShouldBe( 5 );
 
         var types = (IList<IConfigurableTypeInfo>)(await ExecuteAsync<IGetConfigurableTypesQCommand>( services, Source ))!;
         types.Count.ShouldBe( info.ConfigurableTypeCount );
@@ -147,6 +147,10 @@ public class ConfiguratorCommandsTests
         package.Version.ShouldBe( FixturePackages.GetVersion( "CK.AppIdentity.HttpEndpoint" ) );
         package.Readme.ShouldNotBeNullOrWhiteSpace();
         types.Single( t => t.Name == "ForwardedHeaders" ).OptionOwners.ShouldBe( [http.TypeName] );
+        http.ConfigurationSchema.ShouldBeNull();
+        var globalization = types.Single( t => t.Name == "Globalization" );
+        globalization.ConfigurationModel.ShouldBe( "CK.Globalization.GlobalizationAppAspectConfiguration" );
+        globalization.ConfigurationSchema.ShouldNotBeNull().ShouldContain( "\"ActiveCultures\"" );
 
         var kept = (IList<string>)(await ExecuteAsync<IGetClosureQCommand>( services, c =>
         {

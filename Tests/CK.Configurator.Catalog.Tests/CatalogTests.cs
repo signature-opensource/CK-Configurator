@@ -134,7 +134,7 @@ public class CatalogTests
         (await CatalogWorker.AnalyzeAsync( TestHelper.Monitor, source, cache, Path.Combine( bin, "Worker" ), analyzer )).ShouldBeTrue();
 
         var catalog = Catalog.Load( TestHelper.Monitor, source, cache ).ShouldNotBeNull();
-        catalog.Packages.Count.ShouldBe( 4 );
+        catalog.Packages.Count.ShouldBe( 5 );
 
         // The transport and the HTTP endpoint are party features with per deployment values.
         var transport = catalog.FindConfigurable( "Transport" ).ShouldHaveSingleItem();
@@ -151,6 +151,14 @@ public class CatalogTests
         // An option knows its owner (an abstract option base too: it stands for its concrete owners).
         catalog.FindConfigurable( "ForwardedHeaders" ).ShouldHaveSingleItem()
                .Type.OptionOwners.ShouldBe( ["CK.AppIdentity.HttpEndpointFeatureDriver"] );
+
+        // A configuration model gives the JSON Schema of the section.
+        var globalization = catalog.FindConfigurable( "Globalization" ).ShouldHaveSingleItem();
+        globalization.Type.Configurable!.Kind.ShouldBe( "AppAspect" );
+        globalization.Type.ConfigurationModel.ShouldBe( "CK.Globalization.GlobalizationAppAspectConfiguration" );
+        var schema = globalization.Type.ConfigurationSchema.ShouldNotBeNull();
+        schema["$schema"]!.GetValue<string>().ShouldBe( "https://json-schema.org/draft/2020-12/schema" );
+        schema["properties"]!["ActiveCultures"].ShouldNotBeNull();
 
         // The DynamicConfiguration commands are declared (their families are the catalog's work).
         var dynamic = catalog.Packages.Single( p => p.PackageId == "CK.IO.DynamicConfiguration" );

@@ -11,6 +11,7 @@
     <PackageReference Include="CK.AppIdentity.TransportLayer" Version="4.0.0-0.uc.1" />
     <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.1" />
     <PackageReference Include="CK.IO.DynamicConfiguration" Version="3.0.0-0.uc.1" />
+    <PackageReference Include="CK.Globalization.StObj" Version="3.0.0-0.uc.1" />
     <Compile Include="..\CK.Configurator.Catalog.Tests\FixturePackages.cs" Link="FixturePackages.cs" />
     <PackageReference Include="CK.Testing.Nunit" Version="18.0.0-0.uc" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" PrivateAssets="all" />

@@ -228,6 +228,16 @@ public interface IConfigurableTypeInfo : IPoco
     /// Gets or sets the remarks of the type (its Xml documentation, in Markdown).
     /// </summary>
     string? Remarks { get; set; }
+
+    /// <summary>
+    /// Gets or sets the full name of the configuration model of the type. Null when it has none.
+    /// </summary>
+    string? ConfigurationModel { get; set; }
+
+    /// <summary>
+    /// Gets or sets the JSON Schema of the configuration model (indented JSON text). Null when the type has no model.
+    /// </summary>
+    string? ConfigurationSchema { get; set; }
 }
 
 /// <summary>

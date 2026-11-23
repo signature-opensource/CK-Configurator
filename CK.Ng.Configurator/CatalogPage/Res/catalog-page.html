@@ -100,7 +100,15 @@
                                     <dt>{{ 'CK.Configurator.Catalog.Levels' | translate }}</dt>
                                     <dd>@for ( p of t.propertyLevels; track p.property ) { <nz-tag>{{ p.property }}: {{ p.level }}</nz-tag> }</dd>
                                 }
+                                @if ( t.configurationModel ) {
+                                    <dt>{{ 'CK.Configurator.Catalog.Model' | translate }}</dt>
+                                    <dd>{{ displayName( t.configurationModel ) }}</dd>
+                                }
                             </dl>
+                            @if ( t.configurationSchema ) {
+                                <span class="sub">{{ 'CK.Configurator.Catalog.Schema' | translate }}</span>
+                                <pre class="ck-catalog-schema">{{ t.configurationSchema }}</pre>
+                            }
                         </div>
                     }
                 </div>
