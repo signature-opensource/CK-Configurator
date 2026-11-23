@@ -4,6 +4,6 @@
     <Description>The commands of the configurator: the catalog of what can be configured (the configurable types, the commands, the closure of a selection) of a published profile of a Stack.</Description>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Cris" Version="3.0.0-0.uc.0.ci.110" />
+    <PackageReference Include="CK.Cris" Version="3.0.0-0.uc.1" />
   </ItemGroup>
 </Project>
