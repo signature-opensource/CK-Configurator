@@ -27,6 +27,114 @@ export interface CatalogLevel {
     readonly rows: ReadonlyArray<CatalogRow>;
 }
 
+/** A key of a configuration model, from its JSON Schema (the keys of the nested models follow their parent). */
+export interface SchemaKey {
+    /** The configuration path from the section of the type: "Passkey:RpId", "Schemes:{name}:ClientId". */
+    readonly path: string;
+    readonly depth: number;
+    /** The type, in plain words: "string", "time span", "one of Off, Lax, Strict", "list of string", "section"... */
+    readonly type: string;
+    /** The schema of an opaque section (Kestrel), when it has one. */
+    readonly schemaUri?: string;
+    readonly required: boolean;
+    readonly defaultValue?: string;
+    /** The level when it is not Init, "secret", "per deployment". */
+    readonly flags: ReadonlyArray<string>;
+    readonly description?: string;
+}
+
+type JsonSchema = { [key: string]: any };
+
+/**
+ * The keys of a model from its JSON Schema (CK.ConfigurationModel's ConfigurationModelSchema): one row per property,
+ * the properties of a nested model (a $ref to its $defs) under it, with their configuration path. A model that contains
+ * itself is not expanded again.
+ */
+export function schemaKeys( schemaText: string ): ReadonlyArray<SchemaKey> {
+    let root: JsonSchema;
+    try {
+        root = JSON.parse( schemaText );
+    } catch {
+        return [];
+    }
+    const defs: JsonSchema = root['$defs'] ?? {};
+    const result: SchemaKey[] = [];
+    const resolve = ( s: JsonSchema ): { schema: JsonSchema, def?: string } => {
+        const ref: string | undefined = s['$ref'];
+        if( ref?.startsWith( '#/$defs/' ) ) {
+            const def = ref.substring( 8 );
+            return { schema: defs[def] ?? {}, def };
+        }
+        return { schema: s };
+    };
+    const walk = ( model: JsonSchema, prefix: string, depth: number, visiting: ReadonlyArray<string> ) => {
+        const properties: JsonSchema = model['properties'] ?? {};
+        const required: ReadonlyArray<string> = model['required'] ?? [];
+        for( const name of Object.keys( properties ) ) {
+            const p: JsonSchema = properties[name];
+            const flags: string[] = [];
+            if( p['x-ck-level'] ) flags.push( p['x-ck-level'] );
+            if( p['x-ck-secret'] ) flags.push( 'secret' );
+            if( p['x-ck-perDeployment'] ) flags.push( 'per deployment' );
+            const path = prefix + name;
+            // The nested model (a section, the items of a list, the entries of a dictionary) and its path.
+            let nested: { schema: JsonSchema, def?: string, path: string } | undefined;
+            let type: string;
+            let schemaUri: string | undefined;
+            const r = resolve( p );
+            if( r.def ) {
+                type = 'section';
+                nested = { ...r, path: path + ':' };
+            } else if( p['$ref'] ) {
+                type = 'section';
+                schemaUri = p['$ref'];
+            } else if( p['type'] === 'array' && p['items'] ) {
+                const item = resolve( p['items'] );
+                if( item.def ) {
+                    type = 'list of sections';
+                    nested = { ...item, path: path + ':{n}:' };
+                } else {
+                    type = 'list of ' + valueType( p['items'] );
+                }
+            } else if( p['anyOf'] ) {
+                const array: JsonSchema | undefined = ( p['anyOf'] as JsonSchema[] ).find( a => a['type'] === 'array' );
+                type = 'list of ' + ( array ? valueType( array['items'] ?? {} ) : 'values' ) + ' (or a comma separated string)';
+            } else if( p['type'] === 'object' && p['additionalProperties'] ) {
+                const entry = resolve( p['additionalProperties'] );
+                type = 'sections by name';
+                if( entry.def ) nested = { ...entry, path: path + ':{name}:' };
+            } else if( Object.keys( p ).every( k => k === 'description' || k.startsWith( 'x-ck-' ) ) ) {
+                type = 'section';
+            } else {
+                type = valueType( p );
+            }
+            result.push( {
+                path,
+                depth,
+                type,
+                schemaUri,
+                required: required.includes( name ),
+                defaultValue: p['default'] !== undefined ? String( p['default'] ) : undefined,
+                flags,
+                description: p['description']
+            } );
+            if( nested && !visiting.includes( nested.def! ) ) {
+                walk( nested.schema, nested.path, depth + 1, [...visiting, nested.def!] );
+            }
+        }
+    };
+    walk( root, '', 0, [] );
+    return result;
+}
+
+/** The type of a value in plain words. */
+function valueType( s: JsonSchema ): string {
+    if( Array.isArray( s['enum'] ) ) return 'one of ' + ( s['enum'] as string[] ).join( ', ' );
+    if( s['format'] === 'uuid' ) return 'guid';
+    if( s['format'] === 'uri' ) return 'uri';
+    return s['type'] ?? 'value';
+}
+
 /** The levels, in the order of the configuration: the builder, an App, a party, a client application. */
 const levelKinds = ['AppBuilderAspect', 'AppAspect', 'PartyFeature', 'PartyClientFeature'];
 
@@ -102,6 +210,11 @@ export class CatalogPage {
     readonly selection = signal<ReadonlySet<string>>( new Set() );
     /** The closure of the selection (undefined before it is computed). */
     readonly closure = signal<ReadonlyArray<string> | undefined>( undefined );
+    /** The keys of the configuration model of the current type (empty without a model). */
+    readonly currentKeys = computed( () => {
+        const schema = this.current()?.configurationSchema;
+        return schema ? schemaKeys( schema ) : [];
+    } );
 
     /**
      * The configurable types by level (the empty levels are omitted), each option under its owner (an option of an

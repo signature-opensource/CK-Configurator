@@ -106,8 +106,37 @@
                                 }
                             </dl>
                             @if ( t.configurationSchema ) {
-                                <span class="sub">{{ 'CK.Configurator.Catalog.Schema' | translate }}</span>
-                                <pre class="ck-catalog-schema">{{ t.configurationSchema }}</pre>
+                                <span class="sub">{{ 'CK.Configurator.Catalog.Keys' | translate }}</span>
+                                <nz-table #keysTable class="ck-catalog-keys" nzSize="small" [nzData]="currentKeys()" [nzShowPagination]="false" [nzFrontPagination]="false">
+                                    <thead>
+                                        <tr>
+                                            <th>{{ 'CK.Configurator.Catalog.Key' | translate }}</th>
+                                            <th>{{ 'CK.Configurator.Catalog.KeyType' | translate }}</th>
+                                            <th>{{ 'CK.Configurator.Catalog.Default' | translate }}</th>
+                                            <th>{{ 'CK.Configurator.Catalog.Description' | translate }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for ( k of keysTable.data; track k.path ) {
+                                            <tr>
+                                                <td [style.padding-left.px]="8 + k.depth * 16">
+                                                    <code>{{ k.path }}</code>
+                                                    @if ( k.required ) { <nz-tag nzColor="red">{{ 'CK.Configurator.Catalog.Required' | translate }}</nz-tag> }
+                                                    @for ( f of k.flags; track f ) { <nz-tag>{{ f }}</nz-tag> }
+                                                </td>
+                                                <td>
+                                                    @if ( k.schemaUri ) { <a [href]="k.schemaUri" target="_blank" rel="noopener">{{ k.type }}</a> } @else { {{ k.type }} }
+                                                </td>
+                                                <td>@if ( k.defaultValue !== undefined ) { <code>{{ k.defaultValue }}</code> }</td>
+                                                <td>{{ k.description }}</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </nz-table>
+                                <details class="ck-catalog-schema-raw">
+                                    <summary>{{ 'CK.Configurator.Catalog.Schema' | translate }}</summary>
+                                    <pre class="ck-catalog-schema">{{ t.configurationSchema }}</pre>
+                                </details>
                             }
                         </div>
                     }

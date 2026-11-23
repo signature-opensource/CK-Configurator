@@ -35,6 +35,12 @@
     "CK.Configurator.Catalog.Levels": "Niveaux de ses propriétés",
     "CK.Configurator.Catalog.Model": "Le modèle de configuration",
     "CK.Configurator.Catalog.Schema": "Son schéma JSON",
+    "CK.Configurator.Catalog.Keys": "Les clés de sa section",
+    "CK.Configurator.Catalog.Key": "Clé",
+    "CK.Configurator.Catalog.KeyType": "Type",
+    "CK.Configurator.Catalog.Default": "Défaut",
+    "CK.Configurator.Catalog.Description": "Description",
+    "CK.Configurator.Catalog.Required": "requise",
     "CK.Configurator.Catalog.Closure": "Ce qu'apportent les {{count}} types sélectionnés",
     "CK.Configurator.Catalog.ClosureResult": "{{count}} packages sont conservés :"
 }
