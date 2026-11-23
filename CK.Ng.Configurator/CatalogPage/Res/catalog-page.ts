@@ -132,6 +132,7 @@ function valueType( s: JsonSchema ): string {
     if( Array.isArray( s['enum'] ) ) return 'one of ' + ( s['enum'] as string[] ).join( ', ' );
     if( s['format'] === 'uuid' ) return 'guid';
     if( s['format'] === 'uri' ) return 'uri';
+    if( s['x-ck-format'] === 'timespan' ) return 'time span';
     return s['type'] ?? 'value';
 }
 
