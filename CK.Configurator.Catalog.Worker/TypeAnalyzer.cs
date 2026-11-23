@@ -19,7 +19,8 @@ namespace CK.Configurator.Catalog.Worker;
 /// </para>
 /// <para>
 /// The configuration model of a type (<c>[Configuration&lt;TModel&gt;]</c>, read by its name) gives its JSON Schema:
-/// <see cref="ConfigurationModelSchema"/> on the generated <c>ModelDescription</c> of the model.
+/// <see cref="ConfigurationModelSchema"/> on the description of the model, built by reflection
+/// (<see cref="ConfigurationModelDescription.TryGet"/>; its documentation from the Xml documentation file of the package).
 /// </para>
 /// <para>
 /// The Xml documentation of a type (the ".xml" file next to its assembly: the worker project copies the documentation
