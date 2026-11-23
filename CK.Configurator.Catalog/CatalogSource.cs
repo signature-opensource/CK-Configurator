@@ -52,7 +52,8 @@ public sealed class CatalogSource
 
     /// <summary>
     /// Gets whether a produced package is considered by the catalog. Excluded: the test packages ("CK.Testing.*",
-    /// "*.Tests") and "CK.AppBuilder" (its build files make the referencing project run the App builder after its build).
+    /// "*.Tests"), "CK.AppBuilder" (its build files make the referencing project run the App builder after its build)
+    /// and "CK.Configurator.Catalog.Worker" (the analyzer itself: the worker project already references it).
     /// </summary>
     /// <param name="packageId">The package identifier.</param>
     /// <returns>True when the package is considered.</returns>
@@ -60,6 +61,7 @@ public sealed class CatalogSource
     {
         return !packageId.StartsWith( "CK.Testing.", StringComparison.OrdinalIgnoreCase )
                && !packageId.EndsWith( ".Tests", StringComparison.OrdinalIgnoreCase )
-               && !packageId.Equals( "CK.AppBuilder", StringComparison.OrdinalIgnoreCase );
+               && !packageId.Equals( "CK.AppBuilder", StringComparison.OrdinalIgnoreCase )
+               && !packageId.Equals( "CK.Configurator.Catalog.Worker", StringComparison.OrdinalIgnoreCase );
     }
 }

@@ -44,6 +44,8 @@ public class CatalogTests
     [TestCase( "CK.Sample.Tests", false )]
     [TestCase( "CK.AppBuilder", false )]
     [TestCase( "CK.AppBuilder.Contracts", true )]
+    [TestCase( "CK.Configurator.Catalog.Worker", false )]
+    [TestCase( "CK.Configurator.Catalog", true )]
     [TestCase( "CK.AppIdentity", true )]
     public void the_catalog_packages( string packageId, bool expected )
     {
