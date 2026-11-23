@@ -7,12 +7,12 @@
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="CK.AppIdentity.Hosting" Version="3.0.0-0.uc.0.ci.156" />
-    <PackageReference Include="CK.AspNet" Version="25.0.0-0.uc.0.ci.51" />
+    <PackageReference Include="CK.AppIdentity.Hosting" Version="3.0.0-0.uc.0.ci.158" />
+    <PackageReference Include="CK.AspNet" Version="25.0.0-0.uc.0.ci.53" />
     <!-- The "/.cris" endpoint: the client application sends the commands of the configurator. -->
-    <PackageReference Include="CK.Cris.AspNet" Version="3.0.0-0.uc.0.ci.188" />
+    <PackageReference Include="CK.Cris.AspNet" Version="3.0.0-0.uc.0.ci.190" />
     <!-- Serves the client application (its dev server in Development, its "dist" otherwise). -->
-    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.0.ci.114" />
+    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.0.ci.116" />
     <!-- The catalog page and its backend. -->
     <ProjectReference Include="..\..\CK.Ng.Configurator\CK.Ng.Configurator.csproj" />
     <ProjectReference Include="..\..\CK.Configurator\CK.Configurator.csproj" />
