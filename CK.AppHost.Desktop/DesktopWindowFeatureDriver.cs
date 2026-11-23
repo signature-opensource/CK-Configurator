@@ -1,5 +1,6 @@
 using CK.Core;
 using InfiniFrame;
+using InfiniFrame.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
@@ -156,6 +157,7 @@ public sealed class DesktopWindowFeatureDriver : ApplicationIdentityStaticFeatur
                             .SetTitle( c.Title )
                             .SetSize( c.Width, c.Height )
                             .SetStartPageContent( WaitingPage( c.Title ) )
+                            .AddTrustedOrigin( url ) // Without a start url, its origin must be trusted explicitly.
                             .Build();
             _window = window;
             started.TrySetResult();
@@ -195,7 +197,9 @@ public sealed class DesktopWindowFeatureDriver : ApplicationIdentityStaticFeatur
                 catch( TaskCanceledException ) { }
                 await Task.Delay( 500 ).ConfigureAwait( false );
             }
-            if( !window.IsClosedOrClosing() ) window.Load( url );
+            // InfiniFrame only navigates to a trusted origin (the builder trusts the url's one): a refused or failed
+            // navigation is silent.
+            if( !window.IsClosedOrClosing() ) window.Load( new Uri( url ) );
         }
         catch( Exception ex )
         {
