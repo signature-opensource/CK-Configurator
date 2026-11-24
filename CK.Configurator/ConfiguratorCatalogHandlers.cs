@@ -240,4 +240,44 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
             r.Readme = p.Readme;
         } );
     }
+
+    /// <summary>
+    /// Lists the packages of a catalog, ordered by identifier: their description, their direct dependencies and what they
+    /// contain (configurable types, commands).
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="command">The query.</param>
+    /// <param name="service">The opened catalogs.</param>
+    /// <param name="pocos">The poco directory.</param>
+    /// <returns>The packages.</returns>
+    [CommandHandler]
+    public async Task<IList<ICatalogPackageInfo>> HandleAsync( IActivityMonitor monitor,
+                                                               IGetPackagesQCommand command,
+                                                               ConfiguratorCatalogService service,
+                                                               PocoDirectory pocos )
+    {
+        var c = (await OpenAsync( monitor, command, service ).ConfigureAwait( false )).Catalog;
+        var types = c.ConfigurableNames.SelectMany( c.FindConfigurable )
+                                       .ToLookup( t => t.Package.PackageId, t => t.Type.FullName, System.StringComparer.OrdinalIgnoreCase );
+        // A command is in each package of its interfaces (its primary one, its parts).
+        var commands = c.Commands.Values
+                                 .SelectMany( f => f.Interfaces.Select( i => (i.Package.PackageId, f.Name) ).Distinct() )
+                                 .ToLookup( x => x.PackageId, x => x.Name, System.StringComparer.OrdinalIgnoreCase );
+        return c.Packages.OrderBy( p => p.PackageId, System.StringComparer.OrdinalIgnoreCase )
+                         .Select( p => pocos.Create<ICatalogPackageInfo>( i =>
+                         {
+                             i.PackageId = p.PackageId;
+                             i.Version = p.Version;
+                             i.Description = p.Description;
+                             i.HasReadme = p.Readme != null;
+                             i.Dependencies.AddRange( p.Dependencies.Select( d => pocos.Create<IPackageDependencyInfo>( x =>
+                             {
+                                 x.PackageId = d.PackageId;
+                                 x.VersionRange = d.VersionRange;
+                             } ) ) );
+                             i.ConfigurableTypes.AddRange( types[p.PackageId].Order( System.StringComparer.Ordinal ) );
+                             i.Commands.AddRange( commands[p.PackageId].Order( System.StringComparer.Ordinal ) );
+                         } ) )
+                         .ToList();
+    }
 }

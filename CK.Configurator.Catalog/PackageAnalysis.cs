@@ -17,7 +17,7 @@ public sealed class PackageAnalysis
     /// The format of the analyses. It is part of the key of an analysis in the cache: an analysis written by an older
     /// analyzer is not read, the package is analyzed again.
     /// </summary>
-    public const int Format = 7;
+    public const int Format = 8;
 
     /// <summary>
     /// Gets the package identifier.
@@ -42,11 +42,28 @@ public sealed class PackageAnalysis
     public string? Readme { get; init; }
 
     /// <summary>
+    /// Gets the description of the package (the <c>&lt;description&gt;</c> of its nuspec). Null when it has none.
+    /// </summary>
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Gets the direct dependencies of the package (for the target framework of the worker).
+    /// </summary>
+    public IReadOnlyList<PackageDependency> Dependencies { get => field ?? []; init; }
+
+    /// <summary>
     /// Returns "PackageId@Version".
     /// </summary>
     /// <returns>The package instance.</returns>
     public override string ToString() => $"{PackageId}@{Version}";
 }
+
+/// <summary>
+/// A direct dependency of a <see cref="PackageAnalysis"/>.
+/// </summary>
+/// <param name="PackageId">The package identifier.</param>
+/// <param name="VersionRange">The version range (NuGet syntax: "[1.0.0, )").</param>
+public sealed record PackageDependency( string PackageId, string VersionRange );
 
 /// <summary>
 /// An assembly of a <see cref="PackageAnalysis"/>.

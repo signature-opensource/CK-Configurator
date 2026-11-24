@@ -53,8 +53,8 @@ public static class WorkerProgram
                                 .Select( l => { int i = l.LastIndexOf( '@' ); return (Id: l[..i], Version: l[(i + 1)..]); } )
                                 .ToList();
             var packageAssemblies = ReadPackageAssemblies( assets );
-            var readmes = ReadPackageReadmes( monitor, assets );
-            return Analyze( monitor, new CatalogCache( cacheRoot ), requested, packageAssemblies, readmes ) ? 0 : 2;
+            var metadata = ReadPackageMetadata( monitor, assets );
+            return Analyze( monitor, new CatalogCache( cacheRoot ), requested, packageAssemblies, metadata ) ? 0 : 2;
         }
         catch( Exception ex )
         {
@@ -107,16 +107,42 @@ public static class WorkerProgram
     }
 
     /// <summary>
-    /// Finds the readme of each package ("PackageId/Version" lower case) of a project.assets.json: the file that the
-    /// <c>&lt;readme&gt;</c> of its nuspec names (its "Package.md" without one), in its folder of the package folders.
+    /// What the worker reads of a package beside its assemblies.
+    /// </summary>
+    /// <param name="ReadmeFile">The readme file path (null when it has none).</param>
+    /// <param name="Description">The nuspec description (null when it has none).</param>
+    /// <param name="Dependencies">The direct dependencies (for the target framework of the worker).</param>
+    public sealed record PackageMetadata( string? ReadmeFile, string? Description, IReadOnlyList<PackageDependency> Dependencies );
+
+    /// <summary>
+    /// Reads the metadata of each package ("PackageId/Version" lower case) of a project.assets.json: its direct
+    /// dependencies (its "dependencies" in the target of the worker), the <c>&lt;description&gt;</c> of its nuspec and its
+    /// readme: the file that the <c>&lt;readme&gt;</c> of its nuspec names (its "Package.md" without one), in its folder of
+    /// the package folders.
     /// </summary>
     /// <param name="monitor">The monitor to use.</param>
     /// <param name="assetsPath">The project.assets.json path.</param>
-    /// <returns>The readme file path of the packages that have one.</returns>
-    public static Dictionary<string, string> ReadPackageReadmes( IActivityMonitor monitor, string assetsPath )
+    /// <returns>The metadata of the packages.</returns>
+    public static Dictionary<string, PackageMetadata> ReadPackageMetadata( IActivityMonitor monitor, string assetsPath )
     {
-        var result = new Dictionary<string, string>( StringComparer.OrdinalIgnoreCase );
+        var result = new Dictionary<string, PackageMetadata>( StringComparer.OrdinalIgnoreCase );
         using var doc = JsonDocument.Parse( File.ReadAllBytes( assetsPath ) );
+        // The worker has one target (net10.0, no runtime identifier).
+        var dependencies = new Dictionary<string, List<PackageDependency>>( StringComparer.OrdinalIgnoreCase );
+        foreach( var target in doc.RootElement.GetProperty( "targets" ).EnumerateObject() )
+        {
+            foreach( var lib in target.Value.EnumerateObject() )
+            {
+                if( lib.Value.TryGetProperty( "dependencies", out var deps ) )
+                {
+                    dependencies[lib.Name] = deps.EnumerateObject()
+                                                 .Select( d => new PackageDependency( d.Name, d.Value.GetString() ?? "" ) )
+                                                 .OrderBy( d => d.PackageId, StringComparer.OrdinalIgnoreCase )
+                                                 .ToList();
+                }
+            }
+            break;
+        }
         var packageFolders = doc.RootElement.GetProperty( "packageFolders" ).EnumerateObject().Select( f => f.Name ).ToList();
         foreach( var lib in doc.RootElement.GetProperty( "libraries" ).EnumerateObject() )
         {
@@ -129,12 +155,16 @@ public static class WorkerProgram
             var folder = packageFolders.Select( f => Path.Combine( f, path ) ).FirstOrDefault( Directory.Exists );
             if( folder == null ) continue;
             string? file = null;
+            string? description = null;
             var nuspec = Directory.EnumerateFiles( folder, "*.nuspec" ).FirstOrDefault();
             if( nuspec != null )
             {
                 try
                 {
-                    var readme = System.Xml.Linq.XDocument.Load( nuspec ).Descendants().FirstOrDefault( e => e.Name.LocalName == "readme" )?.Value;
+                    var x = System.Xml.Linq.XDocument.Load( nuspec );
+                    description = x.Descendants().FirstOrDefault( e => e.Name.LocalName == "description" )?.Value.Trim();
+                    if( string.IsNullOrEmpty( description ) ) description = null;
+                    var readme = x.Descendants().FirstOrDefault( e => e.Name.LocalName == "readme" )?.Value;
                     if( !string.IsNullOrWhiteSpace( readme ) )
                     {
                         file = Path.Combine( folder, readme.Replace( '\\', Path.DirectorySeparatorChar ).Replace( '/', Path.DirectorySeparatorChar ) );
@@ -147,7 +177,9 @@ public static class WorkerProgram
             }
             // Without a <readme>, the "Package.md" at the root of the package (the docs/Package.md of a project of the stack).
             if( file == null || !File.Exists( file ) ) file = Path.Combine( folder, "Package.md" );
-            if( File.Exists( file ) ) result[lib.Name] = file;
+            result[lib.Name] = new PackageMetadata( File.Exists( file ) ? file : null,
+                                                    description,
+                                                    dependencies.TryGetValue( lib.Name, out var d ) ? d : [] );
         }
         return result;
     }
@@ -175,7 +207,7 @@ public static class WorkerProgram
                          CatalogCache cache,
                          List<(string Id, string Version)> requested,
                          Dictionary<string, List<string>> packageAssemblies,
-                         Dictionary<string, string> readmes )
+                         Dictionary<string, PackageMetadata> metadata )
     {
         var result = LoadTypes( monitor );
         if( result == null ) return false;
@@ -209,8 +241,16 @@ public static class WorkerProgram
                     }
                     assemblies.Add( analyzer.Analyze( cached ) );
                 }
-                var readme = readmes.TryGetValue( $"{id}/{version}", out var readmeFile ) ? File.ReadAllText( readmeFile ) : null;
-                cache.Save( new PackageAnalysis { PackageId = id, Version = version, Assemblies = assemblies, Readme = readme } );
+                metadata.TryGetValue( $"{id}/{version}", out var m );
+                cache.Save( new PackageAnalysis
+                {
+                    PackageId = id,
+                    Version = version,
+                    Assemblies = assemblies,
+                    Readme = m?.ReadmeFile != null ? File.ReadAllText( m.ReadmeFile ) : null,
+                    Description = m?.Description,
+                    Dependencies = m?.Dependencies ?? []
+                } );
             }
         }
         return success && analyzer.Success;

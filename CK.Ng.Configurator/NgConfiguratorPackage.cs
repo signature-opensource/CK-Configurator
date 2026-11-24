@@ -21,6 +21,7 @@ namespace CK.Ng.Configurator;
 [RegisterTypeScriptType( typeof( IGetClosureQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetCommandsQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetPackageQCommand ) )]
+[RegisterTypeScriptType( typeof( IGetPackagesQCommand ) )]
 public class NgConfiguratorPackage : TypeScriptPackage
 {
 }

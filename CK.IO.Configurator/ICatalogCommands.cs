@@ -357,6 +357,70 @@ public interface ICommandInfo : IPoco
 }
 
 /// <summary>
+/// Lists the packages of a catalog, ordered by identifier.
+/// </summary>
+public interface IGetPackagesQCommand : ICommand<IList<ICatalogPackageInfo>>, ICommandCatalogSource
+{
+}
+
+/// <summary>
+/// A package of a catalog in the list of its packages (its readme is read by <see cref="IGetPackageQCommand"/>).
+/// </summary>
+public interface ICatalogPackageInfo : IPoco
+{
+    /// <summary>
+    /// Gets or sets the package identifier.
+    /// </summary>
+    string PackageId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the package version.
+    /// </summary>
+    string Version { get; set; }
+
+    /// <summary>
+    /// Gets or sets its description (the description of its nuspec). Null when it has none.
+    /// </summary>
+    string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether it has a readme.
+    /// </summary>
+    bool HasReadme { get; set; }
+
+    /// <summary>
+    /// Gets its direct dependencies, ordered by identifier.
+    /// </summary>
+    IList<IPackageDependencyInfo> Dependencies { get; }
+
+    /// <summary>
+    /// Gets the full names of its configurable types (see <see cref="IConfigurableTypeInfo.TypeName"/>).
+    /// </summary>
+    IList<string> ConfigurableTypes { get; }
+
+    /// <summary>
+    /// Gets the names of the commands that have an interface in it (see <see cref="ICommandInfo.Name"/>).
+    /// </summary>
+    IList<string> Commands { get; }
+}
+
+/// <summary>
+/// A direct dependency of a package.
+/// </summary>
+public interface IPackageDependencyInfo : IPoco
+{
+    /// <summary>
+    /// Gets or sets the package identifier.
+    /// </summary>
+    string PackageId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the version range (NuGet syntax: "[1.0.0, )").
+    /// </summary>
+    string VersionRange { get; set; }
+}
+
+/// <summary>
 /// Gets a package of a catalog.
 /// </summary>
 public interface IGetPackageQCommand : ICommand<IPackageInfo>, ICommandCatalogSource

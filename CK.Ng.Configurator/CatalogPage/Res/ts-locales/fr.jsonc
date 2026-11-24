@@ -42,5 +42,13 @@
     "CK.Configurator.Catalog.Description": "Description",
     "CK.Configurator.Catalog.Required": "requise",
     "CK.Configurator.Catalog.Closure": "Ce qu'apportent les {{count}} types sélectionnés",
-    "CK.Configurator.Catalog.ClosureResult": "{{count}} packages sont conservés :"
+    "CK.Configurator.Catalog.ClosureResult": "{{count}} packages sont conservés :",
+    "CK.Configurator.Catalog.PackageVersion": "Version",
+    "CK.Configurator.Catalog.Content": "Contenu",
+    "CK.Configurator.Catalog.PackageFilter": "Filtrer les packages",
+    "CK.Configurator.Catalog.TypeCount": "Types configurables : {{count}}",
+    "CK.Configurator.Catalog.CommandCount": "Commandes : {{count}}",
+    "CK.Configurator.Catalog.Readme": "Son readme",
+    "CK.Configurator.Catalog.Dependencies": "Dépendances directes",
+    "CK.Configurator.Catalog.NoDependency": "Aucune."
 }

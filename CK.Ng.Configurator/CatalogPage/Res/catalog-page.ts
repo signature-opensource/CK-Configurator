@@ -10,7 +10,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
-import { BranchInfo, CatalogInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetPackageQCommand, GetProfilesQCommand, GetWorldsQCommand, HttpCrisEndpoint, MarkdownComponent, OpenCatalogCommand, PackageInfo, ProfileInfo } from '@local/ck-gen';
+import { BranchInfo, CatalogInfo, CatalogPackageInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetPackageQCommand, GetPackagesQCommand, GetProfilesQCommand, GetWorldsQCommand, HttpCrisEndpoint, MarkdownComponent, OpenCatalogCommand, PackageInfo, ProfileInfo } from '@local/ck-gen';
 
 /** A configurable type and its depth in the list: an option is shown under its owner. */
 export interface CatalogRow {
@@ -205,6 +205,21 @@ export class CatalogPage {
     readonly info = signal<CatalogInfo | undefined>( undefined );
     readonly types = signal<ReadonlyArray<ConfigurableTypeInfo>>( [] );
     readonly commands = signal<ReadonlyArray<CommandInfo>>( [] );
+    readonly packages = signal<ReadonlyArray<CatalogPackageInfo>>( [] );
+    /** The identifiers of the packages in the catalog (lower case): a dependency in it can be opened. */
+    readonly packageIds = computed( () => new Set( this.packages().map( p => p.packageId.toLowerCase() ) ) );
+    /** The filter of the packages (a part of their identifier). */
+    readonly packageFilter = signal( '' );
+    readonly filteredPackages = computed( () => {
+        const f = this.packageFilter().trim().toLowerCase();
+        return f ? this.packages().filter( p => p.packageId.toLowerCase().includes( f ) ) : this.packages();
+    } );
+    /** The opened packages (their identifiers, lower case). */
+    readonly expandedPackages = signal<ReadonlySet<string>>( new Set() );
+    /** The selected tab: the configurable types, the commands, the packages. */
+    readonly tab = signal( 0 );
+    /** The command that is selected (its name). */
+    readonly currentCommand = signal<string | undefined>( undefined );
     /** The type shown in the detail panel. */
     readonly current = signal<ConfigurableTypeInfo | undefined>( undefined );
     /** The selected types (their full names): the roots of the closure. */
@@ -358,10 +373,13 @@ export class CatalogPage {
         this.closure.set( undefined );
         this.selection.set( new Set() );
         this.current.set( undefined );
+        this.currentCommand.set( undefined );
+        this.expandedPackages.set( new Set() );
         try {
             this.info.set( await this.#cris.sendOrThrowAsync( this.#source( new OpenCatalogCommand() ) ) );
             this.types.set( await this.#cris.sendOrThrowAsync( this.#source( new GetConfigurableTypesQCommand() ) ) ?? [] );
             this.commands.set( await this.#cris.sendOrThrowAsync( this.#source( new GetCommandsQCommand() ) ) ?? [] );
+            this.packages.set( await this.#cris.sendOrThrowAsync( this.#source( new GetPackagesQCommand() ) ) ?? [] );
         } catch( e ) {
             this.error.set( String( e ) );
         } finally {
@@ -390,6 +408,41 @@ export class CatalogPage {
         } finally {
             this.loading.set( false );
         }
+    }
+
+    /** Opens or closes a package of the packages tab. */
+    togglePackage( packageId: string, expanded: boolean ): void {
+        const s = new Set( this.expandedPackages() );
+        if( expanded ) s.add( packageId.toLowerCase() ); else s.delete( packageId.toLowerCase() );
+        this.expandedPackages.set( s );
+    }
+
+    /** Selects a configurable type in the configurable types tab. */
+    selectType( typeName: string ): void {
+        const t = this.types().find( t => t.typeName === typeName );
+        if( !t ) return;
+        this.current.set( t );
+        this.#show( 0, 'ck-type-' + typeName );
+    }
+
+    /** Selects a command in the commands tab. */
+    selectCommand( name: string ): void {
+        this.currentCommand.set( name );
+        this.#show( 1, 'ck-command-' + name );
+    }
+
+    /** Opens a package in the packages tab (its filter is cleared when it hides it). */
+    selectPackage( packageId: string ): void {
+        const f = this.packageFilter().trim().toLowerCase();
+        if( f && !packageId.toLowerCase().includes( f ) ) this.packageFilter.set( '' );
+        this.togglePackage( packageId, true );
+        this.#show( 2, 'ck-package-' + packageId.toLowerCase() );
+    }
+
+    /** Selects a tab and scrolls to an element of it (once the tab is rendered). */
+    #show( tab: number, elementId: string ): void {
+        this.tab.set( tab );
+        setTimeout( () => document.getElementById( elementId )?.scrollIntoView( { block: 'center', behavior: 'smooth' } ), 50 );
     }
 
     /** The name of a configurable type when the full name is one, the full name otherwise. */

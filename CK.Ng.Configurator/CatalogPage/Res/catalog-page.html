@@ -38,7 +38,7 @@
     }
     @if ( info(); as i ) {
         <span class="sub ck-catalog-info">{{ 'CK.Configurator.Catalog.Info' | translate: { version: openedVersion(), packages: i.packageCount, types: i.configurableTypeCount, commands: i.commandCount } }}</span>
-        <nz-tabs>
+        <nz-tabs [nzSelectedIndex]="tab()" (nzSelectedIndexChange)="tab.set( $event )">
             <nz-tab [nzTitle]="'CK.Configurator.Catalog.Types' | translate">
                 <div class="ck-catalog-types">
                     <div class="ck-catalog-levels">
@@ -56,7 +56,7 @@
                         </thead>
                         <tbody>
                             @for ( r of typesTable.data; track r.type.typeName ) {
-                                <tr class="ck-catalog-row" [class.ck-catalog-current]="current() === r.type" (click)="current.set( r.type )">
+                                <tr class="ck-catalog-row" [attr.id]="'ck-type-' + r.type.typeName" [class.ck-catalog-current]="current() === r.type" (click)="current.set( r.type )">
                                     <td [nzChecked]="selection().has( r.type.typeName )" (nzCheckedChange)="toggle( r.type, $event )" (click)="$event.stopPropagation()"></td>
                                     <td [style.padding-left.px]="8 + r.depth * 24">{{ r.type.name }}</td>
                                     <td>{{ r.type.kind }}</td>
@@ -173,7 +173,7 @@
                     </thead>
                     <tbody>
                         @for ( c of commandsTable.data; track c.name ) {
-                            <tr>
+                            <tr class="ck-catalog-row" [attr.id]="'ck-command-' + c.name" [class.ck-catalog-current]="currentCommand() === c.name" (click)="currentCommand.set( c.name )">
                                 <td>
                                     @if ( c.name === c.primaryInterface ) {
                                         @if ( c.sourceUrl ) {
@@ -199,6 +199,65 @@
                                         <a class="ck-catalog-package" (click)="openPackageAsync( p )">{{ p }}</a>{{ $last ? '' : ', ' }}
                                     }
                                 </td>
+                            </tr>
+                        }
+                    </tbody>
+                </nz-table>
+            </nz-tab>
+            <nz-tab [nzTitle]="'CK.Configurator.Catalog.Packages' | translate">
+                <input nz-input class="ck-catalog-package-filter" [placeholder]="'CK.Configurator.Catalog.PackageFilter' | translate"
+                       [ngModel]="packageFilter()" (ngModelChange)="packageFilter.set( $event )" />
+                <nz-table #packagesTable nzSize="small" [nzData]="filteredPackages()" [nzShowPagination]="false" [nzFrontPagination]="false">
+                    <thead>
+                        <tr>
+                            <th nzWidth="40px"></th>
+                            <th>{{ 'CK.Configurator.Catalog.Package' | translate }}</th>
+                            <th>{{ 'CK.Configurator.Catalog.PackageVersion' | translate }}</th>
+                            <th>{{ 'CK.Configurator.Catalog.Content' | translate }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for ( p of packagesTable.data; track p.packageId ) {
+                            <tr class="ck-catalog-row" [attr.id]="'ck-package-' + p.packageId.toLowerCase()"
+                                (click)="togglePackage( p.packageId, !expandedPackages().has( p.packageId.toLowerCase() ) )">
+                                <td [nzExpand]="expandedPackages().has( p.packageId.toLowerCase() )"
+                                    (nzExpandChange)="togglePackage( p.packageId, $event )" (click)="$event.stopPropagation()"></td>
+                                <td>{{ p.packageId }}</td>
+                                <td>{{ p.version }}</td>
+                                <td>
+                                    @if ( p.configurableTypes.length > 0 ) { <nz-tag>{{ 'CK.Configurator.Catalog.TypeCount' | translate: { count: p.configurableTypes.length } }}</nz-tag> }
+                                    @if ( p.commands.length > 0 ) { <nz-tag>{{ 'CK.Configurator.Catalog.CommandCount' | translate: { count: p.commands.length } }}</nz-tag> }
+                                </td>
+                            </tr>
+                            <tr [nzExpand]="expandedPackages().has( p.packageId.toLowerCase() )">
+                                <div class="ck-catalog-package-detail">
+                                    @if ( p.description ) { <span>{{ p.description }}</span> }
+                                    @if ( p.hasReadme ) {
+                                        <a class="ck-catalog-package" (click)="openPackageAsync( p.packageId )">{{ 'CK.Configurator.Catalog.Readme' | translate }}</a>
+                                    }
+                                    <dl>
+                                        <dt>{{ 'CK.Configurator.Catalog.Dependencies' | translate }}</dt>
+                                        <dd>
+                                            @for ( d of p.dependencies; track d.packageId ) {
+                                                @if ( packageIds().has( d.packageId.toLowerCase() ) ) {
+                                                    <nz-tag class="ck-catalog-link" (click)="selectPackage( d.packageId )">{{ d.packageId }} {{ d.versionRange }}</nz-tag>
+                                                } @else {
+                                                    <nz-tag>{{ d.packageId }} {{ d.versionRange }}</nz-tag>
+                                                }
+                                            } @empty {
+                                                <span class="sub">{{ 'CK.Configurator.Catalog.NoDependency' | translate }}</span>
+                                            }
+                                        </dd>
+                                        @if ( p.configurableTypes.length > 0 ) {
+                                            <dt>{{ 'CK.Configurator.Catalog.Types' | translate }}</dt>
+                                            <dd>@for ( t of p.configurableTypes; track t ) { <nz-tag class="ck-catalog-link" (click)="selectType( t )">{{ displayName( t ) }}</nz-tag> }</dd>
+                                        }
+                                        @if ( p.commands.length > 0 ) {
+                                            <dt>{{ 'CK.Configurator.Catalog.Commands' | translate }}</dt>
+                                            <dd>@for ( c of p.commands; track c ) { <nz-tag class="ck-catalog-link" (click)="selectCommand( c )">{{ c }}</nz-tag> }</dd>
+                                        }
+                                    </dl>
+                                </div>
                             </tr>
                         }
                     </tbody>

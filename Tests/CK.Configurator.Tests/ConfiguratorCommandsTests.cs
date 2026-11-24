@@ -84,6 +84,9 @@ public class ConfiguratorCommandsTests
                                               typeof( IGetWorldsQCommand ),
                                               typeof( IGetPackageQCommand ),
                                               typeof( IPackageInfo ),
+                                              typeof( IGetPackagesQCommand ),
+                                              typeof( ICatalogPackageInfo ),
+                                              typeof( IPackageDependencyInfo ),
                                               typeof( ICatalogInfo ),
                                               typeof( IConfigurableTypeInfo ),
                                               typeof( ILockInfo ),
@@ -168,6 +171,16 @@ public class ConfiguratorCommandsTests
         commands.Select( c => c.PrimaryInterface ).ShouldContain( "CK.IO.DynamicConfiguration.IConfigurePropertyCommand" );
         commands.ShouldAllBe( c => c.Packages.Contains( "CK.IO.DynamicConfiguration" ) );
         commands.ShouldContain( c => c.Summary != null );
+
+        var packages = (IList<ICatalogPackageInfo>)(await ExecuteAsync<IGetPackagesQCommand>( services, Source ))!;
+        packages.Count.ShouldBe( info.PackageCount );
+        var httpPackage = packages.Single( p => p.PackageId == "CK.AppIdentity.HttpEndpoint" );
+        httpPackage.Version.ShouldBe( package.Version );
+        httpPackage.HasReadme.ShouldBeTrue();
+        httpPackage.Description.ShouldNotBeNullOrWhiteSpace();
+        httpPackage.Dependencies.ShouldNotBeEmpty();
+        httpPackage.ConfigurableTypes.ShouldContain( http.TypeName );
+        packages.Single( p => p.PackageId == "CK.IO.DynamicConfiguration" ).Commands.Count.ShouldBe( commands.Count );
 
         // An unknown World or version is an error result, not an exception.
         var command = services.GetRequiredService<PocoDirectory>().Create<IOpenCatalogCommand>( c => { c.World = Path.Combine( stack, "Nope" ); c.Version = "2026.11.22-0.uc.0.ci.0"; } );
