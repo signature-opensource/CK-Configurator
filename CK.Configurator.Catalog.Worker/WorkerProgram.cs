@@ -185,6 +185,14 @@ public static class WorkerProgram
         {
             if( !packageAssemblies.TryGetValue( $"{id}/{version}", out var names ) )
             {
+                if( CatalogWorker.IsAnalyzerPackage( id ) )
+                {
+                    // Not referenced: its assembly is the worker's own one (see CatalogWorker.WriteProject).
+                    names = [id];
+                }
+            }
+            if( names == null )
+            {
                 monitor.Error( $"Package '{id}@{version}' is not in the worker's assets." );
                 success = false;
                 continue;

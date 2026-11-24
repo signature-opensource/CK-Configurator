@@ -139,6 +139,16 @@ public static class CatalogWorker
         return true;
     }
 
+    /// <summary>
+    /// Gets whether a package is the analyzer itself. The worker brings its own code: a profile that contains the
+    /// Configurator must not pin another version of it (the worker would run the analysis of that version, in its
+    /// format), so these packages are not referenced and the worker analyzes its own assemblies for them.
+    /// </summary>
+    /// <param name="packageId">The package identifier.</param>
+    /// <returns>True for the analyzer packages.</returns>
+    public static bool IsAnalyzerPackage( string packageId ) => packageId == "CK.Configurator.Catalog"
+                                                                || packageId == "CK.Configurator.Catalog.Worker";
+
     static string GetExecutablePath( string workerFolder ) => Path.Combine( workerFolder,
                                                                             "bin",
                                                                             "Release",
@@ -180,6 +190,7 @@ public static class CatalogWorker
             """ );
         foreach( var (id, version) in packages )
         {
+            if( IsAnalyzerPackage( id ) ) continue;
             // Only the runtime assemblies matter: the build files of a package (an App host, an App builder...) would
             // act on the worker project.
             p.AppendLine( $"""    <PackageReference Include="{SecurityElement.Escape( id )}" Version="[{SecurityElement.Escape( version )}]" ExcludeAssets="build;buildTransitive;analyzers" />""" );
