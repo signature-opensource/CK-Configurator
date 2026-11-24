@@ -12,11 +12,11 @@
           "Hosting": {
             "RequestPath": "/",
             "DevServerPort": 4500
+          },
+          "DesktopWindow": {
+            "Title": "CK Configurator"
           }
         }
-      },
-      "DesktopWindow": {
-        "Title": "CK Configurator"
       }
     },
     "Configurator": {

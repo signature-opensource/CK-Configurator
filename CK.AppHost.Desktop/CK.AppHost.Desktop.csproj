@@ -1,11 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Description>The "DesktopWindow" feature of a party: the host opens a native window (InfiniFrame: WebView2 on Windows) on the endpoint of its "HttpEndpoint" feature; closing the window stops the host. A CKomposable application becomes a desktop application.</Description>
+    <Description>A CKomposable application as a desktop application: the "DesktopWindow" feature of a client application and the bootstrap of its host (CKomposableDesktopHost.Run): a native window (InfiniFrame) shows the client; closing the window stops the host.</Description>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- The bootstrap of the host (CKomposableAppHost.Build): its code only, its build targets are the conventions of a host project. -->
+    <PackageReference Include="CK.AppHost" Version="25.0.0-0.uc.2.ci.61" ExcludeAssets="build" />
     <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.2.ci.61" />
+    <!-- The "Hosting" feature of a client: the window shows the client that the endpoint serves. -->
+    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.2.ci.124" />
     <PackageReference Include="InfiniLore.InfiniFrame" Version="0.62.1" />
   </ItemGroup>
   <ItemGroup>

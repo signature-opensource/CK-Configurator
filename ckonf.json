@@ -22,10 +22,15 @@
         "Local": {
           // A random local port: the desktop window shows the actual one.
           "HttpEndpoint": { "Urls": "http://127.0.0.1:0" },
-          // Its client application (Configurator.Host/Clients/App), served at "/".
-          "PartyClient": { "App": { "NgApp": true, "Hosting": { "RequestPath": "/", "DevServerPort": 4500 } } },
-          // The application is a desktop application (CK.AppHost.Desktop): closing its window stops it.
-          "DesktopWindow": { "Title": "CK Configurator" }
+          // Its client application (Configurator.Host/Clients/App), served at "/", in the window of the desktop
+          // application (CK.AppHost.Desktop): closing the window stops it.
+          "PartyClient": {
+            "App": {
+              "NgApp": true,
+              "Hosting": { "RequestPath": "/", "DevServerPort": 4500 },
+              "DesktopWindow": { "Title": "CK Configurator" }
+            }
+          }
         },
         // The development build has no worker package of its version: the workers reference the analyzer project of
         // this solution.
