@@ -333,7 +333,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         }
         else
         {
-            problems = [new EditorProblemData( "", "Info", $"The catalog of the document (the profile '{catalogVersion}' of '{catalogWorld}') is not opened: open it to check the document." )];
+            problems = [new EditorProblemData( "", "Info", $"The catalog of the document (the profile '{catalogVersion}' of '{catalogWorld}') is not opened: the document is not checked." )];
         }
         return new EditorSnapshot( _folder,
                                    _filePath,

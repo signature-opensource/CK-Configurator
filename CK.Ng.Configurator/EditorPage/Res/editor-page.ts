@@ -119,6 +119,14 @@ export class EditorPage {
         return !!s?.catalogVersion && !!o && (o.version !== s.catalogVersion || o.world !== s.catalogWorld);
     } );
 
+    /** Whether the catalog of the document failed to open (the opened source is the one of the document, without info). */
+    readonly catalogFailed = computed( () => {
+        const s = this.state();
+        const o = this.source.opened();
+        return !!s?.catalogVersion && !!o && o.version === s.catalogVersion && o.world === s.catalogWorld
+               && !this.source.info() && !!this.source.error();
+    } );
+
     /**
      * The palette: what the catalog offers at the selected property. A party: the party features; a client: the client
      * features; a feature or a client feature: its options; an App: nothing yet (its aspects are under "Aspects").

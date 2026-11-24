@@ -61,7 +61,7 @@ public class ConfiguratorEditorServiceTests
         s.IsDirty.ShouldBeFalse();
         s.ChangedOnDisk.ShouldBeFalse();
         // Its catalog is not opened: nothing is checked.
-        s.Problems.ShouldHaveSingleItem().Message.ShouldContain( "is not opened: open it to check the document" );
+        s.Problems.ShouldHaveSingleItem().Message.ShouldContain( "is not opened: the document is not checked" );
         var domain = s.Nodes.Single( n => n.Path == "Domain" );
         domain.ShouldBe( new EditorNodeData( "Domain", "Domain", 0, "String", "\"CK\"", "The domain of the parties." ) );
         var endpoint = s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint" );

@@ -46,6 +46,11 @@
                 </div>
             } @else if ( source.opening() ) {
                 <span class="sub">{{ 'CK.Configurator.Catalog.Opening' | translate }}</span>
+            } @else if ( catalogFailed() ) {
+                <nz-alert nzType="error" nzShowIcon [nzMessage]="'CK.Configurator.Editor.CatalogFailed' | translate: { version: s.catalogVersion }" [nzDescription]="source.error()!" [nzAction]="failedActions" />
+                <ng-template #failedActions>
+                    <button nz-button nzSize="small" (click)="openCatalogAsync( s.catalogWorld!, s.catalogVersion! )">{{ 'CK.Configurator.Editor.Retry' | translate }}</button>
+                </ng-template>
             } @else if ( catalogMismatch() ) {
                 <nz-alert nzType="warning" nzShowIcon [nzMessage]="'CK.Configurator.Editor.CatalogMismatch' | translate: { version: s.catalogVersion }" [nzAction]="mismatchActions" />
                 <ng-template #mismatchActions>

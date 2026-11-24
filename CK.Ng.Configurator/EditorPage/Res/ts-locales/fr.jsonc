@@ -14,6 +14,8 @@
     "CK.Configurator.Editor.UseCatalog": "Utiliser le profil {{version}} pour ce document",
     "CK.Configurator.Editor.CatalogMismatch": "Le catalogue ouvert n'est pas celui de ce document (le profil {{version}}).",
     "CK.Configurator.Editor.OpenItsCatalog": "Ouvrir son catalogue",
+    "CK.Configurator.Editor.CatalogFailed": "Le catalogue de ce document (le profil {{version}}) ne peut pas être ouvert : le document n'est pas vérifié.",
+    "CK.Configurator.Editor.Retry": "Réessayer",
     "CK.Configurator.Editor.SelectProperty": "Sélectionnez une propriété.",
     "CK.Configurator.Editor.NoDocument": "Aucune solution n'est ouverte.",
     "CK.Configurator.Editor.NewName": "Nom",

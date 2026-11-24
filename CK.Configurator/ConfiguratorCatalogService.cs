@@ -167,7 +167,9 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
         // The informational version is "Version/Sha/Date": the version of the package.
         var info = typeof( CatalogCache ).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         var version = info?.Split( '/' )[0];
-        return string.IsNullOrEmpty( version ) || version.StartsWith( "0.0.0-0", StringComparison.Ordinal )
+        // A development build has the zero version ("0.0.0-0"): the versions of the configurator's own line start with it
+        // ("0.0.0-0.uc.2") and are real versions.
+        return string.IsNullOrEmpty( version ) || version == "0.0.0-0"
                 ? null
                 : AnalyzerReference.FromPackage( version );
     }

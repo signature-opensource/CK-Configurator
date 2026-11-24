@@ -14,6 +14,8 @@
     "CK.Configurator.Editor.UseCatalog": "Use the profile {{version}} for this document",
     "CK.Configurator.Editor.CatalogMismatch": "The opened catalog is not the one of this document (the profile {{version}}).",
     "CK.Configurator.Editor.OpenItsCatalog": "Open its catalog",
+    "CK.Configurator.Editor.CatalogFailed": "The catalog of this document (the profile {{version}}) can't be opened: the document is not checked.",
+    "CK.Configurator.Editor.Retry": "Retry",
     "CK.Configurator.Editor.SelectProperty": "Select a property.",
     "CK.Configurator.Editor.NoDocument": "No solution is opened.",
     "CK.Configurator.Editor.NewName": "Name",
