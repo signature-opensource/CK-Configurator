@@ -335,6 +335,12 @@ public interface ICommandInfo : IPoco
     string PrimaryInterface { get; set; }
 
     /// <summary>
+    /// Gets or sets the URL of the page of the source file of its primary interface (at the tag of the version of its
+    /// package). Null when it is unknown.
+    /// </summary>
+    string? SourceUrl { get; set; }
+
+    /// <summary>
     /// Gets the NuGet packages of its interfaces (the primary one first).
     /// </summary>
     IList<string> Packages { get; }

@@ -153,17 +153,23 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
             i.Remarks = type.Remarks;
             i.ConfigurationModel = type.ConfigurationModel;
             i.ConfigurationSchema = type.ConfigurationSchema?.ToJsonString( _indented );
-            // The tag of the version (CKli's "v{Version}") designates the commit of the package: it is used for the files
-            // of that commit, the commit itself otherwise.
-            SourceFileUrl.TryParse( type.SourceUrl, out var source );
-            i.SourceUrl = source?.GetPageUrl( "v" + package.Version );
-            if( SourceFileUrl.TryParse( type.ConfigurationModelSourceUrl, out var model ) )
-            {
-                i.ConfigurationModelSourceUrl = model.GetPageUrl( source != null && source.Repository == model.Repository && source.Commit == model.Commit
-                                                                    ? "v" + package.Version
-                                                                    : null );
-            }
+            i.SourceUrl = GetPageUrl( package, type, type.SourceUrl );
+            i.ConfigurationModelSourceUrl = GetPageUrl( package, type, type.ConfigurationModelSourceUrl );
         } );
+    }
+
+    /// <summary>
+    /// Gets the page of a source file of a type of a package (or of a file that it uses, like its configuration model).
+    /// The tag of the version (CKli's "v{Version}") designates the commit of the package (the commit of the type): it is
+    /// used for the files of that commit, the commit itself otherwise.
+    /// </summary>
+    static string? GetPageUrl( PackageAnalysis package, TypeAnalysis type, string? rawUrl )
+    {
+        if( !SourceFileUrl.TryParse( rawUrl, out var file ) ) return null;
+        bool sameCommit = SourceFileUrl.TryParse( type.SourceUrl, out var source )
+                          && source.Repository == file.Repository
+                          && source.Commit == file.Commit;
+        return file.GetPageUrl( sameCommit ? "v" + package.Version : null );
     }
 
     /// <summary>
@@ -206,6 +212,7 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
                              i.Name = f.Name;
                              i.Exposure = f.Exposure;
                              i.PrimaryInterface = f.Primary.Type.FullName;
+                             i.SourceUrl = GetPageUrl( f.Primary.Package, f.Primary.Type, f.Primary.Type.SourceUrl );
                              i.Packages.AddRange( f.Interfaces.Select( x => x.Package.PackageId ).Distinct() );
                              i.Summary = f.Primary.Type.Summary;
                              i.Remarks = f.Primary.Type.Remarks;

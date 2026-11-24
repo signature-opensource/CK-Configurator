@@ -175,7 +175,20 @@
                         @for ( c of commandsTable.data; track c.name ) {
                             <tr>
                                 <td>
-                                    {{ c.name }}
+                                    @if ( c.name === c.primaryInterface ) {
+                                        @if ( c.sourceUrl ) {
+                                            <a [href]="c.sourceUrl" target="_blank" rel="noopener">{{ c.name }}</a>
+                                        } @else {
+                                            {{ c.name }}
+                                        }
+                                    } @else {
+                                        {{ c.name }}
+                                        @if ( c.sourceUrl ) {
+                                            <span class="ck-catalog-type">(<a [href]="c.sourceUrl" target="_blank" rel="noopener">{{ c.primaryInterface }}</a>)</span>
+                                        } @else {
+                                            <span class="ck-catalog-type">({{ c.primaryInterface }})</span>
+                                        }
+                                    }
                                     @if ( c.summary ) {
                                         <ck-markdown class="sub ck-catalog-command-summary" [text]="c.summary" />
                                     }
