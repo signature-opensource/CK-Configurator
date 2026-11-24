@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Description>A CKomposable application as a desktop application: the "DesktopWindow" feature of a client application and the bootstrap of its host (CKomposableDesktopHost.Run): a native window (InfiniFrame) shows the client; closing the window stops the host.</Description>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
