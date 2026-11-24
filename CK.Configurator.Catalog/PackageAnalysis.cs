@@ -17,7 +17,7 @@ public sealed class PackageAnalysis
     /// The format of the analyses. It is part of the key of an analysis in the cache: an analysis written by an older
     /// analyzer is not read, the package is analyzed again.
     /// </summary>
-    public const int Format = 6;
+    public const int Format = 7;
 
     /// <summary>
     /// Gets the package identifier.

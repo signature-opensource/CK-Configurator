@@ -67,6 +67,17 @@ public sealed class TypeAnalysis
     public JsonObject? ConfigurationSchema { get; init; }
 
     /// <summary>
+    /// Gets the raw URL of the source file of the type, from the SourceLink of the PDB of its assembly (see
+    /// <see cref="SourceFileUrl"/>). Null when the assembly has no PDB, no SourceLink or the type no source document.
+    /// </summary>
+    public string? SourceUrl { get; init; }
+
+    /// <summary>
+    /// Gets the raw URL of the source file of the <see cref="ConfigurationModel"/> (see <see cref="SourceUrl"/>).
+    /// </summary>
+    public string? ConfigurationModelSourceUrl { get; init; }
+
+    /// <summary>
     /// Gets the topology relations of the type, as declared.
     /// </summary>
     public IReadOnlyList<TypeRelation> Relations { get => field ?? []; init; }

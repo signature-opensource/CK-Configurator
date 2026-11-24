@@ -235,6 +235,18 @@ public interface IConfigurableTypeInfo : IPoco
     string? ConfigurationModel { get; set; }
 
     /// <summary>
+    /// Gets or sets the URL of the page of the source file of the type (at the tag of the version of its package).
+    /// Null when it is unknown.
+    /// </summary>
+    string? SourceUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the URL of the page of the source file of the <see cref="ConfigurationModel"/> (at the tag of the
+    /// version of the package when the model comes from the same commit, at its commit otherwise). Null when it is unknown.
+    /// </summary>
+    string? ConfigurationModelSourceUrl { get; set; }
+
+    /// <summary>
     /// Gets or sets the JSON Schema of the configuration model (indented JSON text). Null when the type has no model.
     /// </summary>
     string? ConfigurationSchema { get; set; }

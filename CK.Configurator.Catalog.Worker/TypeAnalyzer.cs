@@ -27,6 +27,10 @@ namespace CK.Configurator.Catalog.Worker;
 /// files of the packages) is read by CK.CodeGen's <see cref="XmlDocumentationReader"/> and its &lt;summary&gt; and
 /// &lt;remarks&gt; are converted to Markdown by its <see cref="DocumentationTextBuilder"/>.
 /// </para>
+/// <para>
+/// The source files of a type and of its configuration model are found in the PDB of their assembly
+/// (<see cref="SourceLocator"/>).
+/// </para>
 /// </summary>
 sealed class TypeAnalyzer
 {
@@ -72,6 +76,7 @@ sealed class TypeAnalyzer
     readonly IActivityMonitor _monitor;
     readonly GlobalTypeCache _typeCache;
     readonly Dictionary<object, object?> _documentationCache;
+    readonly SourceLocator _sources;
     bool _success;
 
     public TypeAnalyzer( IActivityMonitor monitor, GlobalTypeCache typeCache )
@@ -79,6 +84,7 @@ sealed class TypeAnalyzer
         _monitor = monitor;
         _typeCache = typeCache;
         _documentationCache = new Dictionary<object, object?>();
+        _sources = new SourceLocator( monitor );
         _success = true;
     }
 
@@ -338,6 +344,8 @@ sealed class TypeAnalyzer
             Command = command,
             ConfigurationModel = modelType?.FullName,
             ConfigurationSchema = schema,
+            SourceUrl = _sources.GetSourceUrl( type ),
+            ConfigurationModelSourceUrl = modelType != null ? _sources.GetSourceUrl( modelType ) : null,
             Summary = ToMarkdown( documentation?.Element( "summary" ) ),
             Remarks = ToMarkdown( documentation?.Element( "remarks" ) )
         };

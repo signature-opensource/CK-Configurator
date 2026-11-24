@@ -70,8 +70,13 @@
                     </div>
                     @if ( current(); as t ) {
                         <div class="ck-catalog-detail">
-                            <span class="header">{{ t.name }}</span>
-                            <span class="sub">{{ t.typeName }}</span>
+                            <span class="header">{{ t.name }}
+                                @if ( t.sourceUrl ) {
+                                    <span class="ck-catalog-type">(<a [href]="t.sourceUrl" target="_blank" rel="noopener">{{ t.typeName }}</a>)</span>
+                                } @else {
+                                    <span class="ck-catalog-type">({{ t.typeName }})</span>
+                                }
+                            </span>
                             <ck-markdown [text]="t.summary" />
                             @if ( t.remarks ) {
                                 <ck-markdown class="ck-catalog-remarks" [text]="t.remarks" />
@@ -102,7 +107,13 @@
                                 }
                                 @if ( t.configurationModel ) {
                                     <dt>{{ 'CK.Configurator.Catalog.Model' | translate }}</dt>
-                                    <dd>{{ displayName( t.configurationModel ) }}</dd>
+                                    <dd>
+                                        @if ( t.configurationModelSourceUrl ) {
+                                            <a [href]="t.configurationModelSourceUrl" target="_blank" rel="noopener">{{ displayName( t.configurationModel ) }}</a>
+                                        } @else {
+                                            {{ displayName( t.configurationModel ) }}
+                                        }
+                                    </dd>
                                 }
                             </dl>
                             @if ( t.configurationSchema ) {

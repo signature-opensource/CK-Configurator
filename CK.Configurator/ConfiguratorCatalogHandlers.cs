@@ -153,6 +153,16 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
             i.Remarks = type.Remarks;
             i.ConfigurationModel = type.ConfigurationModel;
             i.ConfigurationSchema = type.ConfigurationSchema?.ToJsonString( _indented );
+            // The tag of the version (CKli's "v{Version}") designates the commit of the package: it is used for the files
+            // of that commit, the commit itself otherwise.
+            SourceFileUrl.TryParse( type.SourceUrl, out var source );
+            i.SourceUrl = source?.GetPageUrl( "v" + package.Version );
+            if( SourceFileUrl.TryParse( type.ConfigurationModelSourceUrl, out var model ) )
+            {
+                i.ConfigurationModelSourceUrl = model.GetPageUrl( source != null && source.Repository == model.Repository && source.Commit == model.Commit
+                                                                    ? "v" + package.Version
+                                                                    : null );
+            }
         } );
     }
 

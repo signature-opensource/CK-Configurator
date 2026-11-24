@@ -18,6 +18,15 @@ are read by their full name: `CK.Core.CentralConfigurationKeyAttribute` (an olde
 (and its specializations), `CK.Cris.IAbstractCommand`, `CK.Cris.ICommandPart`, `CK.Cris.InternalAttribute` and
 `CK.Cris.PrivateAttribute`.
 
+The source file of a type and of its configuration model comes from the PDB of its assembly (embedded, or the `.pdb`
+file next to it): `SourceLocator` reads the documents of the type (those of its methods, the `TypeDefinitionDocuments`
+of a type without method bodies; the one named after the type for a partial type) and maps them with the SourceLink
+of the PDB. The analysis keeps this raw URL; `SourceFileUrl` (CK.Configurator.Catalog) derives the page of the file on
+GitHub, GitLab or Gitea, at the tag of the package version (`v{Version}`) or at the commit.
+
+The packages of the analyzer (`CatalogWorker.IsAnalyzerPackage`: CK.Configurator.Catalog and its worker) are never
+referenced at the version of the profile: the worker runs its own code, and analyzes its own assemblies for them.
+
 With `--serve` (`CatalogWorker.Arguments.Serve`), `WorkerProgram.Run` loads the assemblies once and answers the
 `WorkerRequest` lines of its standard input (its logs go to its standard error) until the input is closed. A
 `ClosureRequest` runs `ResPackageClosure.Compute` (CK.ResourceSpace) on the concrete resource groups of the models of
