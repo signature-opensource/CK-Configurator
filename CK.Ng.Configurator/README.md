@@ -10,7 +10,7 @@ catalog of the application, its picker, the catalog page and the editor page.
 `CatalogSource` (`catalog-source.ts`, a root service) is the opened catalog of the application and the choice of its
 source. The pages of the configurator read it: switching between them reloads nothing.
 
-The picker `<ck-catalog-source-picker>` (`CatalogSourcePickerComponent`) chooses a profile of a World, on one line:
+The picker `<ck-catalog-source-picker>` (`CatalogSourcePickerComponent`) chooses a profile of a World, one field per row (it fits a dialog or a narrow window):
 
 - the World (the URL of the GitHub repository of a Stack, followed by `/tree/main/@{LTS}` for an LTS World, or a local
   folder): "Load" lists the Worlds of its Stack (`IGetWorldsQCommand`: a World list appears when the Stack has LTS

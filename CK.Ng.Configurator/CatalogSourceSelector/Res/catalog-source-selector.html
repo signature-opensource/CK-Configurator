@@ -10,7 +10,7 @@
     <button nz-button nzSize="small" (click)="editing.set( true )">{{ 'CK.Configurator.Catalog.Edit' | translate }}</button>
 </span>
 <nz-modal [nzVisible]="editing()" (nzOnCancel)="editing.set( false )" [nzTitle]="'CK.Configurator.Catalog.ChooseCatalog' | translate"
-          nzWidth="900px" [nzFooter]="null">
+          nzWidth="640px" [nzFooter]="null">
     <ng-container *nzModalContent>
         <ck-catalog-source-picker />
         @if ( source.opening() ) {

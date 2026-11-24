@@ -1,3 +1,5 @@
+// A vertical layout: the World url and its "Load", then the World (LTS), the branch and the profile, each on its row,
+// then "Open": it fits a dialog or a narrow window.
 ck-catalog-source-picker {
     display: flex;
     flex-direction: column;
@@ -6,13 +8,17 @@ ck-catalog-source-picker {
 
     .ck-catalog-source {
         display: flex;
+        flex-direction: column;
         gap: 8px;
-        align-items: center;
-        > * { min-width: 0; }
-        .ck-catalog-world { flex: 3; }
-        .ck-catalog-lts { flex: 1; }
-        .ck-catalog-branch { flex: 2; }
-        .ck-catalog-version { flex: 2; }
+        .ck-catalog-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            > * { min-width: 0; }
+        }
+        .ck-catalog-label { flex: none; width: 96px; }
+        .ck-catalog-world, .ck-catalog-lts, .ck-catalog-branch, .ck-catalog-version { flex: 1; }
+        .ck-catalog-actions { justify-content: space-between; }
         .ck-catalog-deprecated, button { flex: none; white-space: nowrap; }
     }
 }
