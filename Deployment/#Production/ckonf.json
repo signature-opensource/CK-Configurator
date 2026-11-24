@@ -1,16 +1,18 @@
 {
-  // The "#Production" deployment of the configurator: the desktop application, published as one executable (Windows).
+  // The "#Production" deployment of the configurator: the desktop application, published as one executable and its
+  // client application (Windows).
   // An overlay of the central ckonf.json (a JSON Merge Patch: an object merges, null removes, any other value, an array
   // included, replaces). Its merged configuration is ckonf.merged.json, next to it (generated: do not edit). Its asset is
   // built by Deployment/GenerateAssets.cs (CK.AppDeployment): Deployment/Assets/Production-Configurator.
   "Deployment": {
-    // One executable: self-contained, with the client application and the native libraries of the window inside it
-    // (extracted at the first run). Windows only: the window is tested on WebView2 only.
+    // One executable, self-contained, with the native libraries of the window inside it (extracted at the first run);
+    // next to it: its appsettings.json, its CK.AppHost.Published.json and its client application (Clients). Windows only:
+    // the window is tested on WebView2 only.
     "Publish": {
       "RuntimeIdentifier": "win-x64",
       "SelfContained": true,
       "PublishSingleFile": true,
-      "IncludeAllContentForSelfExtract": true
+      "IncludeNativeLibrariesForSelfExtract": true
     }
   },
   "Defaults": {
