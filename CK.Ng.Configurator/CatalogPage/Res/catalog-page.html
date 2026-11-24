@@ -222,7 +222,7 @@
                                 (click)="togglePackage( p.packageId, !expandedPackages().has( p.packageId.toLowerCase() ) )">
                                 <td [nzExpand]="expandedPackages().has( p.packageId.toLowerCase() )"
                                     (nzExpandChange)="togglePackage( p.packageId, $event )" (click)="$event.stopPropagation()"></td>
-                                <td>{{ p.packageId }}</td>
+                                <td><span nz-tooltip [nzTooltipTitle]="p.description" nzTooltipPlacement="right">{{ p.packageId }}</span></td>
                                 <td>{{ p.version }}</td>
                                 <td>
                                     @if ( p.configurableTypes.length > 0 ) { <nz-tag>{{ 'CK.Configurator.Catalog.TypeCount' | translate: { count: p.configurableTypes.length } }}</nz-tag> }
@@ -231,9 +231,12 @@
                             </tr>
                             <tr [nzExpand]="expandedPackages().has( p.packageId.toLowerCase() )">
                                 <div class="ck-catalog-package-detail">
-                                    @if ( p.description ) { <span>{{ p.description }}</span> }
                                     @if ( p.hasReadme ) {
-                                        <a class="ck-catalog-package" (click)="openPackageAsync( p.packageId )">{{ 'CK.Configurator.Catalog.Readme' | translate }}</a>
+                                        @if ( readmes().get( p.packageId.toLowerCase() ); as readme ) {
+                                            <ck-markdown class="ck-catalog-readme" [text]="readme" />
+                                        }
+                                    } @else {
+                                        <span class="sub">{{ 'CK.Configurator.Catalog.NoReadme' | translate }}</span>
                                     }
                                     <dl>
                                         <dt>{{ 'CK.Configurator.Catalog.Dependencies' | translate }}</dt>

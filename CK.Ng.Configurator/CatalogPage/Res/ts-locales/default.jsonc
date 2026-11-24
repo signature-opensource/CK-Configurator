@@ -48,7 +48,6 @@
     "CK.Configurator.Catalog.PackageFilter": "Filter the packages",
     "CK.Configurator.Catalog.TypeCount": "Configurable types: {{count}}",
     "CK.Configurator.Catalog.CommandCount": "Commands: {{count}}",
-    "CK.Configurator.Catalog.Readme": "Its readme",
     "CK.Configurator.Catalog.Dependencies": "Direct dependencies",
     "CK.Configurator.Catalog.NoDependency": "None."
 }

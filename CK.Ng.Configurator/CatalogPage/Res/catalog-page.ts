@@ -10,6 +10,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { BranchInfo, CatalogInfo, CatalogPackageInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetPackageQCommand, GetPackagesQCommand, GetProfilesQCommand, GetWorldsQCommand, HttpCrisEndpoint, MarkdownComponent, OpenCatalogCommand, PackageInfo, ProfileInfo } from '@local/ck-gen';
 
 /** A configurable type and its depth in the list: an option is shown under its owner. */
@@ -163,7 +164,8 @@ function levelOf( kind: string ): string {
         NzSelectModule,
         NzTableModule,
         NzTabsModule,
-        NzTagModule
+        NzTagModule,
+        NzTooltipModule
     ],
     templateUrl: './catalog-page.html'
 } )
@@ -216,6 +218,8 @@ export class CatalogPage {
     } );
     /** The opened packages (their identifiers, lower case). */
     readonly expandedPackages = signal<ReadonlySet<string>>( new Set() );
+    /** The readmes of the opened packages (by identifier, lower case): undefined while it is read. */
+    readonly readmes = signal<ReadonlyMap<string, string | undefined>>( new Map() );
     /** The selected tab: the configurable types, the commands, the packages. */
     readonly tab = signal( 0 );
     /** The command that is selected (its name). */
@@ -375,6 +379,7 @@ export class CatalogPage {
         this.current.set( undefined );
         this.currentCommand.set( undefined );
         this.expandedPackages.set( new Set() );
+        this.readmes.set( new Map() );
         try {
             this.info.set( await this.#cris.sendOrThrowAsync( this.#source( new OpenCatalogCommand() ) ) );
             this.types.set( await this.#cris.sendOrThrowAsync( this.#source( new GetConfigurableTypesQCommand() ) ) ?? [] );
@@ -410,11 +415,32 @@ export class CatalogPage {
         }
     }
 
-    /** Opens or closes a package of the packages tab. */
+    /** Opens or closes a package of the packages tab (an opened package shows its readme, read once). */
     togglePackage( packageId: string, expanded: boolean ): void {
+        const key = packageId.toLowerCase();
         const s = new Set( this.expandedPackages() );
-        if( expanded ) s.add( packageId.toLowerCase() ); else s.delete( packageId.toLowerCase() );
+        if( expanded ) s.add( key ); else s.delete( key );
         this.expandedPackages.set( s );
+        if( expanded && !this.readmes().has( key ) && this.packages().find( p => p.packageId.toLowerCase() === key )?.hasReadme ) {
+            this.#loadReadmeAsync( packageId );
+        }
+    }
+
+    async #loadReadmeAsync( packageId: string ): Promise<void> {
+        const key = packageId.toLowerCase();
+        this.readmes.set( new Map( this.readmes() ).set( key, undefined ) );
+        try {
+            const c = this.#source( new GetPackageQCommand() );
+            c.packageId = packageId;
+            const p = await this.#cris.sendOrThrowAsync( c );
+            this.readmes.set( new Map( this.readmes() ).set( key, p?.readme ?? '' ) );
+        } catch( e ) {
+            // Read again on the next opening.
+            const m = new Map( this.readmes() );
+            m.delete( key );
+            this.readmes.set( m );
+            this.error.set( String( e ) );
+        }
     }
 
     /** Selects a configurable type in the configurable types tab. */
