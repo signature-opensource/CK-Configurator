@@ -13,9 +13,11 @@ namespace CK.Configurator.Catalog.Worker;
 /// <summary>
 /// Reads what an assembly declares for the configurator.
 /// <para>
-/// The attributes of CK.ResourceSpace.Abstractions (the configurable types, the configuration declarations, the
-/// topology) are known types. The ones of the packages that the analyzer doesn't reference (CK.AppIdentity's
-/// <c>[PartyClientFact]</c>, CK.TypeScript's <c>[TypeScriptPackage]</c>, CK.Cris' commands) are read by their name.
+/// The attributes of CK.AppBuilder.Abstractions (the configurable types, the configuration declarations) are known
+/// types; the topology is read by <see cref="ResPackageRelationReader"/> (the rules and the checks of the ResourceSpace).
+/// The others are read by their name: the ones of the packages that the analyzer doesn't reference (CK.TypeScript's
+/// <c>[TypeScriptPackage]</c>, CK.Cris' commands) and <c>[PartyClientFact]</c> (an older profile has it in
+/// CK.AppIdentity.PartyClient).
 /// </para>
 /// <para>
 /// The configuration model of a type (<c>[Configuration&lt;TModel&gt;]</c>, read by its name) gives its JSON Schema:
@@ -46,32 +48,6 @@ sealed class TypeAnalyzer
     const string _centralKey = "CK.Core.CentralConfigurationKeyAttribute";
     // Read by name: an older CK.Abstractions (in an older profile) doesn't have it.
     const string _configuration = "CK.Core.ConfigurationAttribute`1";
-
-    static readonly Dictionary<Type, (string Kind, bool Optional)> _nameRelations = new()
-    {
-        { typeof( RequiresAttribute ), ("Requires", false) },
-        { typeof( OptionalRequiresAttribute ), ("Requires", true) },
-        { typeof( RequiredByAttribute ), ("RequiredBy", false) },
-        { typeof( OptionalRequiredByAttribute ), ("RequiredBy", true) },
-        { typeof( ChildrenAttribute ), ("Children", false) },
-        { typeof( OptionalChildrenAttribute ), ("Children", true) },
-        { typeof( GroupsAttribute ), ("Groups", false) },
-        { typeof( OptionalGroupsAttribute ), ("Groups", true) },
-    };
-
-    // The generic topology attributes, by the name of their definition without the arity: "RequiresAttribute`2" is "RequiresAttribute".
-    static readonly Dictionary<string, (string Kind, bool Optional)> _genericRelations = new( StringComparer.Ordinal )
-    {
-        { "CK.Core.RequiresAttribute", ("Requires", false) },
-        { "CK.Core.OptionalRequiresAttribute", ("Requires", true) },
-        { "CK.Core.RequiredByAttribute", ("RequiredBy", false) },
-        { "CK.Core.OptionalRequiredByAttribute", ("RequiredBy", true) },
-        { "CK.Core.ChildrenAttribute", ("Children", false) },
-        { "CK.Core.OptionalChildrenAttribute", ("Children", true) },
-        { "CK.Core.GroupsAttribute", ("Groups", false) },
-        { "CK.Core.OptionalGroupsAttribute", ("Groups", true) },
-        { "CK.Core.PackageAttribute", ("Package", false) },
-    };
 
     readonly IActivityMonitor _monitor;
     readonly GlobalTypeCache _typeCache;
@@ -208,32 +184,9 @@ sealed class TypeAnalyzer
             {
                 (perDeployment ??= []).Add( (string)a.ConstructorArguments[0].Value! );
             }
-            else if( _nameRelations.TryGetValue( aType, out var nameRelation ) )
-            {
-                // The params string[] constructor argument: each string is a comma separated list of full names.
-                foreach( var n in (IReadOnlyCollection<CustomAttributeTypedArgument>)a.ConstructorArguments[0].Value! )
-                {
-                    foreach( var name in ((string)n.Value!).Split( ',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries ) )
-                    {
-                        (relations ??= []).Add( new TypeRelation( nameRelation.Kind, name, nameRelation.Optional ) );
-                    }
-                }
-            }
             else if( aType.IsGenericType && aType.GetGenericTypeDefinition().FullName == _configuration )
             {
                 modelType = aType.GetGenericArguments()[0];
-            }
-            else if( aType == typeof( PackageAttribute ) )
-            {
-                (relations ??= []).Add( new TypeRelation( "Package", (string)a.ConstructorArguments[0].Value!, false ) );
-            }
-            else if( aType.IsGenericType
-                     && _genericRelations.TryGetValue( WithoutArity( aType.GetGenericTypeDefinition().FullName! ), out var genericRelation ) )
-            {
-                foreach( var target in aType.GetGenericArguments() )
-                {
-                    (relations ??= []).Add( new TypeRelation( genericRelation.Kind, target.FullName!, genericRelation.Optional ) );
-                }
             }
             else if( aType.FullName == _partyClientFact )
             {
@@ -259,25 +212,10 @@ sealed class TypeAnalyzer
                                                            (string?)GetNamed( a, "TypeScriptFolder" ) );
             }
         }
-        // The IResourceGroupTopologyAttribute: its relations are properties of the instance.
-        foreach( var a in t.RawAttributes )
-        {
-            if( a is IResourceGroupTopologyAttribute topology )
-            {
-                AddTypes( ref relations, "Requires", false, topology.Requires );
-                AddTypes( ref relations, "Requires", true, topology.OptionalRequires );
-                AddTypes( ref relations, "RequiredBy", false, topology.RequiredBy );
-                AddTypes( ref relations, "RequiredBy", true, topology.OptionalRequiredBy );
-                AddTypes( ref relations, "Children", false, topology.Children );
-                AddTypes( ref relations, "Children", true, topology.OptionalChildren );
-                AddTypes( ref relations, "Groups", false, topology.Groups );
-                AddTypes( ref relations, "Groups", true, topology.OptionalGroups );
-                if( topology.Package != null )
-                {
-                    (relations ??= []).Add( new TypeRelation( "Package", topology.Package.FullName!, false ) );
-                }
-            }
-        }
+        // The relations: read by the reader of the ResourceSpace (the rules and the checks of the space).
+        var relationCollector = new RelationCollector();
+        if( !ResPackageRelationReader.Read( _monitor, t, ref relationCollector ) ) _success = false;
+        relations = relationCollector.Relations;
 
         List<PropertyLevel>? levels = null;
         foreach( var p in type.GetProperties( BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly ) )
@@ -376,14 +314,6 @@ sealed class TypeAnalyzer
         return text.Length == 0 ? null : text;
     }
 
-    static void AddTypes( ref List<TypeRelation>? relations, string kind, bool optional, ReadOnlySpan<Type> types )
-    {
-        foreach( var t in types )
-        {
-            if( t?.FullName != null ) (relations ??= []).Add( new TypeRelation( kind, t.FullName, optional ) );
-        }
-    }
-
     static object? GetNamed( CustomAttributeData a, string name )
     {
         foreach( var n in a.NamedArguments )
@@ -403,16 +333,25 @@ sealed class TypeAnalyzer
         return false;
     }
 
-    static string WithoutArity( string name )
-    {
-        int i = name.IndexOf( '`' );
-        return i < 0 ? name : name[..i];
-    }
-
     static string WithoutAttributeSuffix( string name )
     {
         int i = name.IndexOf( '`' );
         if( i >= 0 ) name = name[..i];
         return name.EndsWith( "Attribute", StringComparison.Ordinal ) ? name[..^"Attribute".Length] : name;
+    }
+
+    struct RelationCollector : IResPackageRelationVisitor
+    {
+        public List<TypeRelation>? Relations;
+
+        public void OnPackage( ResPackageDescriptor.Ref package )
+        {
+            (Relations ??= []).Add( new TypeRelation( "Package", package.FullName!, false ) );
+        }
+
+        public void OnRelation( ResRelationKind kind, ResPackageDescriptor.Ref target )
+        {
+            (Relations ??= []).Add( new TypeRelation( kind.ToString(), target.FullName!, target.IsOptional ) );
+        }
     }
 }
