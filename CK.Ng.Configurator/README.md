@@ -23,8 +23,10 @@ The picker `<ck-catalog-source-picker>` (`CatalogSourcePickerComponent`) chooses
 packages of the catalog (`info`, `types`, `commands`, `packages`). `CatalogSource.source( command )` sets the opened
 source on a command.
 
-The shell of an application shows the picker in its header and sets `CatalogSource.pickerInShell`; otherwise the
-catalog page shows it.
+`<ck-catalog-source-selector>` (`CatalogSourceSelectorComponent`) shows the opened catalog on one line,
+`[Stack url - World - profile]` (or `<no catalog>`), with an "Edit" button that opens the picker in a dialog (closed once
+a catalog is opened). The shell of an application shows it in its header and sets `CatalogSource.pickerInShell`;
+otherwise the pages show the picker.
 
 ## The catalog page
 
@@ -60,7 +62,9 @@ solution, held by the backend: every action is an editor command that returns th
   (`ISetCatalogSourceCommand`: written in the document); an opened catalog that is not the one of the document is a
   warning.
 - **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
-  a party, a feature, a client, an option) with their role, the counts of their errors and warnings.
+  a party, a feature, a client, an option) with their role, the counts of their errors and warnings. A builder is shown
+  without its ".Builder" suffix (in the paths too); the keys of the document don't change. The three panes take the
+  height of the window and scroll on their own.
 - **The selected property** (centre): its path, its role and its configurable type, its problems, the comment written
   above it, its value (a switch for a boolean, a text for a string, JSON text otherwise; "Edit as JSON" replaces it by
   any value), the addition of a property to an object, its removal, and the documentation of its type (its summary
