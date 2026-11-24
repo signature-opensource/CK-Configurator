@@ -3,13 +3,13 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.TypeCache" Version="36.0.2-0.uc.2.ci.64" />
+    <PackageReference Include="CK.TypeCache" Version="36.0.2-0.uc.2.ci.66" />
     <!-- ResPackageClosure: the closure requests of the server mode. -->
-    <PackageReference Include="CK.ResourceSpace" Version="36.0.2-0.uc.2.ci.64" />
+    <PackageReference Include="CK.ResourceSpace" Version="36.0.2-0.uc.2.ci.66" />
     <!-- The Xml documentation of the types (XmlDocumentationReader, DocumentationTextBuilder). -->
     <PackageReference Include="CK.CodeGen" Version="18.0.0-0.uc.1.ci.21" />
     <!-- The JSON Schema of the configuration models (ConfigurationModelSchema). -->
-    <PackageReference Include="CK.ConfigurationModel" Version="0.0.0-0.uc.0.ci.16" />
+    <PackageReference Include="CK.ConfigurationModel" Version="0.0.0-0.uc.0.ci.17" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.Configurator.Catalog\CK.Configurator.Catalog.csproj" />
