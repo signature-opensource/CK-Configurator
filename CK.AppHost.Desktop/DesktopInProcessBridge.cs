@@ -46,6 +46,7 @@ sealed class DesktopInProcessBridge
     static readonly Uri _jarUri = new( "http://localhost/" );
     readonly CookieContainer _cookies = new();
     volatile TestServer? _server;
+    readonly TaskCompletionSource _pageRequested = new( TaskCreationOptions.RunContinuationsAsynchronously );
     string _origin = "app://localhost";
 
     /// <summary>
@@ -57,6 +58,24 @@ sealed class DesktopInProcessBridge
     {
         _origin = serverUrl.TrimEnd( '/' );
         _server = server;
+    }
+
+    /// <summary>
+    /// Waits for the first request of the page (a navigation that reached the scheme).
+    /// </summary>
+    /// <param name="timeout">The maximal time to wait.</param>
+    /// <returns>True when the page has asked a file, false on timeout.</returns>
+    public async Task<bool> WaitForPageAsync( TimeSpan timeout )
+    {
+        try
+        {
+            await _pageRequested.Task.WaitAsync( timeout ).ConfigureAwait( false );
+            return true;
+        }
+        catch( TimeoutException )
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -72,6 +91,7 @@ sealed class DesktopInProcessBridge
         }
         try
         {
+            _pageRequested.TrySetResult();
             var uri = new Uri( url );
             // The handler is synchronous: the request runs on the thread pool.
             var context = Task.Run( () => GetAsync( server, uri.PathAndQuery, default ) ).GetAwaiter().GetResult();

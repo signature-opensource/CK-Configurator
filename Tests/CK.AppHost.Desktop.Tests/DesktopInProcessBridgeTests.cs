@@ -109,6 +109,15 @@ public class DesktopInProcessBridgeTests
     }
 
     [Test]
+    public async Task the_first_request_of_the_page_is_signaled_Async()
+    {
+        var bridge = CreateBridge();
+        (await bridge.WaitForPageAsync( TimeSpan.FromMilliseconds( 50 ) )).ShouldBeFalse();
+        bridge.HandleScheme( null!, "app://localhost/accept" );
+        (await bridge.WaitForPageAsync( TimeSpan.FromMilliseconds( 50 ) )).ShouldBeTrue();
+    }
+
+    [Test]
     public async Task without_server_the_request_is_a_503_Async()
     {
         var bridge = new DesktopInProcessBridge();

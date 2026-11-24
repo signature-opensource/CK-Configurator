@@ -144,9 +144,13 @@ public static class CKomposableDesktopHost
         // The bridge to an in-process endpoint: its handlers are registered with the window (they answer "starting..."
         // until the endpoint is started, and are unused when the endpoint runs on Kestrel).
         var bridge = new DesktopInProcessBridge();
+        // A navigation requested before the window is created is lost: the client is loaded once it is.
+        var windowCreated = new TaskCompletionSource( TaskCreationOptions.RunContinuationsAsynchronously );
         void RunWindow()
         {
-            var window = InfiniFrameWindowBuilder.Create()
+            var builder = InfiniFrameWindowBuilder.Create();
+            builder.EventsStore.WindowCreated.Add( _ => windowCreated.TrySetResult() );
+            var window = builder
                             .SetTitle( settings.Title )
                             .SetSize( settings.Width, settings.Height )
                             .SetStartPageContent( Page( settings.Title, "starting...", null ) )
@@ -156,7 +160,7 @@ public static class CKomposableDesktopHost
             _window = window;
             hostTask = Task.Run( async () =>
             {
-                if( !await RunHostAsync( host, window, settings, bridge ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );
+                if( !await RunHostAsync( host, window, settings, bridge, windowCreated.Task ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );
             } );
             window.WaitForClose();
         }
@@ -190,7 +194,11 @@ public static class CKomposableDesktopHost
 
     // Starts the host, loads the client in the window, and waits for the host to stop. False on failure (it is shown in
     // the window that stays open until it is closed).
-    static async Task<bool> RunHostAsync( IHost host, IInfiniFrameWindow window, DesktopWindowSettings settings, DesktopInProcessBridge bridge )
+    static async Task<bool> RunHostAsync( IHost host,
+                                          IInfiniFrameWindow window,
+                                          DesktopWindowSettings settings,
+                                          DesktopInProcessBridge bridge,
+                                          Task windowCreated )
     {
         // The errors logged while the host starts: shown in the window on failure (the exception only says that a setup
         // failed). The monitors created while it starts collect them.
@@ -228,6 +236,7 @@ public static class CKomposableDesktopHost
                 return false;
             }
             ActivityMonitor.StaticLogger.Info( $"Desktop window on '{url}'." );
+            await WaitForWindowAsync( windowCreated ).ConfigureAwait( false );
             // An in-process endpoint ("InProcess" option): the window relays the requests of its page, no port is opened.
             var server = host.Services.GetRequiredService<HttpEndpointFeatureDriver>().Endpoint?.GetInProcessServer();
             if( server != null )
@@ -241,6 +250,13 @@ public static class CKomposableDesktopHost
                 }
                 bridge.SetServer( server, url );
                 await LoadWhenReadyAsync( window, url, u => bridge.GetAsync( server, new Uri( u ).PathAndQuery, default ).ContinueWith( t => t.Result.Response.StatusCode ) ).ConfigureAwait( false );
+                // The page asks its files to the bridge: a navigation that didn't reach it is requested again.
+                for( int retry = 0; retry < 10 && !window.IsClosedOrClosing(); ++retry )
+                {
+                    if( await bridge.WaitForPageAsync( TimeSpan.FromSeconds( 2 ) ).ConfigureAwait( false ) ) break;
+                    ActivityMonitor.StaticLogger.Warn( $"The desktop window didn't load '{url}': it is loaded again." );
+                    Load( window, url );
+                }
             }
             else
             {
@@ -310,6 +326,18 @@ public static class CKomposableDesktopHost
     }
 
     static readonly TimeSpan _readyDelay = TimeSpan.FromMinutes( 3 );
+
+    static async Task WaitForWindowAsync( Task windowCreated )
+    {
+        try
+        {
+            await windowCreated.WaitAsync( TimeSpan.FromSeconds( 30 ) ).ConfigureAwait( false );
+        }
+        catch( TimeoutException )
+        {
+            ActivityMonitor.StaticLogger.Warn( "The desktop window is not created after 30 seconds: the client is loaded anyway." );
+        }
+    }
 
     static async Task ShowFailureAsync( IInfiniFrameWindow window, string title, string message, IEnumerable<string> errors, Exception? ex )
     {
