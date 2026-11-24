@@ -5,10 +5,10 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <!-- The bootstrap of the host (CKomposableAppHost.Build): its code only, its build targets are the conventions of a host project. -->
-    <PackageReference Include="CK.AppHost" Version="25.0.0-0.uc.2.ci.61" ExcludeAssets="build" />
-    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.2.ci.61" />
+    <PackageReference Include="CK.AppHost" Version="25.0.0-0.uc.2.ci.64" ExcludeAssets="build" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.2.ci.64" />
     <!-- The "Hosting" feature of a client: the window shows the client that the endpoint serves. -->
-    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.2.ci.124" />
+    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.2.ci.127" />
     <PackageReference Include="InfiniLore.InfiniFrame" Version="0.62.1" />
   </ItemGroup>
   <ItemGroup>
