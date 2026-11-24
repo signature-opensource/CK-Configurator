@@ -1,0 +1,23 @@
+<span class="ck-catalog-source-selector">
+    @if ( source.opened(); as o ) {
+        <span class="ck-catalog-source-label">[{{ stackUrl() }} - {{ source.worldLabel( o.world ) }} - {{ o.version }}]</span>
+        @if ( source.opening() ) {
+            <span class="sub">{{ 'CK.Configurator.Catalog.OpeningShort' | translate }}</span>
+        }
+    } @else {
+        <span class="ck-catalog-source-label sub">{{ 'CK.Configurator.Catalog.NoCatalog' | translate }}</span>
+    }
+    <button nz-button nzSize="small" (click)="editing.set( true )">{{ 'CK.Configurator.Catalog.Edit' | translate }}</button>
+</span>
+<nz-modal [nzVisible]="editing()" (nzOnCancel)="editing.set( false )" [nzTitle]="'CK.Configurator.Catalog.ChooseCatalog' | translate"
+          nzWidth="900px" [nzFooter]="null">
+    <ng-container *nzModalContent>
+        <ck-catalog-source-picker />
+        @if ( source.opening() ) {
+            <p class="sub">{{ 'CK.Configurator.Catalog.Opening' | translate }}</p>
+        }
+        @if ( source.error() ) {
+            <p class="ck-catalog-source-error">{{ source.error() }}</p>
+        }
+    </ng-container>
+</nz-modal>

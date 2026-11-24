@@ -20,10 +20,15 @@
         flex-wrap: wrap;
     }
 
+    // The panes take the height of the window below the header: each one scrolls on its own (the tree is long), the
+    // header and the other panes stay visible.
     .ck-editor-panes {
         display: flex;
         gap: 16px;
-        align-items: flex-start;
+        align-items: stretch;
+        height: calc(100vh - 210px);
+        min-height: 320px;
+        > div { overflow-y: auto; }
     }
 
     .ck-editor-tree {

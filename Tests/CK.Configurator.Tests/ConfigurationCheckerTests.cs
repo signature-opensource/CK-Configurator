@@ -64,9 +64,11 @@ public class ConfigurationCheckerTests
             {
               "$configurator": { "World": "w", "Version": "v" },
               "Domain": "CK",
-              "Defaults": { "App": { "Logging": {} } },
+              "$PER_DEPLOYMENT": [ "Links:[*]:Link:KeyManagement:AutoTrustKey" ],
+              "Defaults": { "App": { "Logging": {}, "$LOCK": { "Logging": "Init" } } },
               "Builders": {
                 "App/App.Builder": {
+                  "$PER_DEPLOYMENT": [ "App:Local:PublicUrl" ],
                   "Aspects": { "SqlServer": { "Db": "x", "$LOCK": { "Db": "Compile" }, "$PER_DEPLOYMENT": [ "Db" ] } },
                   "App": {
                     "Aspects": { "Globalization": true },
@@ -114,6 +116,8 @@ public class ConfigurationCheckerTests
     [TestCase( """{ "Builders": { "B": { "App": { "$PER_DEPLOYMENT": [ 1 ] } } } }""", "Builders:B:App:$PER_DEPLOYMENT", "Error", "\"$PER_DEPLOYMENT\" must be an array of paths" )]
     [TestCase( """{ "Builders": { "B": { "App": { "X": { "$SECRET": "k", "Other": 1 } } } } }""", "Builders:B:App:X:$SECRET", "Error", "must be the only key of its object" )]
     [TestCase( """{ "Defaults": { "Party": {} } }""", "Defaults:Party", "Warning", "Unknown key 'Party' in \"Defaults\"" )]
+    [TestCase( """{ "$LOCK": { "Domain": "Compile" } }""", "$LOCK", "Error", "it is outside them" )]
+    [TestCase( """{ "Builders": { "B": { "Aspects": { "$LOCK": { "X": "Compile" } } } } }""", "Builders:B:Aspects:$LOCK", "Error", "it is outside them" )]
     public void problems( string text, string path, string severity, string message )
     {
         var (_, problems) = Check( text );

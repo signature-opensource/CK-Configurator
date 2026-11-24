@@ -64,7 +64,7 @@
                             } @else {
                                 <span class="ck-editor-toggle"></span>
                             }
-                            <span class="ck-editor-name" [class.ck-editor-typed]="!!r.node.role">{{ r.node.name }}</span>
+                            <span class="ck-editor-name" [class.ck-editor-typed]="!!r.node.role">{{ displayName( r.node ) }}</span>
                             @if ( r.node.role ) {
                                 <span class="ck-editor-role">{{ ('CK.Configurator.Editor.Role.' + r.node.role) | translate }}</span>
                             }
@@ -84,7 +84,7 @@
                 <!-- The selected property. -->
                 <div class="ck-editor-detail">
                     @if ( selected(); as n ) {
-                        <span class="header">{{ n.name }}</span>
+                        <span class="header">{{ displayName( n ) }}</span>
                         <span class="sub">{{ shortPath( n.path ) }}</span>
                         @if ( n.role ) {
                             <span>{{ ('CK.Configurator.Editor.Role.' + n.role) | translate }} @if ( n.typeName ) { <b>{{ n.typeName }}</b> }</span>

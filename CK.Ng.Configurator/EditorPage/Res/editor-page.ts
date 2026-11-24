@@ -314,8 +314,23 @@ export class EditorPage {
         return this.runAsync( c );
     }
 
-    /** The path of a property without the path of its builder: "App:Local:HttpEndpoint". */
+    /**
+     * The path of a property as it is shown: without "Builders:" and without the ".Builder" suffix of its builder
+     * ("Auth3/Auth3.Auth3:App:Local:HttpEndpoint"). The keys of the document don't change.
+     */
     shortPath( path: string ): string {
-        return path.startsWith( 'Builders:' ) ? path.substring( 9 ) : path;
+        if( !path.startsWith( 'Builders:' ) ) return path;
+        const rest = path.substring( 9 );
+        const i = rest.indexOf( ':' );
+        return i < 0 ? EditorPage.builderName( rest ) : EditorPage.builderName( rest.substring( 0, i ) ) + rest.substring( i );
+    }
+
+    /** The name of a property as it is shown: a builder without its ".Builder" suffix. */
+    displayName( n: EditorNode ): string {
+        return n.role === 'Builder' || ( n.depth === 1 && n.path.startsWith( 'Builders:' ) ) ? EditorPage.builderName( n.name ) : n.name;
+    }
+
+    static builderName( key: string ): string {
+        return key.replace( /\.Builder$/i, '' );
     }
 }

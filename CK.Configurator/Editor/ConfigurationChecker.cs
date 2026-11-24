@@ -33,8 +33,9 @@ namespace CK.Configurator;
 /// </summary>
 public static class ConfigurationChecker
 {
-    static readonly HashSet<string> _rootKeys = new( StringComparer.OrdinalIgnoreCase ) { "$schema", "$configurator", "Deployment", "Builders", "Defaults" };
-    static readonly HashSet<string> _builderKeys = new( StringComparer.OrdinalIgnoreCase ) { "App", "Apps", "Aspects", "ProjectCompileKeys", "$schema" };
+    // "$PER_DEPLOYMENT" markers are accepted on any object (CentralDeployment.PerDeploymentKey).
+    static readonly HashSet<string> _rootKeys = new( StringComparer.OrdinalIgnoreCase ) { "$schema", "$configurator", "$PER_DEPLOYMENT", "Deployment", "Builders", "Defaults" };
+    static readonly HashSet<string> _builderKeys = new( StringComparer.OrdinalIgnoreCase ) { "App", "Apps", "Aspects", "ProjectCompileKeys", "$schema", "$PER_DEPLOYMENT" };
     static readonly HashSet<string> _partyKeys = new( StringComparer.OrdinalIgnoreCase ) { "PublicUrl", "Assemblies", "DefaultAssembly" };
     static readonly HashSet<string> _clientKeys = new( StringComparer.OrdinalIgnoreCase ) { "Types", "ExcludedTypes" };
     static readonly HashSet<string> _lockLevels = new( StringComparer.Ordinal ) { "\"Compile\"", "\"Init\"", "\"Run\"" };
@@ -93,7 +94,8 @@ public static class ConfigurationChecker
                 if( n.Name.Equals( "$configurator", StringComparison.OrdinalIgnoreCase ) ) CheckConfigurator( n );
                 else if( n.Name.Equals( "Builders", StringComparison.OrdinalIgnoreCase ) ) CheckBuilders( n );
                 else if( n.Name.Equals( "Defaults", StringComparison.OrdinalIgnoreCase ) ) CheckDefaults( n );
-                else if( !_rootKeys.Contains( n.Name ) && !_centralKeys.Contains( n.Name ) )
+                // A "$LOCK" is reported by CheckSyntax (it is outside the Apps and the Builder aspects).
+                else if( !_rootKeys.Contains( n.Name ) && !_centralKeys.Contains( n.Name ) && !n.Name.Equals( "$LOCK", StringComparison.OrdinalIgnoreCase ) )
                 {
                     Warn( n.Path, $"Unknown root key '{n.Name}': no package of the catalog declares it (the build refuses a key that no contributor claims)." );
                 }
@@ -117,7 +119,10 @@ public static class ConfigurationChecker
             foreach( var c in Children( n.Path ) )
             {
                 if( c.Name.Equals( "App", StringComparison.OrdinalIgnoreCase ) ) CheckApp( c );
-                else Warn( c.Path, $"Unknown key '{c.Name}' in \"Defaults\": the defaults are the ones of every App (\"Defaults:App\")." );
+                else if( !c.Name.Equals( "$PER_DEPLOYMENT", StringComparison.OrdinalIgnoreCase ) && !c.Name.Equals( "$LOCK", StringComparison.OrdinalIgnoreCase ) )
+                {
+                    Warn( c.Path, $"Unknown key '{c.Name}' in \"Defaults\": the defaults are the ones of every App (\"Defaults:App\")." );
+                }
             }
         }
 
@@ -296,7 +301,11 @@ public static class ConfigurationChecker
                 {
                     if( n.Name.Equals( "$LOCK", StringComparison.OrdinalIgnoreCase ) )
                     {
-                        if( n.Kind != "Object" || Children( n.Path ).Any( l => l.Kind != "String" || !_lockLevels.Contains( l.Value! ) ) )
+                        if( !IsLockable( ParentPath( n.Path ) ) )
+                        {
+                            Error( n.Path, "A \"$LOCK\" restricts the values of an App or of a Builder aspect: it is outside them." );
+                        }
+                        else if( n.Kind != "Object" || Children( n.Path ).Any( l => l.Kind != "String" || !_lockLevels.Contains( l.Value! ) ) )
                         {
                             Error( n.Path, "\"$LOCK\" must be an object whose values are \"Compile\", \"Init\" or \"Run\"." );
                         }
@@ -317,6 +326,17 @@ public static class ConfigurationChecker
                     }
                 }
             }
+        }
+
+        // The objects where a "$LOCK" can be (AppBuilderConfiguration): in an App ("Builders:{b}:App", "Builders:{b}:Apps",
+        // "Defaults:App") or in a Builder aspect ("Builders:{b}:Aspects:{aspect}", not "Aspects" itself).
+        static bool IsLockable( string objectPath )
+        {
+            var s = objectPath.Split( ':' );
+            if( s.Length >= 2 && s[0].Equals( "Defaults", StringComparison.OrdinalIgnoreCase ) && s[1].Equals( "App", StringComparison.OrdinalIgnoreCase ) ) return true;
+            if( s.Length < 3 || !s[0].Equals( "Builders", StringComparison.OrdinalIgnoreCase ) ) return false;
+            if( s[2].Equals( "App", StringComparison.OrdinalIgnoreCase ) || s[2].Equals( "Apps", StringComparison.OrdinalIgnoreCase ) ) return true;
+            return s.Length >= 4 && s[2].Equals( "Aspects", StringComparison.OrdinalIgnoreCase );
         }
 
         static bool IsStringArray( string json )
