@@ -27,6 +27,6 @@ dotnet run --project Configurator/Configurator.Host
 A development build references the analyzer project of this solution ("Configurator:AnalyzerProject").
 
 Its deployment, [Deployment/#Production](Deployment/%23Production/ckonf.json), is the desktop application as one
-executable (win-x64, self-contained, the client and the native libraries inside it). CKli builds it after the build of
+executable (win-x64, self-contained, the native libraries inside it) with its client application next to it. CKli builds it after the build of
 the repository (`Deployment/GenerateAssets.cs`, CK.AppDeployment): `Deployment/Assets/Production-Configurator`.
 

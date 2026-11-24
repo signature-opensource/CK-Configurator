@@ -7,7 +7,7 @@
       "RuntimeIdentifier": "win-x64",
       "SelfContained": true,
       "PublishSingleFile": true,
-      "IncludeAllContentForSelfExtract": true
+      "IncludeNativeLibrariesForSelfExtract": true
     }
   },
   "Defaults": {
