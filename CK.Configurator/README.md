@@ -34,4 +34,13 @@ of every editor command by [`ConfiguratorEditorHandlers`](Editor/ConfiguratorEdi
 - **The snapshot lists the properties** in document order, with their path (the names separated by `:`), their depth,
   their kind, the JSON text of a value that is not an object, and the comments written on the lines above them (the
   documentation that people read). The `"$configurator"` root key gives the source of the catalog of the solution.
+- **The catalog of the document** is the one of its `"$configurator"` root key (`ConfiguratorEditorService.SetCatalogSourceAsync`
+  writes it: an edit). When it is opened (`ConfiguratorCatalogService.TryGetOpened`: the editor never opens a catalog,
+  this takes a minute), [`ConfigurationChecker`](Editor/ConfigurationChecker.cs) types the properties (their role: a
+  builder, a Builder aspect, an App, an App aspect, a party, a party feature, a client, a client feature, an option) and
+  checks the document statically, with the rules of the build: the root keys and the keys of a builder, the
+  configurable types known by the catalog (a key of a party that is no feature is a warning: the build leaves it to the
+  run time), an option under another owner, a required type set to `false`, a configurable type that is not `true`,
+  `false` or a section, the syntax of `"$LOCK"`, `"$PER_DEPLOYMENT"` and `{ "$SECRET": "..." }`, a secret written as a
+  plain value. Without its catalog, a document has an Info problem that says so. The keys of a section are free.
 - The commands are serialized.

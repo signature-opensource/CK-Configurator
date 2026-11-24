@@ -34,6 +34,8 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
                     node.Kind = n.Kind;
                     node.Value = n.Value;
                     node.Comment = n.Comment;
+                    node.Role = n.Role;
+                    node.TypeName = n.TypeName;
                 } ) );
             }
             foreach( var p in s.Problems )
@@ -89,6 +91,13 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
     [CommandHandler]
     public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, IRemovePropertyCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
         => ToState( pocos, await editor.RemovePropertyAsync( monitor, command.Path ).ConfigureAwait( false ) );
+
+    /// <summary>
+    /// Sets the source of the catalog of the document.
+    /// </summary>
+    [CommandHandler]
+    public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, ISetCatalogSourceCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
+        => ToState( pocos, await editor.SetCatalogSourceAsync( monitor, command.World, command.Version ).ConfigureAwait( false ) );
 
     /// <summary>
     /// Undoes the last edit.

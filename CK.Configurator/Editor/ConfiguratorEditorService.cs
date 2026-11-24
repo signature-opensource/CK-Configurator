@@ -33,6 +33,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     const StringComparison _comparison = StringComparison.OrdinalIgnoreCase;
     static readonly UTF8Encoding _utf8NoBom = new( encoderShouldEmitUTF8Identifier: false );
 
+    readonly ConfiguratorCatalogService _catalogs;
     readonly SemaphoreSlim _lock = new( 1, 1 );
     readonly List<string> _undo = new();
     readonly List<string> _redo = new();
@@ -42,6 +43,15 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     string _savedText = "";
     byte[] _diskHash = [];
     bool _hasBom;
+
+    /// <summary>
+    /// Initializes a new editor service.
+    /// </summary>
+    /// <param name="catalogs">The opened catalogs: the one of the document types and checks it.</param>
+    public ConfiguratorEditorService( ConfiguratorCatalogService catalogs )
+    {
+        _catalogs = catalogs;
+    }
 
     /// <summary>
     /// Opens the "ckonf.json" of a solution folder (an opened document is closed).
@@ -120,6 +130,19 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     /// <returns>The state.</returns>
     public Task<EditorSnapshot> RemovePropertyAsync( IActivityMonitor monitor, string path )
         => EditAsync( monitor, e => e.RemoveJsonProperty( path, _comparison ) );
+
+    /// <summary>
+    /// Sets the source of the catalog of the document: its <c>"$configurator"</c> root key (an edit).
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="world">The World.</param>
+    /// <param name="version">The version of the profile.</param>
+    /// <returns>The state.</returns>
+    public Task<EditorSnapshot> SetCatalogSourceAsync( IActivityMonitor monitor, string world, string version )
+    {
+        var value = System.Text.Json.JsonSerializer.Serialize( new { World = world, Version = version } ).Replace( ",", ", " ).Replace( "{", "{ " ).Replace( "}", " }" );
+        return EditAsync( monitor, e => e.EnsureJsonValue( "$configurator", value, _comparison ) );
+    }
 
     /// <summary>
     /// Undoes the last edit (nothing when there is none).
@@ -298,6 +321,20 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                 catalogVersion = ReadString( code, c.FindProperty( "Version", _comparison ) );
             }
         }
+        IReadOnlyList<EditorNodeData> typed = nodes;
+        IReadOnlyList<EditorProblemData> problems;
+        if( catalogWorld == null || catalogVersion == null )
+        {
+            problems = [new EditorProblemData( "", "Info", "The document has no catalog (its \"$configurator\" root key): choose one to check the document." )];
+        }
+        else if( _catalogs.TryGetOpened( catalogWorld, catalogVersion ) is { } opened )
+        {
+            (typed, problems) = ConfigurationChecker.Check( nodes, opened.Catalog );
+        }
+        else
+        {
+            problems = [new EditorProblemData( "", "Info", $"The catalog of the document (the profile '{catalogVersion}' of '{catalogWorld}') is not opened: open it to check the document." )];
+        }
         return new EditorSnapshot( _folder,
                                    _filePath,
                                    _text != _savedText,
@@ -306,8 +343,21 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                                    IsChangedOnDisk(),
                                    catalogWorld,
                                    catalogVersion,
-                                   nodes,
-                                   [] );
+                                   typed,
+                                   problems );
+    }
+
+    /// <summary>
+    /// Reads the properties of a document (tests).
+    /// </summary>
+    /// <param name="text">The JSON(C) text.</param>
+    /// <returns>The properties, in document order.</returns>
+    internal static IReadOnlyList<EditorNodeData> ReadNodes( string text )
+    {
+        var code = new JsonAnalyzer().ParseOrThrow( text );
+        var nodes = new List<EditorNodeData>();
+        if( code.GetJsonRootObject() is { } root ) Collect( code, root, "", 0, nodes );
+        return nodes;
     }
 
     static string? ReadString( SourceCode code, JsonPropertySpan? p )
@@ -408,7 +458,12 @@ public sealed record EditorSnapshot( string? Folder,
 /// <param name="Kind">"Object", "Array", "String", "Number", "Boolean" or "Null".</param>
 /// <param name="Value">The JSON text of the value (null for an object).</param>
 /// <param name="Comment">The comments above the property, or null.</param>
-public sealed record EditorNodeData( string Path, string Name, int Depth, string Kind, string? Value, string? Comment );
+/// <param name="Role">
+/// What the property is in the configuration, given by the catalog: "Builder", "BuilderAspect", "App", "AppAspect", "Party",
+/// "PartyDefaults", "PartyFeature", "PartyFeatureOption", "Client", "ClientFeature", "ClientFeatureOption", or null (a key).
+/// </param>
+/// <param name="TypeName">The configuration name of the configurable type of the property, or null.</param>
+public sealed record EditorNodeData( string Path, string Name, int Depth, string Kind, string? Value, string? Comment, string? Role = null, string? TypeName = null );
 
 /// <summary>
 /// A problem of the document.

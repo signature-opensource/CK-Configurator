@@ -39,7 +39,8 @@ Xml documentation of their type, in Markdown.
 The editor edits the central configuration (`ckonf.json`) of one solution, held by the backend. Every command returns
 the `IEditorState` of the document: its folder and file, whether it is dirty, can undo or redo, changed on disk, the
 source of its catalog (its `"$configurator"` root key: `CatalogWorld`, `CatalogVersion`), its properties (`IEditorNode`,
-in document order: path, name, depth, kind, value, comment) and its problems (`IEditorProblem`).
+in document order: path, name, depth, kind, value, comment, and the `Role` and the `TypeName` that the catalog gives
+them) and its problems (`IEditorProblem`: the static checks, once the catalog of the document is opened).
 
 | Command | What it does |
 |---|---|
@@ -48,6 +49,7 @@ in document order: path, name, depth, kind, value, comment) and its problems (`I
 | `ISetValueCommand` (`Path`, `Json`) | Replaces the value of an existing property; the comments around it are kept. |
 | `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
 | `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments. |
+| `ISetCatalogSourceCommand` (`World`, `Version`) | Writes the `"$configurator"` root key: the catalog that types and checks the document once it is opened (`IOpenCatalogCommand`). |
 | `IUndoCommand`, `IRedoCommand` | Undo and redo the edits. |
 | `ISaveCommand` (`Overwrite`) | Saves the document; a file that changed on disk is overwritten only with `Overwrite`. |
 | `IReloadCommand` | Reads the file again (the edits are lost). |

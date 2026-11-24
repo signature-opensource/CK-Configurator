@@ -81,6 +81,14 @@ public interface IRemovePropertyCommand : ICommand<IEditorState>
 }
 
 /// <summary>
+/// Sets the source of the catalog of the document: its <c>"$configurator"</c> root key (an edit). The catalog types and
+/// checks the document once it is opened (<see cref="IOpenCatalogCommand"/>).
+/// </summary>
+public interface ISetCatalogSourceCommand : ICommand<IEditorState>, ICommandCatalogSource
+{
+}
+
+/// <summary>
 /// Undoes the last edit.
 /// </summary>
 public interface IUndoCommand : ICommand<IEditorState>
@@ -204,6 +212,19 @@ public interface IEditorNode : IPoco
     /// Gets or sets the comments written on the lines above the property (their text, without the comment markers), or null.
     /// </summary>
     string? Comment { get; set; }
+
+    /// <summary>
+    /// Gets or sets what the property is in the configuration, given by the catalog: "Builder", "BuilderAspect", "App",
+    /// "AppAspect", "Party", "PartyDefaults", "PartyFeature", "PartyFeatureOption", "Client", "ClientFeature",
+    /// "ClientFeatureOption", or null (a key of a section, or no catalog).
+    /// </summary>
+    string? Role { get; set; }
+
+    /// <summary>
+    /// Gets or sets the configuration name of the configurable type of the property (its documentation is in the
+    /// catalog), or null.
+    /// </summary>
+    string? TypeName { get; set; }
 }
 
 /// <summary>

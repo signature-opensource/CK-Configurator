@@ -7,4 +7,8 @@
     <!-- The published profiles of a Stack (PublishedIndex, PublishedProfile and its PublishedFeed). -->
     <PackageReference Include="CK.Packaging.Abstractions" Version="0.5.0" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Catalog.Create: the tests of the editor build a catalog from analyses. -->
+    <InternalsVisibleTo Include="CK.Configurator.Tests" />
+  </ItemGroup>
 </Project>

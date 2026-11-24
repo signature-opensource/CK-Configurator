@@ -52,6 +52,11 @@ public sealed class Catalog
     }
 
     /// <summary>
+    /// Creates a catalog from analyses (tests: the source can be null).
+    /// </summary>
+    internal static Catalog Create( IActivityMonitor monitor, CatalogSource source, IReadOnlyList<PackageAnalysis> packages ) => new( monitor, source, packages );
+
+    /// <summary>
     /// Loads the catalog of a source from the cache. Every package of the source must have been analyzed
     /// (see <see cref="CatalogWorker.AnalyzeAsync"/>).
     /// </summary>

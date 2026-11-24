@@ -1,5 +1,6 @@
 using CK.Core;
 using CK.Testing;
+using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using Shouldly;
 using System;
@@ -37,6 +38,8 @@ public class ConfiguratorEditorServiceTests
 
     const string _local = "Builders:App/App.Builder:App:Local";
 
+    static ConfiguratorEditorService CreateEditor() => new( new ConfiguratorCatalogService( new ConfigurationBuilder().Build() ) );
+
     static string CreateSolution( string name, string text, bool bom = false )
     {
         var folder = Path.Combine( TestHelper.TestProjectFolder, "bin", "Editor", name );
@@ -50,14 +53,15 @@ public class ConfiguratorEditorServiceTests
     [Test]
     public async Task opening_a_solution_gives_its_properties_comments_and_catalog_Async()
     {
-        var editor = new ConfiguratorEditorService();
+        var editor = CreateEditor();
         (await editor.GetStateAsync()).ShouldBe( EditorSnapshot.Closed );
         var s = await editor.OpenAsync( TestHelper.Monitor, CreateSolution( "open", _central ) );
         s.CatalogWorld.ShouldBe( "https://github.com/signature-opensource/CK-Stack" );
         s.CatalogVersion.ShouldBe( "2026.11.24-0.uc.0.ci.0" );
         s.IsDirty.ShouldBeFalse();
         s.ChangedOnDisk.ShouldBeFalse();
-        s.Problems.ShouldBeEmpty();
+        // Its catalog is not opened: nothing is checked.
+        s.Problems.ShouldHaveSingleItem().Message.ShouldContain( "is not opened: open it to check the document" );
         var domain = s.Nodes.Single( n => n.Path == "Domain" );
         domain.ShouldBe( new EditorNodeData( "Domain", "Domain", 0, "String", "\"CK\"", "The domain of the parties." ) );
         var endpoint = s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint" );
@@ -78,7 +82,7 @@ public class ConfiguratorEditorServiceTests
     {
         var folder = CreateSolution( "edits", _central, bom: true );
         var file = Path.Combine( folder, "ckonf.json" );
-        var editor = new ConfiguratorEditorService();
+        var editor = CreateEditor();
         await editor.OpenAsync( TestHelper.Monitor, folder );
 
         // The names are case insensitive.
@@ -119,7 +123,7 @@ public class ConfiguratorEditorServiceTests
     {
         var folder = CreateSolution( "disk", _central );
         var file = Path.Combine( folder, "ckonf.json" );
-        var editor = new ConfiguratorEditorService();
+        var editor = CreateEditor();
         await editor.OpenAsync( TestHelper.Monitor, folder );
         await editor.SetValueAsync( TestHelper.Monitor, "Domain", "\"Mine\"" );
 
@@ -145,7 +149,7 @@ public class ConfiguratorEditorServiceTests
     [Test]
     public async Task errors_Async()
     {
-        var editor = new ConfiguratorEditorService();
+        var editor = CreateEditor();
         (await Should.ThrowAsync<CKException>( () => editor.UndoAsync() )).Message.ShouldBe( "No solution is opened." );
         var empty = Path.Combine( TestHelper.TestProjectFolder, "bin", "Editor", "empty" );
         Directory.CreateDirectory( empty );

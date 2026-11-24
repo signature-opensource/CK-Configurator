@@ -28,7 +28,8 @@ namespace CK.Configurator;
 public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDisposable
 {
     readonly SemaphoreSlim _gate;
-    readonly Dictionary<string, OpenedCatalog> _catalogs;
+    // Written under the gate, read without it (TryGetOpened).
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, OpenedCatalog> _catalogs;
     CatalogCache _cache;
     CatalogSources _sources;
     AnalyzerReference? _analyzer;
@@ -40,7 +41,7 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
     public ConfiguratorCatalogService( IConfiguration configuration )
     {
         _gate = new SemaphoreSlim( 1, 1 );
-        _catalogs = new Dictionary<string, OpenedCatalog>( StringComparer.OrdinalIgnoreCase );
+        _catalogs = new System.Collections.Concurrent.ConcurrentDictionary<string, OpenedCatalog>( StringComparer.OrdinalIgnoreCase );
         var section = configuration.GetSection( "Configurator" );
         CacheRoot = section["CacheRoot"];
         AnalyzerProject = section["AnalyzerProject"];
@@ -222,6 +223,18 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
     }
 
     /// <summary>
+    /// Gets the catalog of a source when it is already opened (it is never opened here: this doesn't wait).
+    /// </summary>
+    /// <param name="world">The World.</param>
+    /// <param name="version">The version of the profile.</param>
+    /// <returns>The opened catalog or null.</returns>
+    public OpenedCatalog? TryGetOpened( string world, string version )
+    {
+        if( !CatalogWorld.TryParse( world, out var w ) || !TimeVersion.TryParse( version, out var v ) ) return null;
+        return _catalogs.TryGetValue( $"{w}|{v}", out var opened ) ? opened : null;
+    }
+
+    /// <summary>
     /// Opens (or gets) the catalog of a source.
     /// </summary>
     /// <param name="monitor">The monitor to use.</param>
@@ -256,7 +269,7 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
             var catalog = CatalogModel.Load( monitor, source, _cache );
             if( catalog == null ) return null;
             opened = new OpenedCatalog( this, catalog, workerFolder, analyzer );
-            _catalogs.Add( key, opened );
+            _catalogs[key] = opened;
             return opened;
         }
         finally

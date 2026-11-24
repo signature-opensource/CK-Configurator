@@ -10,4 +10,7 @@
     <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
     <ProjectReference Include="..\CK.Configurator.Catalog\CK.Configurator.Catalog.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CK.Configurator.Tests" />
+  </ItemGroup>
 </Project>
