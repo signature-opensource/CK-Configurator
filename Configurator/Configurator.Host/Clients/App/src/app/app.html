@@ -1,8 +1,7 @@
 <header class="app-shell-header">
   <nav class="app-shell-pages">
     <a routerLink="/ckomposable/catalog" routerLinkActive="app-shell-active">{{ 'CK.Configurator.CatalogPage' | translate }}</a>
-    <!-- The editor is the next step of the configurator: its page is not there yet. -->
-    <span class="app-shell-disabled">{{ 'CK.Configurator.EditorPage' | translate }}</span>
+    <a routerLink="/ckomposable/editor" routerLinkActive="app-shell-active">{{ 'CK.Configurator.EditorPage' | translate }}</a>
   </nav>
   <ck-catalog-source-picker class="app-shell-picker" />
   <ck-desktop-log-links />

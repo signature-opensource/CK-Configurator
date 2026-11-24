@@ -1,4 +1,5 @@
 using CK.Core;
+using CK.IO.AppHost.Desktop;
 using CK.IO.Configurator;
 using CK.Ng.Cris.AspNet;
 using CK.Ng.Markdown;
@@ -10,7 +11,9 @@ namespace CK.Ng.Configurator;
 /// <summary>
 /// The configurator's client side: the opened catalog of the application (<c>CatalogSource</c>, a root service) and its
 /// picker (<see cref="CatalogSourcePickerComponent"/>), the catalog page (<see cref="CatalogPageComponent"/>, at
-/// "ckomposable/catalog") and the commands they send (CK.IO.Configurator, handled by CK.Configurator).
+/// "ckomposable/catalog"), the editor page (<see cref="EditorPageComponent"/>, at "ckomposable/editor") and the commands
+/// they send (CK.IO.Configurator, handled by CK.Configurator; the folder dialog of a desktop window, handled by
+/// CK.AppHost.Desktop).
 /// </summary>
 [TypeScriptPackage]
 [Requires<CrisAspNetPackage, ZorroPackage, MarkdownPackage>]
@@ -24,6 +27,18 @@ namespace CK.Ng.Configurator;
 [RegisterTypeScriptType( typeof( IGetCommandsQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetPackageQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetPackagesQCommand ) )]
+[RegisterTypeScriptType( typeof( IOpenSolutionCommand ) )]
+[RegisterTypeScriptType( typeof( IGetEditorStateQCommand ) )]
+[RegisterTypeScriptType( typeof( ICloseSolutionCommand ) )]
+[RegisterTypeScriptType( typeof( ISetValueCommand ) )]
+[RegisterTypeScriptType( typeof( IAddPropertyCommand ) )]
+[RegisterTypeScriptType( typeof( IRemovePropertyCommand ) )]
+[RegisterTypeScriptType( typeof( ISetCatalogSourceCommand ) )]
+[RegisterTypeScriptType( typeof( IUndoCommand ) )]
+[RegisterTypeScriptType( typeof( IRedoCommand ) )]
+[RegisterTypeScriptType( typeof( ISaveCommand ) )]
+[RegisterTypeScriptType( typeof( IReloadCommand ) )]
+[RegisterTypeScriptType( typeof( IPickFolderCommand ) )]
 public class NgConfiguratorPackage : TypeScriptPackage
 {
 }

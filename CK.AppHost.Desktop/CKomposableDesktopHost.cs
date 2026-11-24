@@ -93,6 +93,13 @@ public static class CKomposableDesktopHost
         return null;
     }
 
+    static volatile IInfiniFrameWindow? _window;
+
+    /// <summary>
+    /// Gets the window of the application (null without window): the commands of the desktop use it (a dialog).
+    /// </summary>
+    internal static IInfiniFrameWindow? Window => _window;
+
     static int RunWithWindow( IHost host, DesktopWindowSettings settings )
     {
         int exitCode = 0;
@@ -109,6 +116,7 @@ public static class CKomposableDesktopHost
                             .RegisterCustomSchemeHandler( DesktopInProcessBridge.Scheme, bridge.HandleScheme )
                             .RegisterWebMessagePostHandler( DesktopInProcessBridge.MessageId, bridge.HandleMessage )
                             .Build();
+            _window = window;
             hostTask = Task.Run( async () =>
             {
                 if( !await RunHostAsync( host, window, settings, bridge ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );

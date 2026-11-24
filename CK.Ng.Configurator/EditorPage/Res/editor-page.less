@@ -1,0 +1,93 @@
+.ck-editor-page {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+
+    .ck-editor-open {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        .ck-editor-folder { max-width: 520px; }
+        .ck-editor-sep { width: 16px; }
+    }
+
+    .ck-editor-catalog {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .ck-editor-panes {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .ck-editor-tree {
+        flex: 3;
+        min-width: 0;
+        font-family: monospace;
+        font-size: 13px;
+        .ck-editor-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            cursor: pointer;
+            white-space: nowrap;
+            line-height: 22px;
+            &:hover { background: rgba(0, 0, 0, 0.04); }
+        }
+        .ck-editor-selected { background: rgba(24, 144, 255, 0.12); }
+        .ck-editor-toggle { width: 12px; display: inline-block; }
+        .ck-editor-typed { font-weight: 600; }
+        .ck-editor-role { font-size: 11px; opacity: 0.6; }
+        .ck-editor-value { opacity: 0.75; overflow: hidden; text-overflow: ellipsis; }
+    }
+
+    .ck-editor-detail {
+        flex: 3;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        .ck-editor-comment {
+            white-space: pre-wrap;
+            font-size: 12px;
+            opacity: 0.8;
+            margin: 0;
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.03);
+        }
+        .ck-editor-add { display: flex; gap: 6px; }
+        .ck-editor-json { font-size: 12px; }
+        .ck-editor-doc-title { margin-top: 12px; }
+        .ck-editor-remarks { opacity: 0.85; }
+    }
+
+    .ck-editor-side {
+        flex: 2;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        .ck-editor-palette-item {
+            display: flex;
+            gap: 8px;
+            align-items: baseline;
+            a { cursor: pointer; }
+        }
+        .ck-editor-present { opacity: 0.5; }
+        .ck-editor-problem {
+            cursor: pointer;
+            font-size: 12px;
+            padding: 4px;
+            border-left: 3px solid transparent;
+        }
+        .ck-editor-Error { border-left-color: #ff4d4f; }
+        .ck-editor-Warning { border-left-color: #faad14; }
+        .ck-editor-Info { border-left-color: #1890ff; }
+    }
+}

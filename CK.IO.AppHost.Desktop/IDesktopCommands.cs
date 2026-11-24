@@ -42,3 +42,19 @@ public interface IOpenLastLogCommand : ICommand<string>
 public interface IOpenLogFolderCommand : ICommand<string>
 {
 }
+
+/// <summary>
+/// Shows the folder dialog of the system in the window. Returns the chosen folder, or null when the dialog is cancelled.
+/// </summary>
+public interface IPickFolderCommand : ICommand<string?>
+{
+    /// <summary>
+    /// Gets or sets the title of the dialog.
+    /// </summary>
+    string? Title { get; set; }
+
+    /// <summary>
+    /// Gets or sets the folder that the dialog shows first.
+    /// </summary>
+    string? Folder { get; set; }
+}

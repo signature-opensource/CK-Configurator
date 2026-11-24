@@ -164,6 +164,17 @@ export class CatalogSource {
         }
     }
 
+    /**
+     * Opens the catalog of a source given by the application (the catalog of the document of the editor): the picker
+     * shows it.
+     */
+    async openSourceAsync( world: string, version: string ): Promise<void> {
+        this.world.set( world );
+        this.listedWorld.set( world );
+        this.version.set( version );
+        await this.openAsync();
+    }
+
     /** Sets the source of the opened catalog on a command (not the source being chosen). */
     source<T extends { world: string, version: string }>( c: T ): T {
         const o = this.opened()!;

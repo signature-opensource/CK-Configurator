@@ -48,6 +48,19 @@ public sealed class DesktopCommandHandlers : ISingletonAutoService
     }
 
     /// <summary>
+    /// Handles <see cref="IPickFolderCommand"/>: shows the folder dialog of the system in the window.
+    /// </summary>
+    /// <param name="command">The command.</param>
+    /// <returns>The chosen folder or null.</returns>
+    [CommandHandler]
+    public async Task<string?> HandleAsync( IPickFolderCommand command )
+    {
+        var window = CKomposableDesktopHost.Window ?? throw new CKException( "The application has no window: there is no folder dialog." );
+        var folders = await window.Features.FilePickerDialogs.ShowOpenFolderAsync( command.Title ?? "", command.Folder ?? "", false, default ).ConfigureAwait( false );
+        return folders?.FirstOrDefault( f => !string.IsNullOrEmpty( f ) );
+    }
+
+    /// <summary>
     /// Handles <see cref="IOpenLastLogCommand"/>: closes the current text log and opens it.
     /// </summary>
     /// <param name="monitor">The monitor.</param>

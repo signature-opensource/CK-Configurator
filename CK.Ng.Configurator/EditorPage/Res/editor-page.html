@@ -1,0 +1,166 @@
+<div class="ck-editor-page">
+    <div class="ck-editor-open">
+        <input nz-input class="ck-editor-folder" [placeholder]="'CK.Configurator.Editor.Folder' | translate"
+               [ngModel]="folder()" (ngModelChange)="folder.set( $event )" (keyup.enter)="openAsync()" />
+        @if ( canPickFolder() ) {
+            <button nz-button (click)="pickFolderAsync()" [disabled]="busy()">{{ 'CK.Configurator.Editor.Browse' | translate }}</button>
+        }
+        <button nz-button nzType="primary" (click)="openAsync()" [disabled]="busy() || !folder().trim()">{{ 'CK.Configurator.Editor.Open' | translate }}</button>
+        @if ( isOpened() ) {
+            <span class="ck-editor-sep"></span>
+            <button nz-button (click)="undoAsync()" [disabled]="busy() || !state()!.canUndo">{{ 'CK.Configurator.Editor.Undo' | translate }}</button>
+            <button nz-button (click)="redoAsync()" [disabled]="busy() || !state()!.canRedo">{{ 'CK.Configurator.Editor.Redo' | translate }}</button>
+            <button nz-button nzType="primary" (click)="saveAsync( false )" [disabled]="busy() || !state()!.isDirty">{{ 'CK.Configurator.Editor.Save' | translate }}</button>
+            <button nz-button (click)="closeAsync()" [disabled]="busy()">{{ 'CK.Configurator.Editor.Close' | translate }}</button>
+            @if ( state()!.isDirty ) {
+                <nz-tag nzColor="orange">{{ 'CK.Configurator.Editor.Dirty' | translate }}</nz-tag>
+            }
+        }
+    </div>
+
+    @if ( error() ) {
+        <nz-alert nzType="error" [nzMessage]="error()!" nzShowIcon nzCloseable (nzOnClose)="error.set( null )" />
+    }
+
+    @if ( state(); as s ) {
+        @if ( s.folder ) {
+            <span class="sub">{{ s.filePath }}</span>
+            @if ( s.changedOnDisk ) {
+                <nz-alert nzType="warning" nzShowIcon [nzMessage]="'CK.Configurator.Editor.ChangedOnDisk' | translate" [nzAction]="changedActions" />
+                <ng-template #changedActions>
+                    <button nz-button nzSize="small" (click)="reloadAsync()">{{ 'CK.Configurator.Editor.Reload' | translate }}</button>
+                    <button nz-button nzSize="small" nzDanger (click)="saveAsync( true )">{{ 'CK.Configurator.Editor.Overwrite' | translate }}</button>
+                </ng-template>
+            }
+            @if ( !s.catalogVersion ) {
+                <div class="ck-editor-catalog">
+                    <span>{{ 'CK.Configurator.Editor.NoCatalog' | translate }}</span>
+                    @if ( !source.pickerInShell() ) {
+                        <ck-catalog-source-picker />
+                    }
+                    @if ( source.opened(); as o ) {
+                        <button nz-button nzSize="small" (click)="useOpenedCatalogAsync()" [disabled]="busy() || source.opening()">
+                            {{ 'CK.Configurator.Editor.UseCatalog' | translate: { version: o.version } }}
+                        </button>
+                    }
+                </div>
+            } @else if ( source.opening() ) {
+                <span class="sub">{{ 'CK.Configurator.Catalog.Opening' | translate }}</span>
+            } @else if ( catalogMismatch() ) {
+                <nz-alert nzType="warning" nzShowIcon [nzMessage]="'CK.Configurator.Editor.CatalogMismatch' | translate: { version: s.catalogVersion }" [nzAction]="mismatchActions" />
+                <ng-template #mismatchActions>
+                    <button nz-button nzSize="small" (click)="openCatalogAsync( s.catalogWorld!, s.catalogVersion! )">{{ 'CK.Configurator.Editor.OpenItsCatalog' | translate }}</button>
+                </ng-template>
+            }
+
+            <div class="ck-editor-panes">
+                <!-- The tree. -->
+                <div class="ck-editor-tree">
+                    @for ( r of rows(); track r.node.path ) {
+                        <div class="ck-editor-row" [class.ck-editor-selected]="selectedPath() === r.node.path"
+                             [style.padding-left.px]="4 + r.node.depth * 16" (click)="select( r.node.path )">
+                            @if ( isObject( r.node ) ) {
+                                <span class="ck-editor-toggle" (click)="toggleCollapsed( r.node ); $event.stopPropagation()">{{ collapsed().has( r.node.path ) ? '▸' : '▾' }}</span>
+                            } @else {
+                                <span class="ck-editor-toggle"></span>
+                            }
+                            <span class="ck-editor-name" [class.ck-editor-typed]="!!r.node.role">{{ r.node.name }}</span>
+                            @if ( r.node.role ) {
+                                <span class="ck-editor-role">{{ ('CK.Configurator.Editor.Role.' + r.node.role) | translate }}</span>
+                            }
+                            @if ( !isObject( r.node ) ) {
+                                <span class="ck-editor-value">{{ r.node.value }}</span>
+                            }
+                            @if ( r.errors > 0 ) {
+                                <nz-badge nzStandalone [nzCount]="r.errors" />
+                            }
+                            @if ( r.warnings > 0 ) {
+                                <nz-badge nzStandalone [nzCount]="r.warnings" [nzStyle]="{ backgroundColor: '#faad14' }" />
+                            }
+                        </div>
+                    }
+                </div>
+
+                <!-- The selected property. -->
+                <div class="ck-editor-detail">
+                    @if ( selected(); as n ) {
+                        <span class="header">{{ n.name }}</span>
+                        <span class="sub">{{ shortPath( n.path ) }}</span>
+                        @if ( n.role ) {
+                            <span>{{ ('CK.Configurator.Editor.Role.' + n.role) | translate }} @if ( n.typeName ) { <b>{{ n.typeName }}</b> }</span>
+                        }
+                        @for ( p of selectedProblems(); track $index ) {
+                            <nz-alert [nzType]="p.severity === 'Error' ? 'error' : p.severity === 'Warning' ? 'warning' : 'info'" [nzMessage]="p.message" nzShowIcon />
+                        }
+                        @if ( n.comment ) {
+                            <pre class="ck-editor-comment">{{ n.comment }}</pre>
+                        }
+
+                        @switch ( n.kind ) {
+                            @case ( 'Boolean' ) {
+                                <div><nz-switch [ngModel]="n.value === 'true'" (ngModelChange)="setValueAsync( n.path, $event ? 'true' : 'false' )" [nzDisabled]="busy()" /></div>
+                            }
+                            @case ( 'String' ) {
+                                <input nz-input [ngModel]="stringValue( n )" #s (keyup.enter)="setStringAsync( n.path, s.value )" (blur)="s.value !== stringValue( n ) && setStringAsync( n.path, s.value )" />
+                            }
+                            @case ( 'Object' ) {
+                                <div class="ck-editor-add">
+                                    <input nz-input [placeholder]="'CK.Configurator.Editor.NewName' | translate" [ngModel]="newName()" (ngModelChange)="newName.set( $event )" />
+                                    <input nz-input [placeholder]="'CK.Configurator.Editor.NewValue' | translate" [ngModel]="newValue()" (ngModelChange)="newValue.set( $event )" />
+                                    <button nz-button (click)="addAsync( n.path, newName().trim(), newValue() )" [disabled]="busy() || !newName().trim()">{{ 'CK.Configurator.Editor.Add' | translate }}</button>
+                                </div>
+                            }
+                            @default {
+                                <textarea nz-input rows="3" [ngModel]="valueText()" (ngModelChange)="valueText.set( $event )"></textarea>
+                                <div><button nz-button (click)="setValueAsync( n.path, valueText() )" [disabled]="busy() || valueText() === n.value">{{ 'CK.Configurator.Editor.Apply' | translate }}</button></div>
+                            }
+                        }
+                        @if ( n.kind === 'Boolean' || n.kind === 'String' || n.kind === 'Object' ) {
+                            <details class="ck-editor-json">
+                                <summary>{{ 'CK.Configurator.Editor.AsJson' | translate }}</summary>
+                                <textarea nz-input rows="3" [ngModel]="valueText()" (ngModelChange)="valueText.set( $event )"></textarea>
+                                <button nz-button (click)="setValueAsync( n.path, valueText() )" [disabled]="busy() || !valueText().trim()">{{ 'CK.Configurator.Editor.Apply' | translate }}</button>
+                            </details>
+                        }
+                        <div><button nz-button nzDanger (click)="removeAsync( n.path )" [disabled]="busy()">{{ 'CK.Configurator.Editor.Remove' | translate }}</button></div>
+
+                        @if ( selectedType(); as t ) {
+                            <span class="header ck-editor-doc-title">{{ t.name }} <span class="sub">({{ t.packageId }})</span></span>
+                            <ck-markdown [text]="t.summary" />
+                            @if ( t.remarks ) {
+                                <ck-markdown class="ck-editor-remarks" [text]="t.remarks" />
+                            }
+                        }
+                    } @else {
+                        <span class="sub">{{ 'CK.Configurator.Editor.SelectProperty' | translate }}</span>
+                    }
+                </div>
+
+                <!-- The palette and the problems. -->
+                <div class="ck-editor-side">
+                    @if ( palette().length > 0 ) {
+                        <span class="header">{{ 'CK.Configurator.Editor.Palette' | translate }}</span>
+                        @for ( item of palette(); track item.type.typeName ) {
+                            <div class="ck-editor-palette-item" nz-tooltip [nzTooltipTitle]="item.type.summary">
+                                <span [class.ck-editor-present]="item.present">{{ item.type.name }}</span>
+                                <span class="sub">{{ item.type.activation }}</span>
+                                @if ( !item.present ) {
+                                    <a (click)="addFromPaletteAsync( item )">{{ 'CK.Configurator.Editor.Add' | translate }}</a>
+                                }
+                            </div>
+                        }
+                    }
+                    <span class="header">{{ 'CK.Configurator.Editor.Problems' | translate: { count: problems().length } }}</span>
+                    @for ( p of problems(); track $index ) {
+                        <div class="ck-editor-problem" [class]="'ck-editor-' + p.severity" (click)="p.path && select( p.path )">
+                            <b>{{ p.severity }}</b> @if ( p.path ) { <span class="sub">{{ shortPath( p.path ) }}</span> }
+                            <div>{{ p.message }}</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        } @else {
+            <span class="sub">{{ 'CK.Configurator.Editor.NoDocument' | translate }}</span>
+        }
+    }
+</div>
