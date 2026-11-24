@@ -118,6 +118,28 @@ public class CatalogTests
         File.Exists( path ).ShouldBeFalse();
     }
 
+    [Test]
+    public void the_cache_detects_the_analyses_of_another_format_and_remembers_the_incompatible_workers()
+    {
+        var root = Path.Combine( TestHelper.TestProjectFolder, "bin", "CacheFormatTest" );
+        if( Directory.Exists( root ) ) Directory.Delete( root, true );
+        var cache = new CatalogCache( root );
+        cache.HasOtherFormat( "CK.Sample", "1.0.0" ).ShouldBeFalse();
+        cache.Save( new PackageAnalysis { PackageId = "CK.Sample", Version = "1.0.0" } );
+        // Its own format is not another one.
+        cache.HasOtherFormat( "CK.Sample", "1.0.0" ).ShouldBeFalse();
+        // An analysis written by an analyzer of another format.
+        var other = Path.Combine( Path.GetDirectoryName( cache.GetAnalysisPath( "CK.Sample", "2.0.0" ) )!, $"2.0.0.v{PackageAnalysis.Format + 1}.json" );
+        File.WriteAllText( other, "{}" );
+        cache.HasOtherFormat( "CK.Sample", "2.0.0" ).ShouldBeTrue();
+        cache.HasOtherFormat( "CK.Sample", "1.0.0" ).ShouldBeFalse();
+
+        cache.IsIncompatibleWorker( "1.2.3-ci.4" ).ShouldBeFalse();
+        cache.SetIncompatibleWorker( "1.2.3-ci.4" );
+        cache.IsIncompatibleWorker( "1.2.3-CI.4" ).ShouldBeTrue();
+        new CatalogCache( root ).IsIncompatibleWorker( "1.2.3-ci.4" ).ShouldBeTrue();
+    }
+
     /// <summary>
     /// Restores the packages from the public feeds, builds the worker (with the analyzer project) and runs it.
     /// </summary>

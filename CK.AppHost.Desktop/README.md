@@ -102,12 +102,16 @@ the window: a server never opens files on its machine.
 
 ## The installed application
 
-What a desktop application needs once it is installed (not done here, see the distribution of the configurator):
+What a desktop application needs once it is installed:
 
-- An executable without console: `<OutputType>WinExe</OutputType>` on Windows. The console logs are off in its
-  deployment (the "Console" handler of the GrandOutput), its logs go to files in a folder where it can write.
-- The logs and the files it writes are in the user's application data (`%LOCALAPPDATA%` and its macOS and Linux
-  equivalents), not next to the executable.
+- An executable without console: `<OutputType>WinExe</OutputType>` in its host project. The console logs are off in
+  its deployment (`"Console": false` in the handlers of the GrandOutput): its logs are files.
+- **The logs of a published host** (`CK.AppHost.Published.json` next to the executable) are in the user's application
+  data: `CKomposableDesktopHost.Run` sets `LogFile.RootLogPath` to `{LocalApplicationData}/{Domain}-{Party}/Logs` (from
+  the full name of its deployment: "CK/$Configurator/#Production" gives "CK-Configurator"; the name of the host without
+  ".Host" otherwise), unless it is already set. Its folder may be read only (an installed application) or temporary (the
+  extraction folder of a single file application). The other files that it writes are in the user's application data
+  too, never next to the executable.
 - Its endpoint is in process ("InProcess", see above): no port is open to the other processes of the machine.
 - Two launches are two independent applications: what they share on disk must be safe under concurrency.
 

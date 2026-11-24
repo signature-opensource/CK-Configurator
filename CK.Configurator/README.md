@@ -11,9 +11,13 @@ the catalogs of [CK.Configurator.Catalog](../CK.Configurator.Catalog/README.md).
   `profiles` folder of the cache). Its
   "Configurator" section is read at start:
   `"Configurator": { "CacheRoot": "...", "AnalyzerProject": "CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj" }`.
-  The cache defaults to `CatalogCache.DefaultRoot`; the analyzer defaults to the CK.Configurator.Catalog.Worker package
-  of the version of CK.Configurator.Catalog: a development build (the zero version) configures the worker project
-  (absolute or relative to the folder of the development solution).
+  The cache defaults to `CatalogCache.DefaultRoot`; the analyzer (`ConfiguratorCatalogService.Analyzer`) defaults to
+  the CK.Configurator.Catalog.Worker package of the version of CK.Configurator.Catalog: a development build (the zero
+  version) configures the worker project (absolute or relative to the folder of the development solution).
+- **A profile is analyzed by its own worker** when it has one (`CatalogSource.Worker`: the CK.Configurator.Catalog.Worker
+  package of the profile, built with the packages it analyzes), unless the analyzer is a project (a development build:
+  the analyzer being developed is used). When the worker of the profile fails, or writes another format of the analyses
+  (`CatalogCache.HasOtherFormat`: it is then remembered, `CatalogCache.SetIncompatibleWorker`), the `Analyzer` is used.
 - `ConfiguratorCatalogHandlers` maps the catalog to the result Pocos. A catalog that can't be opened is an error result
   (the details are in the logs). No right is checked (see CK.IO.Configurator).
 

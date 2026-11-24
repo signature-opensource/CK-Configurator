@@ -51,6 +51,13 @@ public sealed class CatalogSource
                                                                   .OrderBy( p => p.PackageId, StringComparer.OrdinalIgnoreCase );
 
     /// <summary>
+    /// Gets the CK.Configurator.Catalog.Worker package of the profile (the analyzer built with the packages of the profile),
+    /// or null when the profile has none (another World).
+    /// </summary>
+    public PackageInstance? Worker => Profile.ProducedPackages.Values
+                                             .FirstOrDefault( p => p.PackageId.Equals( "CK.Configurator.Catalog.Worker", StringComparison.OrdinalIgnoreCase ) );
+
+    /// <summary>
     /// Gets whether a produced package is considered by the catalog. Excluded: the test packages ("CK.Testing.*",
     /// "*.Tests"), "CK.AppBuilder" (its build files make the referencing project run the App builder after its build)
     /// and "CK.Configurator.Catalog.Worker" (the analyzer itself: the worker project already references it).

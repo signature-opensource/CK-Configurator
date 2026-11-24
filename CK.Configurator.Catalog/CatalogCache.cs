@@ -1,6 +1,7 @@
 using CK.Core;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace CK.Configurator.Catalog;
 
@@ -50,6 +51,43 @@ public sealed class CatalogCache
                              packageId.ToLowerInvariant(),
                              $"{version.ToLowerInvariant()}.v{PackageAnalysis.Format}.json" );
     }
+
+    /// <summary>
+    /// Gets whether an analysis of a package version exists in another <see cref="PackageAnalysis.Format"/> (written by
+    /// another analyzer).
+    /// </summary>
+    /// <param name="packageId">The package identifier.</param>
+    /// <param name="version">The package version.</param>
+    /// <returns>True if an analysis of another format is in the cache.</returns>
+    public bool HasOtherFormat( string packageId, string version )
+    {
+        var mine = GetAnalysisPath( packageId, version );
+        var folder = Path.GetDirectoryName( mine )!;
+        return Directory.Exists( folder )
+               && Directory.EnumerateFiles( folder, $"{version.ToLowerInvariant()}.v*.json" ).Any( f => !f.Equals( mine, StringComparison.OrdinalIgnoreCase ) );
+    }
+
+    /// <summary>
+    /// Gets or sets whether a version of the worker package writes another <see cref="PackageAnalysis.Format"/> (a marker
+    /// file in the cache): it is not tried again.
+    /// </summary>
+    /// <param name="workerVersion">The version of the CK.Configurator.Catalog.Worker package.</param>
+    /// <returns>True when the worker is known to write another format.</returns>
+    public bool IsIncompatibleWorker( string workerVersion ) => File.Exists( GetIncompatibleWorkerPath( workerVersion ) );
+
+    /// <summary>
+    /// Marks a version of the worker package as writing another <see cref="PackageAnalysis.Format"/>.
+    /// </summary>
+    /// <param name="workerVersion">The version of the CK.Configurator.Catalog.Worker package.</param>
+    public void SetIncompatibleWorker( string workerVersion )
+    {
+        var path = GetIncompatibleWorkerPath( workerVersion );
+        Directory.CreateDirectory( Path.GetDirectoryName( path )! );
+        File.WriteAllText( path, $"This worker doesn't write the analyses of format {PackageAnalysis.Format}." );
+    }
+
+    string GetIncompatibleWorkerPath( string workerVersion )
+        => Path.Combine( _root, "workers", $"{workerVersion.ToLowerInvariant()}.v{PackageAnalysis.Format}.incompatible" );
 
     /// <summary>
     /// Gets whether the analysis of a package version exists.

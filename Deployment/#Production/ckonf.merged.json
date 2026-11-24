@@ -1,0 +1,58 @@
+// Generated from ckonf.json, Deployment/#Production/ckonf.json (from the root of the solution): do not edit.
+{
+  "Domain": "CK",
+  "GlobalDomainPrefix": "CK",
+  "Deployment": {
+    "Publish": {
+      "RuntimeIdentifier": "win-x64",
+      "SelfContained": true,
+      "PublishSingleFile": true,
+      "IncludeAllContentForSelfExtract": true
+    }
+  },
+  "Defaults": {
+    "App": {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Warning"
+        }
+      },
+      "CK-Monitoring": {
+        "GlobalDefaultFilter": "Debug",
+        "GrandOutput": {
+          "Handlers": {
+            "TextFile": {
+              "Path": "Text"
+            },
+            "Console": false
+          }
+        }
+      }
+    }
+  },
+  "Builders": {
+    "Configurator/Configurator.Builder": {
+      "App": {
+        "Local": {
+          "HttpEndpoint": {
+            "InProcess": true
+          },
+          "PartyClient": {
+            "App": {
+              "NgApp": true,
+              "Hosting": {
+                "RequestPath": "/",
+                "DevServerPort": 4500
+              },
+              "DesktopWindow": {
+                "Title": "CK Configurator"
+              }
+            }
+          }
+        },
+        "Configurator": {}
+      }
+    }
+  },
+  "Environment": "#Production"
+}

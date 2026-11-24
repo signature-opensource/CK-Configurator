@@ -90,7 +90,10 @@ runs the code of the engines), so it runs in a process whose folder holds exactl
   `project.assets.json` of the build (it maps a package to its assemblies), the root of the cache and the packages to
   analyze.
 - The analyzer is the [CK.Configurator.Catalog.Worker](../CK.Configurator.Catalog.Worker/README.md) package
-  (`AnalyzerReference.FromPackage`) or its project (`AnalyzerReference.FromProject`, for the tests).
+  (`AnalyzerReference.FromPackage`: the one of the profile, `CatalogSource.Worker`, or the one of the configurator) or
+  its project (`AnalyzerReference.FromProject`: a development build, the tests). An analyzer writes the analyses of
+  its own `PackageAnalysis.Format`: `CatalogCache.HasOtherFormat` detects the ones of another analyzer, and
+  `CatalogCache.SetIncompatibleWorker` remembers a worker version that writes another format.
 
 One source, one worker process: another source is another worker, nothing is unloaded.
 

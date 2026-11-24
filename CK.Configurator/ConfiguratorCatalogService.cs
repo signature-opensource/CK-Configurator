@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -256,16 +257,11 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
         try
         {
             if( _catalogs.TryGetValue( key, out var opened ) ) return opened;
-            var analyzer = Analyzer;
-            if( analyzer == null )
-            {
-                monitor.Error( "The analyzer of the workers is unknown (a development build): ConfiguratorCatalogService.Analyzer must be set." );
-                return null;
-            }
             var source = await _sources.ResolveAsync( monitor, w, v, cancel: cancel ).ConfigureAwait( false );
             if( source == null ) return null;
             var workerFolder = Path.Combine( _cache.Root, "sources", source.Profile.World.FullName, source.Profile.Version.ToString() );
-            if( !await CatalogWorker.AnalyzeAsync( monitor, source, _cache, workerFolder, analyzer, cancel ).ConfigureAwait( false ) ) return null;
+            var analyzer = await AnalyzeAsync( monitor, source, workerFolder, cancel ).ConfigureAwait( false );
+            if( analyzer == null ) return null;
             var catalog = CatalogModel.Load( monitor, source, _cache );
             if( catalog == null ) return null;
             opened = new OpenedCatalog( this, catalog, workerFolder, analyzer );
@@ -276,6 +272,49 @@ public sealed class ConfiguratorCatalogService : ISingletonAutoService, IAsyncDi
         {
             _gate.Release();
         }
+    }
+
+    // The analyzer of a profile: the worker package of the profile itself when it has one (it is built with the packages
+    // it analyzes), unless the analyzer is a project (a development build: the analyzer being developed is used) or the
+    // worker is known to write another format of the analyses. The Analyzer (the worker of this version) otherwise, or
+    // when the worker of the profile fails.
+    async Task<AnalyzerReference?> AnalyzeAsync( IActivityMonitor monitor, CatalogSource source, string workerFolder, CancellationToken cancel )
+    {
+        var fallback = Analyzer;
+        var worker = source.Worker;
+        if( worker != null && fallback?.ProjectPath == null )
+        {
+            var workerVersion = worker.Version.ToString();
+            if( _cache.IsIncompatibleWorker( workerVersion ) )
+            {
+                monitor.Info( $"The worker of the profile ({workerVersion}) writes another format of the analyses: it is not used." );
+            }
+            else
+            {
+                var profileAnalyzer = AnalyzerReference.FromPackage( workerVersion );
+                if( await CatalogWorker.AnalyzeAsync( monitor, source, _cache, workerFolder, profileAnalyzer, cancel ).ConfigureAwait( false ) )
+                {
+                    return profileAnalyzer;
+                }
+                if( source.CatalogPackages.Any( p => _cache.HasOtherFormat( p.PackageId, p.Version.ToString() ) ) )
+                {
+                    _cache.SetIncompatibleWorker( workerVersion );
+                    monitor.Warn( $"The worker of the profile ({workerVersion}) writes another format of the analyses: the worker of the configurator is used." );
+                }
+                else
+                {
+                    monitor.Warn( $"The worker of the profile ({workerVersion}) failed: the worker of the configurator is used." );
+                }
+            }
+        }
+        if( fallback == null )
+        {
+            monitor.Error( "The analyzer of the workers is unknown (a development build): ConfiguratorCatalogService.Analyzer must be set." );
+            return null;
+        }
+        return await CatalogWorker.AnalyzeAsync( monitor, source, _cache, workerFolder, fallback, cancel ).ConfigureAwait( false )
+                ? fallback
+                : null;
     }
 
     /// <summary>

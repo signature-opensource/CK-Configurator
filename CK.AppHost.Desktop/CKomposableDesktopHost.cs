@@ -7,6 +7,7 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -43,6 +44,7 @@ public static class CKomposableDesktopHost
     /// <returns>The exit code of the process: 0 on success, 1 on failure.</returns>
     public static int Run( string[] args )
     {
+        SetPublishedLogPath();
         IHost host;
         try
         {
@@ -91,6 +93,41 @@ public static class CKomposableDesktopHost
                                                  DesktopWindowSettings.DefaultHeight );
         }
         return null;
+    }
+
+    /// <summary>
+    /// The logs of a published desktop application are in the user's application data: its folder may be read only (an
+    /// installed application) or temporary (the extraction folder of a single file application).
+    /// <c>{LocalApplicationData}/{Domain}-{Party}/Logs</c>, from the full name of its deployment ("CK/$Configurator/#Production"
+    /// gives "CK-Configurator"), or the name of the host without ".Host".
+    /// </summary>
+    static void SetPublishedLogPath()
+    {
+        if( LogFile.RootLogPath != null ) return;
+        var published = Path.Combine( AppContext.BaseDirectory, CKomposableAppHost.PublishedFileName );
+        if( !File.Exists( published ) ) return;
+        string? name = null;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse( File.ReadAllText( published ) );
+            if( doc.RootElement.TryGetProperty( "Deployment", out var d )
+                && d.ValueKind == System.Text.Json.JsonValueKind.Object
+                && d.TryGetProperty( "FullName", out var f )
+                && f.GetString() is { Length: > 0 } fullName )
+            {
+                name = string.Join( '-', fullName.Split( '/' ).Where( s => !s.StartsWith( '#' ) ).Select( s => s.TrimStart( '$' ) ) );
+            }
+        }
+        catch( Exception ex )
+        {
+            ReportFailure( ex );
+        }
+        if( string.IsNullOrEmpty( name ) )
+        {
+            name = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name ?? "CKomposable";
+            if( name.EndsWith( ".Host", StringComparison.OrdinalIgnoreCase ) ) name = name[..^5];
+        }
+        LogFile.RootLogPath = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), name, "Logs" );
     }
 
     static volatile IInfiniFrameWindow? _window;
