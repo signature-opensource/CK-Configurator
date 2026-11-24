@@ -144,23 +144,23 @@ public static class CKomposableDesktopHost
         // The bridge to an in-process endpoint: its handlers are registered with the window (they answer "starting..."
         // until the endpoint is started, and are unused when the endpoint runs on Kestrel).
         var bridge = new DesktopInProcessBridge();
-        // A navigation requested before the window is created is lost: the client is loaded once it is.
-        var windowCreated = new TaskCompletionSource( TaskCreationOptions.RunContinuationsAsynchronously );
+        // The client is loaded once the start page is loaded (it posts a message): a navigation requested before (before the
+        // window is created, or while its start page loads) is lost or replaced by the start page.
+        var startPageLoaded = new TaskCompletionSource( TaskCreationOptions.RunContinuationsAsynchronously );
         void RunWindow()
         {
-            var builder = InfiniFrameWindowBuilder.Create();
-            builder.EventsStore.WindowCreated.Add( _ => windowCreated.TrySetResult() );
-            var window = builder
+            var window = InfiniFrameWindowBuilder.Create()
                             .SetTitle( settings.Title )
                             .SetSize( settings.Width, settings.Height )
-                            .SetStartPageContent( Page( settings.Title, "starting...", null ) )
+                            .SetStartPageContent( Page( settings.Title, "starting...", null, readyMessageId: _startPageLoadedId ) )
+                            .RegisterWebMessagePostHandler( _startPageLoadedId, ( IInfiniFrameWindow w, string? payload ) => startPageLoaded.TrySetResult() )
                             .RegisterCustomSchemeHandler( DesktopInProcessBridge.Scheme, bridge.HandleScheme )
                             .RegisterWebMessagePostHandler( DesktopInProcessBridge.MessageId, bridge.HandleMessage )
                             .Build();
             _window = window;
             hostTask = Task.Run( async () =>
             {
-                if( !await RunHostAsync( host, window, settings, bridge, windowCreated.Task ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );
+                if( !await RunHostAsync( host, window, settings, bridge, startPageLoaded.Task ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );
             } );
             window.WaitForClose();
         }
@@ -198,7 +198,7 @@ public static class CKomposableDesktopHost
                                           IInfiniFrameWindow window,
                                           DesktopWindowSettings settings,
                                           DesktopInProcessBridge bridge,
-                                          Task windowCreated )
+                                          Task startPageLoaded )
     {
         // The errors logged while the host starts: shown in the window on failure (the exception only says that a setup
         // failed). The monitors created while it starts collect them.
@@ -236,7 +236,7 @@ public static class CKomposableDesktopHost
                 return false;
             }
             ActivityMonitor.StaticLogger.Info( $"Desktop window on '{url}'." );
-            await WaitForWindowAsync( windowCreated ).ConfigureAwait( false );
+            await WaitForStartPageAsync( startPageLoaded ).ConfigureAwait( false );
             // An in-process endpoint ("InProcess" option): the window relays the requests of its page, no port is opened.
             var server = host.Services.GetRequiredService<HttpEndpointFeatureDriver>().Endpoint?.GetInProcessServer();
             if( server != null )
@@ -327,15 +327,17 @@ public static class CKomposableDesktopHost
 
     static readonly TimeSpan _readyDelay = TimeSpan.FromMinutes( 3 );
 
-    static async Task WaitForWindowAsync( Task windowCreated )
+    const string _startPageLoadedId = "ck:start-page-loaded";
+
+    static async Task WaitForStartPageAsync( Task startPageLoaded )
     {
         try
         {
-            await windowCreated.WaitAsync( TimeSpan.FromSeconds( 30 ) ).ConfigureAwait( false );
+            await startPageLoaded.WaitAsync( TimeSpan.FromSeconds( 30 ) ).ConfigureAwait( false );
         }
         catch( TimeoutException )
         {
-            ActivityMonitor.StaticLogger.Warn( "The desktop window is not created after 30 seconds: the client is loaded anyway." );
+            ActivityMonitor.StaticLogger.Warn( "The start page of the desktop window is not loaded after 30 seconds: the client is loaded anyway." );
         }
     }
 
@@ -385,8 +387,16 @@ public static class CKomposableDesktopHost
     }
 
     // The waiting page and the failure page.
-    static string Page( string title, string message, Exception? ex, IEnumerable<string>? errors = null )
+    static string Page( string title, string message, Exception? ex, IEnumerable<string>? errors = null, string? readyMessageId = null )
     {
+        // The page tells the host that it is loaded: an InfiniFrame envelope posted to the WebView (WebView2 or WebKit).
+        var ready = readyMessageId == null
+                    ? ""
+                    : $$$"""
+                        <script>(function(){var e=JSON.stringify({id:'{{{readyMessageId}}}',command:'Post',version:2,data:''});
+                        try{if(window.chrome&&window.chrome.webview){window.chrome.webview.postMessage(e);}
+                        else if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.infiniFrameInterop){window.webkit.messageHandlers.infiniFrameInterop.postMessage(e);}}catch(x){}})();</script>
+                        """;
         var list = errors == null ? "" : string.Concat( errors.Distinct().Select( e => $"<li>{WebUtility.HtmlEncode( e )}</li>" ) );
         if( list.Length > 0 ) list = $"<ul class=\"errors\">{list}</ul>";
         var t = WebUtility.HtmlEncode( title );
@@ -402,7 +412,7 @@ public static class CKomposableDesktopHost
             <!DOCTYPE html>
             <html><head><meta charset="utf-8"><title>{{t}}</title>
             <style>body{font-family:Segoe UI,sans-serif;{{style}}} pre{white-space:pre-wrap;font-size:12px;background:#f5f5f5;padding:12px} .errors{color:#b00020}</style>
-            </head><body><div><div>{{t}}: {{m}}</div>{{list}}{{logs}}{{details}}</div></body></html>
+            </head><body><div><div>{{t}}: {{m}}</div>{{list}}{{logs}}{{details}}</div>{{ready}}</body></html>
             """;
     }
 
