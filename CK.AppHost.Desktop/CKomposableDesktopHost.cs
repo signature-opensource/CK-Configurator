@@ -97,16 +97,21 @@ public static class CKomposableDesktopHost
     {
         int exitCode = 0;
         Task? hostTask = null;
+        // The bridge to an in-process endpoint: its handlers are registered with the window (they answer "starting..."
+        // until the endpoint is started, and are unused when the endpoint runs on Kestrel).
+        var bridge = new DesktopInProcessBridge();
         void RunWindow()
         {
             var window = InfiniFrameWindowBuilder.Create()
                             .SetTitle( settings.Title )
                             .SetSize( settings.Width, settings.Height )
                             .SetStartPageContent( Page( settings.Title, "starting...", null ) )
+                            .RegisterCustomSchemeHandler( DesktopInProcessBridge.Scheme, bridge.HandleScheme )
+                            .RegisterWebMessagePostHandler( DesktopInProcessBridge.MessageId, bridge.HandleMessage )
                             .Build();
             hostTask = Task.Run( async () =>
             {
-                if( !await RunHostAsync( host, window, settings ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );
+                if( !await RunHostAsync( host, window, settings, bridge ).ConfigureAwait( false ) ) Interlocked.Exchange( ref exitCode, 1 );
             } );
             window.WaitForClose();
         }
@@ -140,7 +145,7 @@ public static class CKomposableDesktopHost
 
     // Starts the host, loads the client in the window, and waits for the host to stop. False on failure (it is shown in
     // the window that stays open until it is closed).
-    static async Task<bool> RunHostAsync( IHost host, IInfiniFrameWindow window, DesktopWindowSettings settings )
+    static async Task<bool> RunHostAsync( IHost host, IInfiniFrameWindow window, DesktopWindowSettings settings, DesktopInProcessBridge bridge )
     {
         // The errors logged while the host starts: shown in the window on failure (the exception only says that a setup
         // failed). The monitors created while it starts collect them.
@@ -178,7 +183,24 @@ public static class CKomposableDesktopHost
                 return false;
             }
             ActivityMonitor.StaticLogger.Info( $"Desktop window on '{url}'." );
-            await LoadWhenReadyAsync( window, url ).ConfigureAwait( false );
+            // An in-process endpoint ("InProcess" option): the window relays the requests of its page, no port is opened.
+            var server = host.Services.GetRequiredService<HttpEndpointFeatureDriver>().Endpoint?.GetInProcessServer();
+            if( server != null )
+            {
+                if( !url.StartsWith( DesktopInProcessBridge.Scheme + "://", StringComparison.OrdinalIgnoreCase ) )
+                {
+                    var message = $"The in-process endpoint's URL is '{url}': the desktop window serves only \"{DesktopInProcessBridge.Scheme}://\" URLs (\"InProcess\": true).";
+                    ActivityMonitor.StaticLogger.Error( message );
+                    await ShowFailureAsync( window, settings.Title, message, [], null ).ConfigureAwait( false );
+                    return false;
+                }
+                bridge.SetServer( server, url );
+                await LoadWhenReadyAsync( window, url, u => bridge.GetAsync( server, new Uri( u ).PathAndQuery, default ).ContinueWith( t => t.Result.Response.StatusCode ) ).ConfigureAwait( false );
+            }
+            else
+            {
+                await LoadWhenReadyAsync( window, url ).ConfigureAwait( false );
+            }
             await host.WaitForShutdownAsync().ConfigureAwait( false );
             return true;
         }
@@ -192,29 +214,48 @@ public static class CKomposableDesktopHost
 
     // Loads the url once it answers (anything but a server error: a forwarder answers 502 while the dev server of a client
     // in Development is not listening). After the delay, the url is loaded anyway: the window shows what it answers.
-    static async Task LoadWhenReadyAsync( IInfiniFrameWindow window, string url )
+    // The in-process endpoint is asked through its server (getStatus), the Kestrel one with an HttpClient.
+    static async Task LoadWhenReadyAsync( IInfiniFrameWindow window, string url, Func<string, Task<int>>? getStatus = null )
     {
         try
         {
             using var http = new HttpClient { Timeout = TimeSpan.FromSeconds( 10 ) };
+            getStatus ??= async u =>
+            {
+                using var response = await http.GetAsync( u, HttpCompletionOption.ResponseHeadersRead ).ConfigureAwait( false );
+                return (int)response.StatusCode;
+            };
             var limit = DateTime.UtcNow + _readyDelay;
             while( !window.IsClosedOrClosing() && DateTime.UtcNow < limit )
             {
                 try
                 {
-                    using var response = await http.GetAsync( url, HttpCompletionOption.ResponseHeadersRead ).ConfigureAwait( false );
-                    if( (int)response.StatusCode < 500 ) break;
+                    if( await getStatus( url ).ConfigureAwait( false ) < 500 ) break;
                 }
                 catch( HttpRequestException ) { }
                 catch( TaskCanceledException ) { }
                 await Task.Delay( 500 ).ConfigureAwait( false );
             }
             if( window.IsClosedOrClosing() ) return;
-            // InfiniFrame only navigates to a trusted origin (a refused navigation is silent): the window opened on a page
-            // without origin, the one of the endpoint (its port is known once it is started) is trusted now.
+            Load( window, url );
+        }
+        catch( Exception ex )
+        {
+            ActivityMonitor.StaticLogger.Error( $"While loading '{url}' in the desktop window.", ex );
+        }
+    }
+
+    // InfiniFrame only navigates to a trusted origin (a refused navigation is silent): the window opened on a page without
+    // origin, the one of the endpoint (its port is known once it is started) is trusted now.
+    static void Load( IInfiniFrameWindow window, string url )
+    {
+        try
+        {
             var uri = new Uri( url );
             var policy = InfiniFrameUriSecurityPolicyRegistry.GetForWindow( window );
-            InfiniFrameUriSecurityPolicyRegistry.BindToWindow( window, new InfiniFrameUriSecurityPolicyBuilder( policy ).AddTrustedOrigin( uri ).Build() );
+            var builder = new InfiniFrameUriSecurityPolicyBuilder( policy ).AddTrustedOrigin( uri );
+            if( uri.Scheme == DesktopInProcessBridge.Scheme ) builder.AllowNavigationScheme( DesktopInProcessBridge.Scheme );
+            InfiniFrameUriSecurityPolicyRegistry.BindToWindow( window, builder.Build() );
             window.Load( uri );
         }
         catch( Exception ex )

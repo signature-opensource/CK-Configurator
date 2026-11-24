@@ -53,6 +53,31 @@ of the root party has "DesktopWindow", the application runs with its window, oth
 - Closing the window stops the host; stopping the host closes the window.
 - The exit code is 0, or 1 on failure.
 
+## The in-process endpoint: no port
+
+With the "InProcess" option of the endpoint (`"HttpEndpoint": { "InProcess": true }`, from
+[CK.AppIdentity.HttpEndpoint.InProcess](https://github.com/signature-opensource/CK-AspNet/blob/stable/CK.AppIdentity.HttpEndpoint.InProcess/README.md)),
+the web application of the party runs on an in-memory server: no port is opened, nothing outside the window can call
+it. The url of the window is then `app://localhost/` (followed by the `RequestPath` of the client), and the window
+relays the requests of its page ([`DesktopInProcessBridge`](DesktopInProcessBridge.cs)):
+
+- **The files of the page** (the GET of the `app` scheme) are asked to the in-memory server. `app` is the only custom
+  scheme that InfiniFrame registers as a secure origin with an authority (`app://localhost`): any other name gives the
+  page a `null` origin (no `fetch`, no `localStorage`). InfiniFrame's handler receives the url only and returns a body
+  and a content type: the request has the `Accept` of a navigation for a document (no extension or `.html`: a dev server
+  serves its index to it), an error is a text (a response without content type would be a download for the window).
+- **The other requests** (the API: Cris) are messages: the axios adapter of
+  [CK.Ng.AppHost.Desktop](../CK.Ng.AppHost.Desktop/README.md) posts `{ id, method, url, headers, body }` (envelope id
+  `"ck:http"`), the bridge runs it and answers `{ id, status, headers, body, base64 }` (a text or JSON body as is, any
+  other as base64). The requests have `Origin` (the url of the server) and `Sec-Fetch-Site: same-origin`: only the
+  page of the window sends them. The cookies that the server sets are kept by the bridge.
+- **The sizes:** InfiniFrame caps a message from the page at 1 MiB (a request); the responses are read without its
+  dispatcher (no cap).
+- The window waits for the page to answer without a server error before loading it, as with Kestrel.
+
+In Development the endpoint can stay on Kestrel ("Urls"): the dev server's live reload needs a websocket that the `app`
+scheme doesn't carry.
+
 The window is an [InfiniFrame](https://github.com/InfiniLore/InfiniFrame) window. It runs on the main thread, except on
 Windows where it runs on an STA thread of its own (WebView2 requires an STA thread, and the main thread of a top-level
 `Program.cs` is not one). **Tested on Windows (WebView2) only:** macOS (WKWebView) and Linux (WebKitGTK) are untested.
@@ -81,8 +106,7 @@ What a desktop application needs once it is installed (not done here, see the di
   deployment (the "Console" handler of the GrandOutput), its logs go to files in a folder where it can write.
 - The logs and the files it writes are in the user's application data (`%LOCALAPPDATA%` and its macOS and Linux
   equivalents), not next to the executable.
-- Its endpoint is open to every process of the machine (`127.0.0.1`): the protection of the endpoint (a secret given to
-  the window only, or a custom scheme instead of a TCP port) is to be decided.
+- Its endpoint is in process ("InProcess", see above): no port is open to the other processes of the machine.
 - Two launches are two independent applications: what they share on disk must be safe under concurrency.
 
 ## Where it is

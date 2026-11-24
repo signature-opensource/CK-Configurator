@@ -16,3 +16,13 @@ The component asks the backend first (`IGetDesktopInfoQCommand`): it shows nothi
 error of a link is shown as the title of the links (they turn red).
 
 The backend is CK.AppHost.Desktop: the App references it (it holds the "DesktopWindow" feature too).
+
+## The requests of a page without port
+
+The package provides the axios instance of the application (the `AXIOS` token of CK.Ng.Axios: its provider comes after
+the one of CK.Ng.Axios, it wins) with [`createDesktopAxios`](Res/desktop-axios.ts): when the page is served by the
+`app` scheme of the desktop window (an in-process endpoint, see
+[CK.AppHost.Desktop](../CK.AppHost.Desktop/README.md#the-in-process-endpoint-no-port)), its adapter
+(`desktopAxiosAdapter`) sends each request as a message to the host instead of HTTP: the `HttpCrisEndpoint` and every
+component work as they are. Only text bodies (JSON) are sent; a binary response is an `ArrayBuffer`. Elsewhere (a
+browser, a Kestrel endpoint) it is a plain `axios.create()`.
