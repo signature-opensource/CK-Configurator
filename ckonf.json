@@ -20,8 +20,11 @@
     "Configurator/Configurator.Builder": {
       "App": {
         "Local": {
-          // A random local port: the desktop window shows the actual one.
-          "HttpEndpoint": { "Urls": "http://127.0.0.1:0" },
+          // In process (CK.AppIdentity.HttpEndpoint.InProcess): no port is opened, the desktop window shows
+          // "app://localhost/" and relays the requests of its page (CK.AppHost.Desktop). The dev server's live reload
+          // doesn't work on "app://": to have it, run the host on a random local port with
+          // --CK-AppIdentity:Local:HttpEndpoint:InProcess=false --CK-AppIdentity:Local:HttpEndpoint:Urls=http://127.0.0.1:0
+          "HttpEndpoint": { "InProcess": true },
           // Its client application (Configurator.Host/Clients/App), served at "/", in the window of the desktop
           // application (CK.AppHost.Desktop): closing the window stops it.
           "PartyClient": {
