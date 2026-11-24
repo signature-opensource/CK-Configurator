@@ -94,6 +94,8 @@ client side is [CK.Ng.AppHost.Desktop](../CK.Ng.AppHost.Desktop/README.md)):
   `T-….log.tmp` becomes its final `….log` and the next log line starts a new file: nothing is copied. The closed file
   is opened with the application of the system for ".log" files.
 - `IOpenLogFolderCommand`: opens the folder of the "TextFile" handler (under `LogFile.RootLogPath`).
+- `IPickFolderCommand`: shows the folder dialog of the system in the window (InfiniFrame's `FilePickerDialogs`); the
+  window is the one that the bootstrap opened (`CKomposableDesktopHost`). It fails without the window.
 
 Files are opened with the shell on Windows, `open` on macOS, `xdg-open` on Linux. The two "open" commands fail without
 the window: a server never opens files on its machine.

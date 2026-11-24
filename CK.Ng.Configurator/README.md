@@ -2,8 +2,8 @@
 
 The Angular side of the configurator: the TypeScript package `NgConfiguratorPackage` (it requires the Cris endpoint of
 CK.Ng.Cris.AspNet, the ng-zorro components of CK.Ng.Zorro and the Markdown component of CK.Ng.Markdown, and registers the commands of
-[CK.IO.Configurator](../CK.IO.Configurator/README.md)): the opened catalog of the application, its picker and the
-catalog page.
+[CK.IO.Configurator](../CK.IO.Configurator/README.md) and the folder dialog of CK.IO.AppHost.Desktop): the opened
+catalog of the application, its picker, the catalog page and the editor page.
 
 ## The opened catalog: `CatalogSource` and its picker
 
@@ -47,5 +47,28 @@ The page is read-only: its own state (the selection, the closure, the opened pac
 is opened. The texts are in the `Res/ts-locales` of the page, of the picker and of the package (the names of the
 pages: "CK.Configurator.CatalogPage", "CK.Configurator.EditorPage"), default and French.
 
+## The editor page
+
+`EditorPageComponent` is routed at `ckomposable/editor`. It edits the central configuration (`ckonf.json`) of a
+solution, held by the backend: every action is an editor command that returns the whole state of the document
+(`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md#the-editor)).
+
+- **Opening:** the folder of the solution is typed (the last one is remembered in the browser) or chosen with the
+  folder dialog of a desktop window ("Browse...", `IPickFolderCommand`: hidden when the command fails, in a browser).
+- **The catalog of the document** (its `"$configurator"`) is opened with `CatalogSource.openSourceAsync`: it types and
+  checks the document. Without one, the opened catalog of the picker can be used for the document
+  (`ISetCatalogSourceCommand`: written in the document); an opened catalog that is not the one of the document is a
+  warning.
+- **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
+  a party, a feature, a client, an option) with their role, the counts of their errors and warnings.
+- **The selected property** (centre): its path, its role and its configurable type, its problems, the comment written
+  above it, its value (a switch for a boolean, a text for a string, JSON text otherwise; "Edit as JSON" replaces it by
+  any value), the addition of a property to an object, its removal, and the documentation of its type (its summary
+  and remarks, in Markdown).
+- **The palette** (right): what the catalog offers at the selected property, added as `true`: the party features of a
+  party, the client features of a client, the options of a feature or of a client feature, the aspects of an
+  `"Aspects"`. Then **the problems** of the document: a click selects the property.
+- **Undo, Redo, Save, Close**, the "Not saved" tag; a file that changed on disk offers "Reload" or "Overwrite".
+
 The backend of these commands is [CK.Configurator](../CK.Configurator/README.md): an application that references both
-serves the page.
+serves the pages.
