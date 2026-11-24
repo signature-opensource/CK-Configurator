@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>The Angular side of a desktop application (CK.AppHost.Desktop): the "Last log" and "Open folder" links, shown only when the application runs with its window.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.2.ci.198" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CK.IO.AppHost.Desktop\CK.IO.AppHost.Desktop.csproj" />
+  </ItemGroup>
+</Project>

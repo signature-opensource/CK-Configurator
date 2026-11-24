@@ -1,0 +1,18 @@
+ck-catalog-source-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+
+    .ck-catalog-source {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        > * { min-width: 0; }
+        .ck-catalog-world { flex: 3; }
+        .ck-catalog-lts { flex: 1; }
+        .ck-catalog-branch { flex: 2; }
+        .ck-catalog-version { flex: 2; }
+        .ck-catalog-deprecated, button { flex: none; white-space: nowrap; }
+    }
+}

@@ -13,6 +13,9 @@
     <PackageReference Include="InfiniLore.InfiniFrame" Version="0.62.1" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CK.IO.AppHost.Desktop\CK.IO.AppHost.Desktop.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="CK.AppHost.Desktop.Tests" />
   </ItemGroup>
 </Project>

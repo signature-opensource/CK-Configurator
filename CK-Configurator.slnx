@@ -19,6 +19,8 @@
   <Project Path="CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj" />
   <Project Path="CK.IO.Configurator/CK.IO.Configurator.csproj" />
   <Project Path="CK.Configurator/CK.Configurator.csproj" />
+  <Project Path="CK.IO.AppHost.Desktop/CK.IO.AppHost.Desktop.csproj" />
   <Project Path="CK.AppHost.Desktop/CK.AppHost.Desktop.csproj" />
+  <Project Path="CK.Ng.AppHost.Desktop/CK.Ng.AppHost.Desktop.csproj" />
   <Project Path="CK.Ng.Configurator/CK.Ng.Configurator.csproj" />
 </Solution>

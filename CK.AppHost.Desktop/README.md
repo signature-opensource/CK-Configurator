@@ -57,6 +57,22 @@ The window is an [InfiniFrame](https://github.com/InfiniLore/InfiniFrame) window
 Windows where it runs on an STA thread of its own (WebView2 requires an STA thread, and the main thread of a top-level
 `Program.cs` is not one). **Tested on Windows (WebView2) only:** macOS (WKWebView) and Linux (WebKitGTK) are untested.
 
+## The commands of the desktop
+
+`DesktopCommandHandlers` handles the commands of [CK.IO.AppHost.Desktop](../CK.IO.AppHost.Desktop/README.md) (their
+client side is [CK.Ng.AppHost.Desktop](../CK.Ng.AppHost.Desktop/README.md)):
+
+- `IGetDesktopInfoQCommand`: whether a client of the root party has the window, and whether the GrandOutput has a
+  "TextFile" handler.
+- `IOpenLastLogCommand`: a `GrandOutputHandlersAction` closes the current file of the "TextFile" handler (on the
+  dispatcher of the GrandOutput, after the entries already sent: the file always contains the command's own log line).
+  `T-….log.tmp` becomes its final `….log` and the next log line starts a new file: nothing is copied. The closed file
+  is opened with the application of the system for ".log" files.
+- `IOpenLogFolderCommand`: opens the folder of the "TextFile" handler (under `LogFile.RootLogPath`).
+
+Files are opened with the shell on Windows, `open` on macOS, `xdg-open` on Linux. The two "open" commands fail without
+the window: a server never opens files on its machine.
+
 ## The installed application
 
 What a desktop application needs once it is installed (not done here, see the distribution of the configurator):

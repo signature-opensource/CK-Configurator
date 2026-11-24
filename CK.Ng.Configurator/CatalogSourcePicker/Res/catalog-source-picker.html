@@ -1,0 +1,30 @@
+<div class="ck-catalog-source">
+    <input nz-input class="ck-catalog-world" [ngModel]="source.world()" (ngModelChange)="source.world.set( $event )" (keyup.enter)="source.loadBranchesAsync()" [placeholder]="'CK.Configurator.Catalog.World' | translate" />
+    <button nz-button class="ck-catalog-load" [nzLoading]="source.listing()" (click)="source.loadBranchesAsync()">
+        {{ 'CK.Configurator.Catalog.Load' | translate }}
+    </button>
+    @if ( source.worlds().length > 1 ) {
+        <nz-select class="ck-catalog-lts" [ngModel]="source.listedWorld()" (ngModelChange)="source.selectWorldAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.WorldList' | translate">
+            @for ( w of source.worlds(); track w ) {
+                <nz-option [nzValue]="w" [nzLabel]="source.worldLabel( w )" />
+            }
+        </nz-select>
+    }
+    <nz-select class="ck-catalog-branch" [ngModel]="source.branch()" (ngModelChange)="source.selectBranchAsync( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.Branch' | translate" [nzDisabled]="!source.branches()?.length">
+        @for ( b of source.branches() ?? []; track b.name ) {
+            <nz-option [nzValue]="b.name" [nzLabel]="b.name + ' - ' + source.profileLabel( b.latest )" />
+        }
+    </nz-select>
+    <nz-select class="ck-catalog-version" [ngModel]="source.version()" (ngModelChange)="source.version.set( $event )" [nzPlaceHolder]="'CK.Configurator.Catalog.Version' | translate" [nzDisabled]="source.profiles().length === 0">
+        @for ( p of source.profiles(); track p.version ) {
+            <nz-option [nzValue]="p.version" [nzLabel]="source.profileLabel( p )" [nzDisabled]="!p.hasFeeds" />
+        }
+    </nz-select>
+    <label nz-checkbox class="ck-catalog-deprecated" [ngModel]="source.includeDeprecated()" (ngModelChange)="source.setIncludeDeprecatedAsync( $event )">{{ 'CK.Configurator.Catalog.ShowDeprecated' | translate }}</label>
+    <button nz-button nzType="primary" class="ck-catalog-open" [disabled]="!source.version()" [nzLoading]="source.opening()" (click)="source.openAsync()">
+        {{ 'CK.Configurator.Catalog.Open' | translate }}
+    </button>
+</div>
+@if ( source.branches()?.length === 0 ) {
+    <span class="sub">{{ 'CK.Configurator.Catalog.NoBranch' | translate }}</span>
+}

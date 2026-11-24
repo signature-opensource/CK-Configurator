@@ -2,3 +2,4 @@
 [assembly: CK.Setup.PreserveAssemblyReference( typeof( CK.Configurator.ConfiguratorCatalogHandlers ) )]
 [assembly: CK.Setup.PreserveAssemblyReference( typeof( CK.Ng.Configurator.NgConfiguratorPackage ) )]
 [assembly: CK.Setup.PreserveAssemblyReference( typeof( CK.AppIdentity.DesktopWindowClientFeature ) )]
+[assembly: CK.Setup.PreserveAssemblyReference( typeof( CK.Ng.AppHost.Desktop.NgAppHostDesktopPackage ) )]

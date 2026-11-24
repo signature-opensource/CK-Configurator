@@ -1,17 +1,15 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { TranslatePipe } from '@ngx-translate/core';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule } from 'ng-zorro-antd/modal';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
-import { BranchInfo, CatalogInfo, CatalogPackageInfo, CommandInfo, ConfigurableTypeInfo, GetBranchesQCommand, GetClosureQCommand, GetCommandsQCommand, GetConfigurableTypesQCommand, GetPackageQCommand, GetPackagesQCommand, GetProfilesQCommand, GetWorldsQCommand, HttpCrisEndpoint, MarkdownComponent, OpenCatalogCommand, PackageInfo, ProfileInfo } from '@local/ck-gen';
+import { CatalogSource, CatalogSourcePicker, ConfigurableTypeInfo, GetClosureQCommand, GetPackageQCommand, HttpCrisEndpoint, MarkdownComponent, PackageInfo } from '@local/ck-gen';
 
 /** A configurable type and its depth in the list: an option is shown under its owner. */
 export interface CatalogRow {
@@ -147,8 +145,9 @@ function levelOf( kind: string ): string {
 }
 
 /**
- * The catalog page: a source (a World, then one of its branches, then one of its profiles) is opened, its configurable types are listed (the
- * options under their owners), the selected ones show what they bring in (their closure) and the commands are listed.
+ * The catalog page: the opened catalog of the application ({@link CatalogSource}) lists its configurable types (the
+ * options under their owners), the selected ones show what they bring in (their closure), its commands and its packages.
+ * Without a picker in the shell of the application, the page shows its own.
  */
 @Component( {
     selector: 'ck-catalog-page',
@@ -157,11 +156,10 @@ function levelOf( kind: string ): string {
         TranslatePipe,
         NzAlertModule,
         NzButtonModule,
-        NzCheckboxModule,
         NzInputModule,
         NzModalModule,
         MarkdownComponent,
-        NzSelectModule,
+        CatalogSourcePicker,
         NzTableModule,
         NzTabsModule,
         NzTagModule,
@@ -172,42 +170,20 @@ function levelOf( kind: string ): string {
 export class CatalogPage {
     // <PreDependencyInjection revert />
     readonly #cris = inject( HttpCrisEndpoint );
-    readonly #translate = inject( TranslateService );
+    /** The opened catalog and the choice of its source. */
+    readonly source = inject( CatalogSource );
     // <PostDependencyInjection />
 
     // <PreLocalVariables revert />
-    /** The World: a Stack url (its default World), followed by "/tree/main/@{LTS}" for an LTS World, or a local folder. */
-    world = 'https://github.com/signature-opensource/CK-Stack';
-    /** The selected profile version. */
-    version: string | undefined;
-    /** The Worlds of the Stack of the World input: its default World, then its LTS Worlds. */
-    readonly worlds = signal<ReadonlyArray<string>>( [] );
-    /** The World whose branches are listed (the input may have changed since). */
-    readonly listedWorld = signal( '' );
     /** The package whose readme is shown. */
     readonly package = signal<PackageInfo | undefined>( undefined );
-
-    /** Whether the deprecated profiles are listed. */
-    readonly includeDeprecated = signal( false );
-    /** The branches of the World (undefined before they are listed). */
-    readonly branches = signal<ReadonlyArray<BranchInfo> | undefined>( undefined );
-    /** The selected branch. */
-    readonly branch = signal<string | undefined>( undefined );
-    /** The profiles of the selected branch, the latest first. */
-    readonly profiles = signal<ReadonlyArray<ProfileInfo>>( [] );
-    /** True while the branches or the profiles are listed. */
-    readonly listing = signal( false );
-    /** The World and the version of the opened catalog. */
-    readonly opened = signal<{ world: string, version: string } | undefined>( undefined );
-    readonly openedVersion = computed( () => this.opened()?.version );
-
+    /** True while the closure is computed. */
     readonly loading = signal( false );
+    /** The last error of the page (the errors of the source are the source's ones). */
     readonly error = signal<string | null>( null );
-    /** The opened catalog (undefined before the first opening). */
-    readonly info = signal<CatalogInfo | undefined>( undefined );
-    readonly types = signal<ReadonlyArray<ConfigurableTypeInfo>>( [] );
-    readonly commands = signal<ReadonlyArray<CommandInfo>>( [] );
-    readonly packages = signal<ReadonlyArray<CatalogPackageInfo>>( [] );
+    readonly types = this.source.types;
+    readonly commands = this.source.commands;
+    readonly packages = this.source.packages;
     /** The identifiers of the packages in the catalog (lower case): a dependency in it can be opened. */
     readonly packageIds = computed( () => new Set( this.packages().map( p => p.packageId.toLowerCase() ) ) );
     /** The filter of the packages (a part of their identifier). */
@@ -270,109 +246,18 @@ export class CatalogPage {
     } );
     // <PostLocalVariables />
 
-    /** "2026.11.23", the clash number if any ("2026.11.23 (1)"), then the CI and deprecated tags. */
-    profileLabel( p: ProfileInfo ): string {
-        let label = p.clashNumber > 0 ? `${p.date} (${p.clashNumber})` : p.date;
-        if( p.isCI ) label += ' - CI';
-        if( p.isDeprecated ) label += ` - ${this.#translate.instant( 'CK.Configurator.Catalog.Deprecated' )}`;
-        if( !p.hasFeeds ) label += ` - ${this.#translate.instant( 'CK.Configurator.Catalog.NoFeeds' )}`;
-        return label;
+    constructor() {
+        // Another catalog is opened: the state of the page is about the previous one.
+        let previous = this.source.info();
+        effect( () => {
+            const info = this.source.info();
+            if( info === previous ) return;
+            previous = info;
+            untracked( () => this.#reset() );
+        } );
     }
 
-    /** "CK" for the default World of a Stack, its LTS name ("@net8") otherwise. */
-    worldLabel( world: string ): string {
-        const lts = /[\\/](@[^\\/]+)$/.exec( world );
-        return lts ? lts[1] : this.#translate.instant( 'CK.Configurator.Catalog.DefaultWorld' );
-    }
-
-    /** Lists the Worlds of the Stack of the World input, then the branches of the World input. */
-    async loadBranchesAsync(): Promise<void> {
-        this.listing.set( true );
-        this.error.set( null );
-        this.worlds.set( [] );
-        try {
-            const c = new GetWorldsQCommand();
-            c.world = this.world;
-            const worlds = await this.#cris.sendOrThrowAsync( c ) ?? [];
-            this.worlds.set( worlds );
-            // The World of the input (when it is one of them, in its canonical form), the default World otherwise.
-            const input = this.world.trim().replace( /[\\/]+$/, '' ).toLowerCase();
-            const selected = worlds.find( w => w.toLowerCase() === input ) ?? worlds.find( w => input.endsWith( this.worldLabel( w ).toLowerCase() ) ) ?? worlds[0];
-            if( selected ) await this.selectWorldAsync( selected );
-        } catch( e ) {
-            this.error.set( String( e ) );
-        } finally {
-            this.listing.set( false );
-        }
-    }
-
-    /** Lists the branches of a World and selects the first one. */
-    async selectWorldAsync( world: string ): Promise<void> {
-        this.listing.set( true );
-        this.error.set( null );
-        this.branches.set( undefined );
-        this.branch.set( undefined );
-        this.profiles.set( [] );
-        this.version = undefined;
-        try {
-            this.listedWorld.set( world );
-            const c = new GetBranchesQCommand();
-            c.world = this.listedWorld();
-            c.includeDeprecated = this.includeDeprecated();
-            const branches = await this.#cris.sendOrThrowAsync( c ) ?? [];
-            this.branches.set( branches );
-            if( branches.length > 0 ) await this.selectBranchAsync( branches[0].name );
-        } catch( e ) {
-            this.error.set( String( e ) );
-        } finally {
-            this.listing.set( false );
-        }
-    }
-
-    /** Lists the profiles of a branch and selects the latest one that can be opened. */
-    async selectBranchAsync( branch: string ): Promise<void> {
-        this.listing.set( true );
-        this.error.set( null );
-        this.branch.set( branch );
-        this.profiles.set( [] );
-        this.version = undefined;
-        try {
-            const c = new GetProfilesQCommand();
-            c.world = this.listedWorld();
-            c.branch = branch;
-            c.includeDeprecated = this.includeDeprecated();
-            const profiles = await this.#cris.sendOrThrowAsync( c ) ?? [];
-            this.profiles.set( profiles );
-            this.version = profiles.find( p => p.hasFeeds )?.version;
-        } catch( e ) {
-            this.error.set( String( e ) );
-        } finally {
-            this.listing.set( false );
-        }
-    }
-
-    async setIncludeDeprecated( include: boolean ): Promise<void> {
-        this.includeDeprecated.set( include );
-        if( this.branches() ) await this.selectWorldAsync( this.listedWorld() );
-    }
-
-    /** Shows the readme of a package of the opened catalog. */
-    async openPackageAsync( packageId: string ): Promise<void> {
-        this.error.set( null );
-        try {
-            const c = this.#source( new GetPackageQCommand() );
-            c.packageId = packageId;
-            this.package.set( await this.#cris.sendOrThrowAsync( c ) );
-        } catch( e ) {
-            this.error.set( String( e ) );
-        }
-    }
-
-    async openAsync(): Promise<void> {
-        if( !this.version ) return;
-        this.opened.set( { world: this.listedWorld(), version: this.version } );
-        this.info.set( undefined );
-        this.loading.set( true );
+    #reset(): void {
         this.error.set( null );
         this.closure.set( undefined );
         this.selection.set( new Set() );
@@ -380,15 +265,18 @@ export class CatalogPage {
         this.currentCommand.set( undefined );
         this.expandedPackages.set( new Set() );
         this.readmes.set( new Map() );
+        this.package.set( undefined );
+    }
+
+    /** Shows the readme of a package of the opened catalog. */
+    async openPackageAsync( packageId: string ): Promise<void> {
+        this.error.set( null );
         try {
-            this.info.set( await this.#cris.sendOrThrowAsync( this.#source( new OpenCatalogCommand() ) ) );
-            this.types.set( await this.#cris.sendOrThrowAsync( this.#source( new GetConfigurableTypesQCommand() ) ) ?? [] );
-            this.commands.set( await this.#cris.sendOrThrowAsync( this.#source( new GetCommandsQCommand() ) ) ?? [] );
-            this.packages.set( await this.#cris.sendOrThrowAsync( this.#source( new GetPackagesQCommand() ) ) ?? [] );
+            const c = this.source.source( new GetPackageQCommand() );
+            c.packageId = packageId;
+            this.package.set( await this.#cris.sendOrThrowAsync( c ) );
         } catch( e ) {
             this.error.set( String( e ) );
-        } finally {
-            this.loading.set( false );
         }
     }
 
@@ -404,7 +292,7 @@ export class CatalogPage {
         this.loading.set( true );
         this.error.set( null );
         try {
-            const c = this.#source( new GetClosureQCommand() );
+            const c = this.source.source( new GetClosureQCommand() );
             c.roots.push( ...this.selection() );
             c.packages.push( ...new Set( this.types().map( t => t.packageId ) ) );
             this.closure.set( await this.#cris.sendOrThrowAsync( c ) ?? [] );
@@ -430,7 +318,7 @@ export class CatalogPage {
         const key = packageId.toLowerCase();
         this.readmes.set( new Map( this.readmes() ).set( key, undefined ) );
         try {
-            const c = this.#source( new GetPackageQCommand() );
+            const c = this.source.source( new GetPackageQCommand() );
             c.packageId = packageId;
             const p = await this.#cris.sendOrThrowAsync( c );
             this.readmes.set( new Map( this.readmes() ).set( key, p?.readme ?? '' ) );
@@ -474,13 +362,5 @@ export class CatalogPage {
     /** The name of a configurable type when the full name is one, the full name otherwise. */
     displayName( typeName: string ): string {
         return this.types().find( t => t.typeName === typeName )?.name ?? typeName;
-    }
-
-    /** Sets the source of the opened catalog (not the one being chosen). */
-    #source<T extends { world: string, version: string }>( c: T ): T {
-        const o = this.opened()!;
-        c.world = o.world;
-        c.version = o.version;
-        return c;
     }
 }
