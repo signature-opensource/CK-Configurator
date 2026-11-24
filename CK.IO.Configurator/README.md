@@ -34,5 +34,27 @@ published before the profiles carried their feeds has none: a catalog can't be o
 An `IConfigurableTypeInfo` and an `ICommandInfo` (its primary interface) carry the `Summary` and the `Remarks` of the
 Xml documentation of their type, in Markdown.
 
+## The editor
+
+The editor edits the central configuration (`ckonf.json`) of one solution, held by the backend. Every command returns
+the `IEditorState` of the document: its folder and file, whether it is dirty, can undo or redo, changed on disk, the
+source of its catalog (its `"$configurator"` root key: `CatalogWorld`, `CatalogVersion`), its properties (`IEditorNode`,
+in document order: path, name, depth, kind, value, comment) and its problems (`IEditorProblem`).
+
+| Command | What it does |
+|---|---|
+| `IOpenSolutionCommand` (`Folder`) | Opens the `ckonf.json` of the folder (an opened document is closed). |
+| `IGetEditorStateQCommand` | Returns the state. |
+| `ISetValueCommand` (`Path`, `Json`) | Replaces the value of an existing property; the comments around it are kept. |
+| `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
+| `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments. |
+| `IUndoCommand`, `IRedoCommand` | Undo and redo the edits. |
+| `ISaveCommand` (`Overwrite`) | Saves the document; a file that changed on disk is overwritten only with `Overwrite`. |
+| `IReloadCommand` | Reads the file again (the edits are lost). |
+| `ICloseSolutionCommand` | Closes the document. |
+
+A path is the property names separated by `:`, case insensitive (`"Builders:App/App.Builder:App:Local:HttpEndpoint"`); a
+value is JSON text. An edit that fails (a missing path, an existing property, an invalid value) is an error result.
+
 The commands have no authentication part: the configurator is a development tool that runs locally. A hosting that
 exposes them to a web site adds it, by extending them (a command family can be restricted by an extension).

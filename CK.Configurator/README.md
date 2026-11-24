@@ -16,3 +16,22 @@ the catalogs of [CK.Configurator.Catalog](../CK.Configurator.Catalog/README.md).
   (absolute or relative to the folder of the development solution).
 - `ConfiguratorCatalogHandlers` maps the catalog to the result Pocos. A catalog that can't be opened is an error result
   (the details are in the logs). No right is checked (see CK.IO.Configurator).
+
+## The editor
+
+[`ConfiguratorEditorService`](Editor/ConfiguratorEditorService.cs) (a singleton) holds the document of the editor: the
+central configuration (`ckonf.json`) of one solution. Its methods return an `EditorSnapshot`, mapped to the `IEditorState`
+of every editor command by [`ConfiguratorEditorHandlers`](Editor/ConfiguratorEditorHandlers.cs).
+
+- **The text is edited with the JSON language** of CK.TypeScript.Transform (`JsonCodeEditorExtensions`): an edit
+  changes only its tokens, the comments and the layout are kept. The property names are case insensitive, like the
+  configuration keys.
+- **Undo and redo** keep the texts before the edits (a document is a few kilobytes). A document is dirty when its text
+  differs from the saved one: undoing back to it makes it clean.
+- **The file is read and written as bytes:** its encoding (UTF-8, with or without BOM) is kept. Its SHA-256 detects a
+  change on disk since it was read or saved (an editor, a pull): a save is then refused unless it overwrites, or the
+  document is reloaded (its edits are lost).
+- **The snapshot lists the properties** in document order, with their path (the names separated by `:`), their depth,
+  their kind, the JSON text of a value that is not an object, and the comments written on the lines above them (the
+  documentation that people read). The `"$configurator"` root key gives the source of the catalog of the solution.
+- The commands are serialized.
