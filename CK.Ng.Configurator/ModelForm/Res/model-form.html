@@ -100,17 +100,47 @@
             <fieldset class="ck-model-form-nested">
                 <legend>{{ p.name }}</legend>
                 @for ( e of entries( keyPath ); track e ) {
-                    <fieldset class="ck-model-form-nested">
-                        <legend>{{ e }}</legend>
-                        @if ( p.model ) {
+                    @if ( p.model ) {
+                        <fieldset class="ck-model-form-nested">
+                            <legend>{{ e }}</legend>
                             <ng-container *ngTemplateOutlet="modelTpl; context: { schema: p.model, path: keyPath + ':' + e }" />
-                        }
-                    </fieldset>
+                        </fieldset>
+                    } @else {
+                        <!-- An entry of a dictionary of values: its name and its value. -->
+                        @let entryPath = keyPath + ':' + e;
+                        @let en = node( entryPath );
+                        <div class="ck-model-form-entry">
+                            <a (click)="en && selectPath.emit( en.path )">{{ e }}</a>
+                            @switch ( p.entryKind ) {
+                                @case ( 'boolean' ) {
+                                    <nz-switch [ngModel]="value( entryPath ) === true" (ngModelChange)="emitWrite( entryPath, $event ? 'true' : 'false' )" [nzDisabled]="disabled()" />
+                                }
+                                @case ( 'integer' ) {
+                                    <nz-input-number [ngModel]="value( entryPath )" (ngModelChange)="writeNumber( entryPath, $event )" [nzPrecision]="0" [nzDisabled]="disabled()" />
+                                }
+                                @case ( 'number' ) {
+                                    <nz-input-number [ngModel]="value( entryPath )" (ngModelChange)="writeNumber( entryPath, $event )" [nzDisabled]="disabled()" />
+                                }
+                                @case ( 'enum' ) {
+                                    <nz-select class="ck-model-form-select" [ngModel]="value( entryPath )" (ngModelChange)="emitWrite( entryPath, toJson( $event ) )" [nzDisabled]="disabled()">
+                                        @for ( v of p.entryEnumValues; track v ) { <nz-option [nzValue]="v" [nzLabel]="v" /> }
+                                    </nz-select>
+                                }
+                                @default {
+                                    <input nz-input #ev [ngModel]="value( entryPath ) ?? ''" (keyup.enter)="writeText( entryPath, ev.value )" (blur)="writeText( entryPath, ev.value )" [disabled]="disabled()" />
+                                    @if ( p.entryKind === 'timespan' ) { <span class="sub">{{ 'CK.Configurator.ModelForm.TimeSpanHint' | translate }}</span> }
+                                }
+                            }
+                            @if ( canReset( en ) ) {
+                                <a class="ck-model-form-reset" (click)="reset.emit( en! )">{{ (deploymentView() ? 'CK.Configurator.Editor.Revert' : 'CK.Configurator.Editor.Remove') | translate }}</a>
+                            }
+                        </div>
+                    }
                 }
                 <div class="ck-model-form-add">
                     <input nz-input [placeholder]="'CK.Configurator.ModelForm.EntryName' | translate" [ngModel]="newEntry().get( keyPath ) ?? ''"
-                           (ngModelChange)="setNewEntry( keyPath, $event )" (keyup.enter)="addEntry( keyPath )" />
-                    <button nz-button nzSize="small" (click)="addEntry( keyPath )" [disabled]="disabled() || !(newEntry().get( keyPath ) ?? '').trim()">
+                           (ngModelChange)="setNewEntry( keyPath, $event )" (keyup.enter)="addEntry( keyPath, p )" />
+                    <button nz-button nzSize="small" (click)="addEntry( keyPath, p )" [disabled]="disabled() || !(newEntry().get( keyPath ) ?? '').trim()">
                         {{ 'CK.Configurator.ModelForm.AddEntry' | translate }}
                     </button>
                 </div>

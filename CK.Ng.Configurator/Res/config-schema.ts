@@ -46,8 +46,12 @@ export interface ModelProperty {
     readonly perDeployment: boolean;
     /** The values of an "enum". */
     readonly enumValues?: ReadonlyArray<string>;
-    /** The nested model ("model") or the model of an entry ("dictionary"). */
+    /** The nested model ("model") or the model of an entry ("dictionary" of models). */
     readonly model?: JsonSchema;
+    /** The kind of an entry of a dictionary of values (no {@link model}). */
+    readonly entryKind?: ModelPropertyKind;
+    /** The values of an "enum" entry of a dictionary of values. */
+    readonly entryEnumValues?: ReadonlyArray<string>;
     /** The external schema of an opaque section. */
     readonly schemaUri?: string;
 }
@@ -70,6 +74,20 @@ export class ModelSchema {
         }
     }
 
+    #kindOf( p: JsonSchema ): { kind: ModelPropertyKind, nested?: JsonSchema, schemaUri?: string } {
+        const nested = this.resolve( p );
+        if( nested ) return { kind: 'model', nested };
+        if( p['$ref'] ) return { kind: 'opaque', schemaUri: p['$ref'] };
+        if( p['anyOf'] ) return { kind: 'stringList' };
+        if( p['type'] === 'array' ) return { kind: p['items']?.['type'] === 'string' && !p['items']?.['enum'] ? 'stringList' : 'list' };
+        if( p['type'] === 'object' && p['additionalProperties'] ) return { kind: 'dictionary', nested: this.resolve( p['additionalProperties'] ) };
+        if( Array.isArray( p['enum'] ) ) return { kind: 'enum' };
+        if( p['x-ck-format'] === 'timespan' ) return { kind: 'timespan' };
+        if( p['format'] === 'uuid' || p['format'] === 'uri' ) return { kind: p['format'] };
+        if( ['boolean', 'integer', 'number', 'string'].includes( p['type'] ) ) return { kind: p['type'] };
+        return { kind: 'opaque' };
+    }
+
     /** Resolves a "#/$defs/..." reference (undefined for anything else). */
     resolve( s: JsonSchema | undefined ): JsonSchema | undefined {
         const ref: string | undefined = s?.['$ref'];
@@ -82,35 +100,14 @@ export class ModelSchema {
         const required: ReadonlyArray<string> = model['required'] ?? [];
         return Object.keys( properties ).map( name => {
             const p: JsonSchema = properties[name];
-            let kind: ModelPropertyKind;
-            let nested: JsonSchema | undefined;
-            let schemaUri: string | undefined;
-            if( ( nested = this.resolve( p ) ) ) {
-                kind = 'model';
-            } else if( p['$ref'] ) {
-                kind = 'opaque';
-                schemaUri = p['$ref'];
-            } else if( p['anyOf'] ) {
-                kind = 'stringList';
-            } else if( p['type'] === 'array' ) {
-                kind = p['items']?.['type'] === 'string' && !p['items']?.['enum'] ? 'stringList' : 'list';
-            } else if( p['type'] === 'object' && p['additionalProperties'] ) {
-                kind = 'dictionary';
-                nested = this.resolve( p['additionalProperties'] );
-            } else if( Array.isArray( p['enum'] ) ) {
-                kind = 'enum';
-            } else if( p['x-ck-format'] === 'timespan' ) {
-                kind = 'timespan';
-            } else if( p['format'] === 'uuid' || p['format'] === 'uri' ) {
-                kind = p['format'];
-            } else if( ['boolean', 'integer', 'number', 'string'].includes( p['type'] ) ) {
-                kind = p['type'];
-            } else {
-                kind = 'opaque';
-            }
+            const { kind, nested, schemaUri } = this.#kindOf( p );
+            // A dictionary of values: the kind of its entries.
+            const entry: JsonSchema | undefined = kind === 'dictionary' && !nested ? p['additionalProperties'] : undefined;
             return {
                 name,
                 kind,
+                entryKind: entry ? this.#kindOf( entry ).kind : undefined,
+                entryEnumValues: entry?.['enum'],
                 required: required.includes( name ),
                 defaultValue: p['default'],
                 description: p['description'],

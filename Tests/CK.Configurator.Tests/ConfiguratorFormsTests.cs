@@ -31,6 +31,7 @@ public class ConfiguratorFormsTests
             "Cultures": { "anyOf": [ { "type": "array", "items": { "type": "string" } }, { "type": "string" } ] },
             "Limits": { "$ref": "#/$defs/Limits" },
             "Schemes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/Scheme" } },
+            "Lifetimes": { "type": "object", "additionalProperties": { "type": "string", "x-ck-format": "timespan" } },
             "Kestrel": { "$ref": "https://json.schemastore.org/appsettings.json#/definitions/kestrel" },
             "Password": { "type": "string", "x-ck-secret": true }
           },
@@ -116,6 +117,7 @@ public class ConfiguratorFormsTests
     [TestCase( """{ "Endpoint": { "Url": "x", "Limits": { "Max": 1, "Min": 0 } } }""", _local + ":Endpoint:Limits:Min", "Unknown key 'Min'" )]
     [TestCase( """{ "Endpoint": { "Url": "x", "Limits": 3 } }""", _local + ":Endpoint:Limits", "is a section." )]
     [TestCase( """{ "Endpoint": { "Url": "x", "Schemes": { "G": {} } } }""", _local + ":Endpoint:Schemes:G", "'ClientId' is required" )]
+    [TestCase( """{ "Endpoint": { "Url": "x", "Lifetimes": { "A": "00:10:00", "B": "soon" } } }""", _local + ":Endpoint:Lifetimes:B", "is a time span" )]
     public void the_schema_problems( string local, string path, string message )
     {
         var p = Check( local ).ShouldHaveSingleItem();

@@ -140,11 +140,14 @@ sealed class SchemaChecker
                 break;
             case "object":
                 if( n.Kind != "Object" ) _error( n.Path, $"'{n.Name}' is a section." );
-                else if( p["additionalProperties"] is JsonObject entry && Resolve( entry, defs ) is JsonObject entryModel )
+                else if( p["additionalProperties"] is JsonObject entry )
                 {
+                    // A dictionary of models, or of values.
+                    var entryModel = Resolve( entry, defs );
                     foreach( var e in _children( n.Path ) )
                     {
-                        if( e.Kind == "Object" ) CheckModel( e.Path, true, entryModel, defs, typeName, new HashSet<string>(), isRoot: false );
+                        if( entryModel == null ) CheckValue( e, entry, defs, typeName );
+                        else if( e.Kind == "Object" ) CheckModel( e.Path, true, entryModel, defs, typeName, new HashSet<string>(), isRoot: false );
                         else if( e.Kind != "Null" ) _error( e.Path, $"'{e.Name}' is a section." );
                     }
                 }

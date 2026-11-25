@@ -161,10 +161,20 @@ export class ModelForm {
         this.emitWrite( path, String( value ) );
     }
 
-    addEntry( path: string ): void {
+    /**
+     * Adds an entry to a dictionary: an empty section for a dictionary of models, the default of the kind of its values
+     * otherwise.
+     */
+    addEntry( path: string, p?: ModelProperty ): void {
         const name = ( this.newEntry().get( path ) ?? '' ).trim();
         if( !name ) return;
-        this.emitWrite( `${path}:${name}`, '{}' );
+        const json = !p || p.model ? '{}'
+                   : p.entryKind === 'boolean' ? 'false'
+                   : p.entryKind === 'integer' || p.entryKind === 'number' ? '0'
+                   : p.entryKind === 'timespan' ? '"00:00:00"'
+                   : p.entryKind === 'enum' && p.entryEnumValues?.length ? JSON.stringify( p.entryEnumValues[0] )
+                   : '""';
+        this.emitWrite( `${path}:${name}`, json );
         this.setNewEntry( path, '' );
     }
 
