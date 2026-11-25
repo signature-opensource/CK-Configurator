@@ -4,6 +4,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
@@ -50,6 +51,7 @@ function readLastFolder(): string {
         NzAlertModule,
         NzBadgeModule,
         NzButtonModule,
+        NzCheckboxModule,
         NzInputModule,
         NzSelectModule,
         NzSwitchModule,
@@ -84,8 +86,8 @@ export class EditorPage {
     readonly newValue = signal( 'true' );
     /** The deployment of the view (null for the central configuration). */
     readonly view = signal<string | null>( null );
-    /** The form of a new deployment (shown when not null): its name and its base. */
-    readonly newDeployment = signal<{ name: string, base: string | null } | null>( null );
+    /** The form of a new deployment (shown when not null): its name, its base, whether its values per deployment are written. */
+    readonly newDeployment = signal<{ name: string, base: string | null, writeValues: boolean } | null>( null );
     #pollTimer: ReturnType<typeof setTimeout> | undefined;
 
     readonly isOpened = computed( () => !!this.state()?.folder );
@@ -276,7 +278,7 @@ export class EditorPage {
     }
 
     startNewDeployment(): void {
-        this.newDeployment.set( { name: '#', base: null } );
+        this.newDeployment.set( { name: '#', base: null, writeValues: true } );
     }
 
     async createDeploymentAsync(): Promise<void> {
@@ -285,11 +287,19 @@ export class EditorPage {
         const c = new CreateDeploymentCommand();
         c.name = f.name.trim();
         c.base = f.base ?? undefined;
+        c.writeValuesPerDeployment = f.writeValues;
         await this.runAsync( c );
         if( !this.error() ) this.newDeployment.set( null );
     }
 
     checkAsync(): Promise<void> { return this.runAsync( new CheckSolutionCommand() ); }
+
+    /** Writes the inherited value of a property in the overlay of the deployment of the view (the "WriteHere" fix). */
+    writeHereAsync( path: string ): Promise<void> {
+        const n = this.state()?.nodes.find( x => x.path === path );
+        if( !n?.value ) return Promise.resolve();
+        return this.setValueAsync( path, n.value );
+    }
 
     revertAsync( path: string ): Promise<void> {
         const c = new RevertPropertyCommand();

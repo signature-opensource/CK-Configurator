@@ -60,5 +60,7 @@
     "CK.Configurator.Editor.Check.Stale": "changed since",
     "CK.Configurator.Editor.Layer.Build": "build",
     "CK.Configurator.Editor.Role.BuilderAspectOption": "Builder aspect option",
-    "CK.Configurator.Editor.Role.AppAspectOption": "App aspect option"
+    "CK.Configurator.Editor.Role.AppAspectOption": "App aspect option",
+    "CK.Configurator.Editor.WriteHere": "Write it here",
+    "CK.Configurator.Editor.WriteValuesPerDeployment": "Write its values per deployment"
 }

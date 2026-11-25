@@ -127,6 +127,14 @@ public interface ICreateDeploymentCommand : ICommand<IEditorState>
     /// Gets or sets the deployment that the new one overlays (its <c>"$BASE"</c>), null for the central configuration.
     /// </summary>
     string? Base { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the values per deployment that the new deployment would inherit are written in its overlay,
+    /// with their inherited value (to change where they differ): the ones that the static checks find (the
+    /// <c>"$PER_DEPLOYMENT"</c> markers and the declarations of the types of the catalog). The ones that only the code
+    /// declares are reported by the check of the builders.
+    /// </summary>
+    bool WriteValuesPerDeployment { get; set; }
 }
 
 /// <summary>
@@ -387,4 +395,11 @@ public interface IEditorProblem : IPoco
     /// edit) or "Build" (the check of the saved configuration by the builders of the solution).
     /// </summary>
     string Layer { get; set; }
+
+    /// <summary>
+    /// Gets or sets the fix that the editor offers, or null. "WriteHere": the property is a value per deployment that
+    /// the deployment inherits; its inherited value (the <see cref="IEditorNode.Value"/> of the property in the view) is
+    /// written in its overlay by an <see cref="ISetValueCommand"/>, then changed where it differs.
+    /// </summary>
+    string? Fix { get; set; }
 }

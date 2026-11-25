@@ -62,10 +62,11 @@ a view (`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md
   (`ISetCatalogSourceCommand`: written in the document); an opened catalog that is not the one of the document is a
   warning.
 - **The view:** the central configuration ("Development") or a deployment, each with its counts of errors and warnings
-  and its "new" tag; "New deployment" creates one (its name and the deployment it overlays). In the view of a
-  deployment, what it inherits is dimmed (the name of the base it comes from), what its overlay writes is marked and
-  what it removes is struck through; the selected property says its origin and offers "Revert to inherited", and
-  "Remove" is "Remove here". An undo shows the view of the document it changed.
+  and its "new" tag; "New deployment" creates one (its name, the deployment it overlays and "Write its values per
+  deployment", checked by default). In the view of a deployment, what it inherits is dimmed (the name of the base it
+  comes from), what its overlay writes is marked and what it removes is struck through; the selected property says its
+  origin and offers "Write it here" (inherited) or "Revert to inherited" (written), and "Remove" is "Remove here". An
+  inherited value per deployment has "Write it here" in the problems too. An undo shows the view of the document it changed.
 - **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
   a party, a feature, a client, an option) with their role, the counts of their errors and warnings. A builder is shown
   without its ".Builder" suffix (in the paths too); the keys of the document don't change. The three panes take the

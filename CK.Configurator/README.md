@@ -60,7 +60,10 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
   way, then by [`DeploymentChecker`](Editor/DeploymentChecker.cs): the keys that an overlay can't write, its `"$BASE"`,
   the builders of its `"Deployment"` settings, and the values per deployment that it inherits
   (`CentralDeployment.FindInheritedValues`: the `"$PER_DEPLOYMENT"` markers and the `[ConfigurationPerDeployment]` of the
-  types of the catalog on the local party, its defaults and its clients). Without its catalog, a document has an Info
+  types of the catalog on the local party, its defaults and its clients), one problem per property that an overlay
+  writes as a whole (an array, not its items), with the fix `EditorProblemData.WriteHereFix` (its inherited value
+  written in the overlay). A deployment can be created with them written (`CreateDeploymentAsync`'s
+  `writeValuesPerDeployment`). Without its catalog, a document has an Info
   problem that says so. The keys of a section are free.
 - **Once saved, the builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): each
   builder of the `"Builders"` is restored, built without running it (`-p:CKAppBuilderRunAfterBuild=false`) and run with

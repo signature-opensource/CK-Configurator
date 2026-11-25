@@ -64,6 +64,7 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
                     problem.Severity = p.Severity;
                     problem.Message = p.Message;
                     problem.Layer = p.Layer;
+                    problem.Fix = p.Fix;
                 } ) );
             }
         } );
@@ -123,7 +124,7 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
     /// </summary>
     [CommandHandler]
     public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, ICreateDeploymentCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
-        => ToState( pocos, await editor.CreateDeploymentAsync( monitor, command.Name, command.Base ).ConfigureAwait( false ) );
+        => ToState( pocos, await editor.CreateDeploymentAsync( monitor, command.Name, command.Base, command.WriteValuesPerDeployment ).ConfigureAwait( false ) );
 
     /// <summary>
     /// Checks the saved configuration with the builders.

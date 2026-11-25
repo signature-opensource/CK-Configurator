@@ -207,8 +207,12 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     /// <param name="monitor">The monitor.</param>
     /// <param name="name">The name of the deployment ("#Staging", "Paris/Shop/#Production").</param>
     /// <param name="baseName">The deployment that it overlays, null for the central configuration.</param>
+    /// <param name="writeValuesPerDeployment">
+    /// Whether the values per deployment that it would inherit are written in its overlay (their inherited value): the
+    /// ones that the static checks find (the markers and the declarations of the types of the catalog).
+    /// </param>
     /// <returns>The state of the view of the new deployment.</returns>
-    public Task<EditorSnapshot> CreateDeploymentAsync( IActivityMonitor monitor, string name, string? baseName )
+    public Task<EditorSnapshot> CreateDeploymentAsync( IActivityMonitor monitor, string name, string? baseName, bool writeValuesPerDeployment = false )
     {
         return RunAsync( null, () =>
         {
@@ -236,6 +240,8 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                 Text = text
             };
             InsertDocument( d );
+            if( writeValuesPerDeployment ) WriteValuesPerDeployment( monitor, d );
+            // One edit: undone, the deployment disappears.
             _undo.Add( new UndoEntry( name, null ) );
             _redo.Clear();
             monitor.Info( $"Deployment '{name}' created (written at the next save)." );
@@ -475,6 +481,41 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         } );
     }
 
+    // Writes in the overlay of a deployment the inherited values per deployment (the problems that "WriteHere" fixes),
+    // with their current value in its view.
+    void WriteValuesPerDeployment( IActivityMonitor monitor, Document d )
+    {
+        var centralTree = EditorTree.Parse( GetCentral().Text );
+        var (catalog, world, version) = GetCatalog( centralTree );
+        var (nodes, problems) = CreateView( d, centralTree, catalog, world, version );
+        var values = problems.Where( p => p.Fix == EditorProblemData.WriteHereFix )
+                             .Select( p => nodes.FirstOrDefault( n => n.Path.Equals( p.Path, _comparison ) ) )
+                             .Where( n => n?.Value != null )
+                             .ToList();
+        foreach( var n in values )
+        {
+            var analyzer = new JsonAnalyzer();
+            using var editor = new SourceCodeEditor( monitor, analyzer.ParseOrThrow( d.Text ), analyzer );
+            if( !WriteInOverlay( editor, n!.Path, n.Value! ) ) Throw.CKException( $"Unable to write '{n.Path}' in the deployment '{d.Name}' (see the logs)." );
+            d.Text = editor.Code.ToString();
+        }
+        monitor.Info( $"{values.Count} value(s) per deployment written in '{d.Name}'." );
+    }
+
+    // The catalog of the solution (its "$configurator"), when it is opened.
+    (Catalog.Catalog? Catalog, string? World, string? Version) GetCatalog( EditorTree centralTree )
+    {
+        string? world = null;
+        string? version = null;
+        if( centralTree.Find( "$configurator" ) is { Kind: "Object" } c )
+        {
+            world = ReadString( c.Find( "World" ) );
+            version = ReadString( c.Find( "Version" ) );
+        }
+        var catalog = world != null && version != null ? _catalogs.TryGetOpened( world, version )?.Catalog : null;
+        return (catalog, world, version);
+    }
+
     // Writes a value in an overlay: the objects of its path that the overlay doesn't have are added with it.
     static bool WriteInOverlay( SourceCodeEditor e, string path, string json )
     {
@@ -615,14 +656,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         if( _folder == null ) return EditorSnapshot.Closed;
         var current = FindDocument( view ) ?? GetCentral();
         var centralTree = EditorTree.Parse( GetCentral().Text );
-        string? catalogWorld = null;
-        string? catalogVersion = null;
-        if( centralTree.Find( "$configurator" ) is { Kind: "Object" } c )
-        {
-            catalogWorld = ReadString( c.Find( "World" ) );
-            catalogVersion = ReadString( c.Find( "Version" ) );
-        }
-        var catalog = catalogWorld != null && catalogVersion != null ? _catalogs.TryGetOpened( catalogWorld, catalogVersion )?.Catalog : null;
+        var (catalog, catalogWorld, catalogVersion) = GetCatalog( centralTree );
         var (checkStatus, checkResults) = _check.Get();
         var documents = new List<EditorDocumentData>();
         IReadOnlyList<EditorNodeData> nodes = [];
@@ -879,4 +913,12 @@ public sealed record EditorNodeData( string Path,
 /// <param name="Severity">"Error", "Warning" or "Info".</param>
 /// <param name="Message">The message.</param>
 /// <param name="Layer">"Static" (the rules, from the catalog) or "Build" (the check by the builders).</param>
-public sealed record EditorProblemData( string Path, string Severity, string Message, string Layer = "Static" );
+/// <param name="Fix">The fix that the editor offers, or null: <see cref="WriteHereFix"/>.</param>
+public sealed record EditorProblemData( string Path, string Severity, string Message, string Layer = "Static", string? Fix = null )
+{
+    /// <summary>
+    /// The fix of an inherited value per deployment: the inherited value of the property is written in the overlay of
+    /// the deployment (a <see cref="ConfiguratorEditorService.SetValueAsync"/> of its current value in the view).
+    /// </summary>
+    public const string WriteHereFix = "WriteHere";
+}

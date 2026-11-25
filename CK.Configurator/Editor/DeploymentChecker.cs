@@ -126,12 +126,18 @@ static class DeploymentChecker
         if( catalog != null ) patterns.AddRange( GetTypePatterns( nodes, catalog ) );
         var inherited = CentralDeployment.FindInheritedValues( merged, overlay, patterns, out _ );
         if( inherited.Count == 0 ) return;
+        // One problem per property that an overlay writes as a whole: an item of an array is its array (the merge patch
+        // replaces an array). It can be fixed by writing the inherited value in the overlay ("WriteHere").
         var paths = new HashSet<string>( nodes.Select( n => n.Path ), StringComparer.OrdinalIgnoreCase );
+        var reported = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
         foreach( var v in inherited )
         {
-            problems.Add( new EditorProblemData( NearestNode( paths, v.Path ),
+            var path = NearestNode( paths, v.Path );
+            if( !reported.Add( path ) ) continue;
+            problems.Add( new EditorProblemData( path,
                                                  "Error",
-                                                 $"The deployment '{self.Name}' inherits \"{v.Path}\" ({v.Source}): a value per deployment is written by the deployment itself (null removes it)." ) );
+                                                 $"The deployment '{self.Name}' inherits \"{(path.Length > 0 ? path : v.Path)}\" ({v.Source}): a value per deployment is written by the deployment itself (null removes it).",
+                                                 Fix: path.Length > 0 ? EditorProblemData.WriteHereFix : null ) );
         }
     }
 

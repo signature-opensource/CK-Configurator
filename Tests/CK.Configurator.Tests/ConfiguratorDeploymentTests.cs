@@ -238,4 +238,43 @@ public class ConfiguratorDeploymentTests
         s = await editor.GetStateAsync( "#A" );
         s.Problems.ShouldContain( p => p.Path == "$BASE" && p.Message.Contains( "overlay each other" ) );
     }
+
+    [Test]
+    public async Task an_inherited_value_per_deployment_is_one_problem_per_written_property_and_can_be_written_here_Async()
+    {
+        var folder = CreateSolution( "write-here", ("#Production", """{ "Ports": [ 80, 443 ] }""") );
+        // A marker on an array: its items are written as a whole.
+        File.WriteAllText( Path.Combine( folder, "ckonf.json" ), _central.Replace( "\"Domain\": \"CK\",", "\"Domain\": \"CK\", \"Ports\": [ 1, 2 ], \"$PER_DEPLOYMENT\": [ \"Ports\" ]," ) );
+        var editor = CreateEditor();
+        await editor.OpenAsync( TestHelper.Monitor, folder );
+        var s = await editor.CreateDeploymentAsync( TestHelper.Monitor, "#Staging", "#Production" );
+        var inherited = s.Problems.Where( p => p.Message.Contains( "inherits" ) ).ToList();
+        inherited.Select( p => p.Path ).ShouldBe( ["Ports", _local + ":HttpEndpoint:Urls"], ignoreOrder: true );
+        inherited.ShouldAllBe( p => p.Fix == EditorProblemData.WriteHereFix );
+        inherited.Single( p => p.Path == "Ports" ).Message.ShouldContain( "inherits \"Ports\"" );
+
+        // The fix: the inherited value of the property, written in the overlay.
+        foreach( var p in inherited )
+        {
+            s = await editor.SetValueAsync( TestHelper.Monitor, "#Staging", p.Path, s.Nodes.Single( n => n.Path == p.Path ).Value! );
+        }
+        s.Problems.ShouldNotContain( p => p.Message.Contains( "inherits" ) );
+        s.Nodes.Single( n => n.Path == "Ports" ).ShouldSatisfyAllConditions( n => n.Value.ShouldBe( "[ 80, 443 ]" ), n => n.Origin.ShouldBe( "Deployment" ) );
+    }
+
+    [Test]
+    public async Task a_new_deployment_can_write_its_values_per_deployment_Async()
+    {
+        var editor = CreateEditor();
+        await editor.OpenAsync( TestHelper.Monitor, CreateSolution( "create-values", ("#Production", _production) ) );
+        var s = await editor.CreateDeploymentAsync( TestHelper.Monitor, "#Staging", "#Production", writeValuesPerDeployment: true );
+        s.Problems.ShouldNotContain( p => p.Message.Contains( "inherits" ) );
+        s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Urls" ).ShouldSatisfyAllConditions( n => n.Value.ShouldBe( "\"https://*:443\"" ),
+                                                                                                    n => n.Origin.ShouldBe( "Deployment" ) );
+        // The rest is inherited.
+        s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Limit" ).Origin.ShouldBe( "Central" );
+        // One edit: undone, the deployment disappears.
+        s = await editor.UndoAsync();
+        s.Documents.ShouldNotContain( d => d.Name == "#Staging" );
+    }
 }

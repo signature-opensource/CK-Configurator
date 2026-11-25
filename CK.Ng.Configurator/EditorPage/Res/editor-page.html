@@ -46,13 +46,16 @@
                 </nz-select>
                 @if ( newDeployment(); as f ) {
                     <input nz-input class="ck-editor-deployment-name" [placeholder]="'CK.Configurator.Editor.DeploymentName' | translate"
-                           [ngModel]="f.name" (ngModelChange)="newDeployment.set( { name: $event, base: f.base } )" (keyup.enter)="createDeploymentAsync()" />
-                    <nz-select class="ck-editor-view-select" [ngModel]="f.base ?? ''" (ngModelChange)="newDeployment.set( { name: f.name, base: $event || null } )">
+                           [ngModel]="f.name" (ngModelChange)="newDeployment.set( { name: $event, base: f.base, writeValues: f.writeValues } )" (keyup.enter)="createDeploymentAsync()" />
+                    <nz-select class="ck-editor-view-select" [ngModel]="f.base ?? ''" (ngModelChange)="newDeployment.set( { name: f.name, base: $event || null, writeValues: f.writeValues } )">
                         <nz-option nzValue="" [nzLabel]="'CK.Configurator.Editor.NoBase' | translate" />
                         @for ( d of deployments(); track d.name ) {
                             <nz-option [nzValue]="d.name" [nzLabel]="'CK.Configurator.Editor.BaseOf' | translate: { name: d.name }" />
                         }
                     </nz-select>
+                    <label nz-checkbox [ngModel]="f.writeValues" (ngModelChange)="newDeployment.set( { name: f.name, base: f.base, writeValues: $event } )">
+                        {{ 'CK.Configurator.Editor.WriteValuesPerDeployment' | translate }}
+                    </label>
                     <button nz-button nzType="primary" (click)="createDeploymentAsync()" [disabled]="busy() || f.name.trim().length < 2">{{ 'CK.Configurator.Editor.Create' | translate }}</button>
                     <button nz-button (click)="newDeployment.set( null )">{{ 'CK.Configurator.Editor.Cancel' | translate }}</button>
                 } @else {
@@ -138,6 +141,9 @@
                             <span class="ck-editor-origin-line">
                                 @if ( isInherited( n ) ) {
                                     {{ 'CK.Configurator.Editor.OriginOf' | translate: { name: n.origin === 'Central' ? ('CK.Configurator.Editor.Origin.Central' | translate) : n.origin } }}
+                                    @if ( n.value ) {
+                                        <button nz-button nzSize="small" (click)="writeHereAsync( n.path )" [disabled]="busy()">{{ 'CK.Configurator.Editor.WriteHere' | translate }}</button>
+                                    }
                                 } @else {
                                     {{ ('CK.Configurator.Editor.Origin.' + n.origin) | translate }}
                                     <button nz-button nzSize="small" (click)="revertAsync( n.path )" [disabled]="busy()">{{ 'CK.Configurator.Editor.Revert' | translate }}</button>
@@ -212,6 +218,9 @@
                         <div class="ck-editor-problem" [class]="'ck-editor-' + p.severity" (click)="p.path && select( p.path )">
                             <b>{{ p.severity }}</b> @if ( p.layer === 'Build' ) { <nz-tag>{{ 'CK.Configurator.Editor.Layer.Build' | translate }}</nz-tag> } @if ( p.path ) { <span class="sub">{{ shortPath( p.path ) }}</span> }
                             <div>{{ p.message }}</div>
+                            @if ( p.fix === 'WriteHere' ) {
+                                <a (click)="writeHereAsync( p.path ); $event.stopPropagation()">{{ 'CK.Configurator.Editor.WriteHere' | translate }}</a>
+                            }
                         </div>
                     }
                 </div>

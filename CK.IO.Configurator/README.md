@@ -45,7 +45,9 @@ folder and file, whether a document is dirty, can undo or redo, changed on disk,
 (`IEditorDocument`: name, base, file, dirty, new, changed on disk, the counts of the errors and warnings of their view),
 the properties of the view (`IEditorNode`, in document order: path, name, depth, kind, value, comment, the `Role` and
 the `TypeName` that the catalog gives them, and their `Origin` in the view of a deployment), its problems
-(`IEditorProblem`: the "Static" checks once the catalog is opened, the "Build" ones of the check by the builders) and
+(`IEditorProblem`: the "Static" checks once the catalog is opened, the "Build" ones of the check by the builders, and
+the `Fix` that the editor offers: "WriteHere" for an inherited value per deployment, its value written by an
+`ISetValueCommand`) and
 the status of that check (`CheckStatus`, `CheckIsStale`).
 
 | Command | What it does |
@@ -56,7 +58,7 @@ the status of that check (`CheckStatus`, `CheckIsStale`).
 | `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
 | `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments; in a deployment, an inherited one is removed by a `null`. |
 | `IRevertPropertyCommand` (`Path`) | In a deployment, removes a property from its overlay: it is inherited again. |
-| `ICreateDeploymentCommand` (`Name`, `Base`) | Creates a deployment ("#Staging", "Paris/Shop/#Production"), written at the next save. |
+| `ICreateDeploymentCommand` (`Name`, `Base`, `WriteValuesPerDeployment`) | Creates a deployment ("#Staging", "Paris/Shop/#Production"), written at the next save, optionally with the values per deployment that it would inherit. |
 | `ISetCatalogSourceCommand` (`World`, `Version`) | Writes the `"$configurator"` root key: the catalog that types and checks the documents once it is opened (`IOpenCatalogCommand`). |
 | `IUndoCommand`, `IRedoCommand` | Undo and redo the edits, in any document: the state is the view of the changed one. |
 | `ISaveCommand` (`Overwrite`) | Saves the dirty documents (a file that changed on disk is overwritten only with `Overwrite`), then the builders check the configuration. |
