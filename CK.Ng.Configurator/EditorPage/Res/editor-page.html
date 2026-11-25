@@ -98,12 +98,13 @@
 
             <div class="ck-editor-panes">
                 <!-- The tree. -->
-                <div class="ck-editor-tree">
+                <div class="ck-editor-tree" tabindex="0" (keydown)="onTreeKeydown( $event, rowMenu )">
                     @for ( r of rows(); track r.node.path ) {
                         <div class="ck-editor-row" [class.ck-editor-selected]="selectedPath() === r.node.path"
                              [class.ck-editor-inherited]="isInherited( r.node )" [class.ck-editor-written]="r.node.origin === 'Deployment'"
                              [class.ck-editor-removed]="r.node.origin === 'Removed'"
-                             [style.padding-left.px]="4 + r.node.depth * 16" (click)="select( r.node.path )">
+                             [style.padding-left.px]="4 + r.node.depth * 16" (click)="select( r.node.path )"
+                             (contextmenu)="openMenu( $event, r.node, rowMenu )">
                             @if ( isObject( r.node ) ) {
                                 <span class="ck-editor-toggle" (click)="toggleCollapsed( r.node ); $event.stopPropagation()">{{ collapsed().has( r.node.path ) ? '▸' : '▾' }}</span>
                             } @else {
@@ -115,6 +116,12 @@
                             }
                             @if ( !isObject( r.node ) ) {
                                 <span class="ck-editor-value">{{ r.node.value }}</span>
+                            }
+                            @if ( r.node.secretName ) {
+                                <span class="ck-editor-secret" nz-tooltip [nzTooltipTitle]="'CK.Configurator.Editor.SecretOf' | translate: { name: r.node.secretName }">&#128273;</span>
+                            }
+                            @if ( r.node.lockLevel ) {
+                                <span class="ck-editor-lock" nz-tooltip [nzTooltipTitle]="lockTitle( r.node )">&#128274;</span>
                             }
                             @if ( r.node.origin && r.node.origin !== 'Deployment' && r.node.origin !== 'Removed' && r.node.origin !== 'Central' ) {
                                 <span class="ck-editor-origin">{{ r.node.origin }}</span>
@@ -136,6 +143,22 @@
                         <span class="sub">{{ shortPath( n.path ) }}</span>
                         @if ( n.role ) {
                             <span>{{ ('CK.Configurator.Editor.Role.' + n.role) | translate }} @if ( n.typeName ) { <b>{{ n.typeName }}</b> }</span>
+                        }
+                        @if ( n.lockLevel ) {
+                            <span class="ck-editor-origin-line">
+                                &#128274; {{ 'CK.Configurator.Editor.Locked' | translate: { level: n.lockLevel, source: n.lockSource } }}
+                                @if ( n.canUnlock && !isDeploymentView() ) {
+                                    <button nz-button nzSize="small" (click)="unlockAsync( n.path )" [disabled]="busy()">{{ 'CK.Configurator.Editor.Menu.Unlock' | translate }}</button>
+                                }
+                            </span>
+                        }
+                        @if ( n.secretName ) {
+                            <span class="ck-editor-origin-line">
+                                &#128273; {{ 'CK.Configurator.Editor.SecretOf' | translate: { name: n.secretName } }}
+                                @if ( n.secretStatus ) {
+                                    <span [class.ck-editor-missing]="n.secretStatus !== 'Set'">{{ ('CK.Configurator.Editor.SecretStatus.' + n.secretStatus) | translate }}</span>
+                                }
+                            </span>
                         }
                         @if ( n.origin ) {
                             <span class="ck-editor-origin-line">
@@ -225,6 +248,71 @@
                     }
                 </div>
             </div>
+
+            <!-- The contextual menu of a row of the tree. -->
+            <nz-dropdown-menu #rowMenu="nzDropdownMenu">
+                @if ( menuNode(); as m ) {
+                    <ul nz-menu>
+                        @if ( isObject( m ) ) {
+                            <li nz-menu-item (click)="toggleCollapsed( m )">{{ (collapsed().has( m.path ) ? 'CK.Configurator.Editor.Menu.Expand' : 'CK.Configurator.Editor.Menu.Collapse') | translate }}</li>
+                            <li nz-menu-item (click)="select( m.path )">{{ 'CK.Configurator.Editor.Menu.Add' | translate }}</li>
+                        }
+                        @if ( isInherited( m ) && m.value ) {
+                            <li nz-menu-item (click)="writeHereAsync( m.path )">{{ 'CK.Configurator.Editor.WriteHere' | translate }}</li>
+                        }
+                        @if ( isWrittenHere( m ) ) {
+                            <li nz-menu-item (click)="revertAsync( m.path )">{{ 'CK.Configurator.Editor.Revert' | translate }}</li>
+                        }
+                        @if ( canBeSecret( m ) ) {
+                            <li nz-menu-item (click)="startSecret( m )">{{ 'CK.Configurator.Editor.Menu.MakeSecret' | translate }}</li>
+                        }
+                        @if ( canLock( m ) ) {
+                            <li nz-submenu [nzTitle]="'CK.Configurator.Editor.Menu.Lock' | translate">
+                                <ul>
+                                    @for ( l of lockLevels( m ); track l ) {
+                                        <li nz-menu-item (click)="lockAsync( m.path, l )">{{ l }}</li>
+                                    }
+                                </ul>
+                            </li>
+                            @if ( m.canUnlock ) {
+                                <li nz-menu-item (click)="unlockAsync( m.path )">{{ 'CK.Configurator.Editor.Menu.Unlock' | translate }}</li>
+                            }
+                        }
+                        @if ( m.origin !== 'Removed' ) {
+                            <li nz-menu-item nzDanger (click)="removeAsync( m.path )">{{ (isDeploymentView() ? 'CK.Configurator.Editor.RemoveHere' : 'CK.Configurator.Editor.Remove') | translate }}</li>
+                        }
+                        <li nz-menu-divider></li>
+                        <li nz-menu-item (click)="copyPathAsync( m.path )">{{ 'CK.Configurator.Editor.Menu.CopyPath' | translate }}</li>
+                    </ul>
+                }
+            </nz-dropdown-menu>
+
+            <!-- "Make it a secret". -->
+            <nz-modal [nzVisible]="!!secretDialog()" [nzTitle]="'CK.Configurator.Editor.Menu.MakeSecret' | translate" (nzOnCancel)="secretDialog.set( null )" [nzFooter]="secretFooter">
+                <ng-container *nzModalContent>
+                    @if ( secretDialog(); as d ) {
+                        <div class="ck-editor-secret-dialog">
+                            <span class="sub">{{ shortPath( d.path ) }}</span>
+                            <input nz-input [ngModel]="d.name" (ngModelChange)="secretDialog.set( { path: d.path, name: $event, optional: d.optional, askOverwrite: false } )" />
+                            <label nz-checkbox [ngModel]="d.optional" (ngModelChange)="secretDialog.set( { path: d.path, name: d.name, optional: $event, askOverwrite: d.askOverwrite } )">
+                                {{ 'CK.Configurator.Editor.SecretOptional' | translate }}
+                            </label>
+                            <span>{{ (isDeploymentView() ? 'CK.Configurator.Editor.SecretInDeployment' : 'CK.Configurator.Editor.SecretInCentral') | translate: { name: d.name } }}</span>
+                            @if ( d.askOverwrite ) {
+                                <nz-alert nzType="warning" nzShowIcon [nzMessage]="'CK.Configurator.Editor.SecretExists' | translate: { name: d.name }" />
+                            }
+                        </div>
+                    }
+                </ng-container>
+                <ng-template #secretFooter>
+                    <button nz-button (click)="secretDialog.set( null )">{{ 'CK.Configurator.Editor.Cancel' | translate }}</button>
+                    @if ( secretDialog()?.askOverwrite ) {
+                        <button nz-button nzDanger (click)="makeSecretAsync( true )" [disabled]="busy()">{{ 'CK.Configurator.Editor.Overwrite' | translate }}</button>
+                    } @else {
+                        <button nz-button nzType="primary" (click)="makeSecretAsync( false )" [disabled]="busy() || !secretDialog()?.name?.trim()">{{ 'CK.Configurator.Editor.Apply' | translate }}</button>
+                    }
+                </ng-template>
+            </nz-modal>
         } @else {
             <span class="sub">{{ 'CK.Configurator.Editor.NoDocument' | translate }}</span>
         }

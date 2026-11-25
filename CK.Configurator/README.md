@@ -65,6 +65,19 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
   written in the overlay). A deployment can be created with them written (`CreateDeploymentAsync`'s
   `writeValuesPerDeployment`). Without its catalog, a document has an Info
   problem that says so. The keys of a section are free.
+- **The development secrets** (`#Dev/Secrets.json`) are a document of the solution (not a view: their values are never
+  shown): `MakeSecretAsync` moves a value of the central configuration there and writes its handle
+  (`{ "$SECRET": "<name>" }`, or `"$SECRET?"`), one edit of the two documents; a secret of the same name with another
+  value is replaced only when asked. In a deployment, only the handle is written in its overlay (its host is given the
+  secret).
+- **The locks** are edited in the central configuration: `LockPropertyAsync` writes an entry of the `"$LOCK"` of the App
+  or of the Builder aspect that contains the property (its path relative to it as the pattern), up to the capability of
+  the code; `UnlockPropertyAsync` removes the literal pattern that names it (and the `"$LOCK"` that becomes empty).
+  [`EditorAnnotations`](Editor/EditorAnnotations.cs) gives each property of a view its lock (the lowest level of the
+  `"$LOCK"` patterns that cover it, a `"$LOCK"` of `Defaults:App` or of the `Defaults` of an App applying like the build
+  applies it, and the `[ConfigurationLock]` of the types of the catalog, placed on the anchors by
+  [`EditorAnchors`](Editor/EditorAnchors.cs) like the values per deployment), its capability (`[ConfigurationLevel]`)
+  and its secret (the name of a handle, and whether the development secrets have it).
 - **Once saved, the builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): each
   builder of the `"Builders"` is restored, built without running it (`-p:CKAppBuilderRunAfterBuild=false`) and run with
   `--check <file>` (CK.AppBuilder: the run stops before the engine), two at a time. A builder whose CK.AppBuilder

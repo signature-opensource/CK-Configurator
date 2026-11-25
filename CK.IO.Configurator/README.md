@@ -44,7 +44,9 @@ folder and file, whether a document is dirty, can undo or redo, changed on disk,
 `"$configurator"` root key of the central configuration: `CatalogWorld`, `CatalogVersion`), the documents
 (`IEditorDocument`: name, base, file, dirty, new, changed on disk, the counts of the errors and warnings of their view),
 the properties of the view (`IEditorNode`, in document order: path, name, depth, kind, value, comment, the `Role` and
-the `TypeName` that the catalog gives them, and their `Origin` in the view of a deployment), its problems
+the `TypeName` that the catalog gives them, their `Origin` in the view of a deployment, their lock: `LockLevel`,
+`LockSource`, `CanUnlock`, the capability of the code: `MaxLevel`, and their secret: `SecretName`, `SecretStatus` in the
+central view), its problems
 (`IEditorProblem`: the "Static" checks once the catalog is opened, the "Build" ones of the check by the builders, and
 the `Fix` that the editor offers: "WriteHere" for an inherited value per deployment, its value written by an
 `ISetValueCommand`) and
@@ -58,6 +60,9 @@ the status of that check (`CheckStatus`, `CheckIsStale`).
 | `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
 | `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments; in a deployment, an inherited one is removed by a `null`. |
 | `IRevertPropertyCommand` (`Path`) | In a deployment, removes a property from its overlay: it is inherited again. |
+| `ILockPropertyCommand` (`Path`, `Level`) | In the central configuration, locks a property: an entry of the `"$LOCK"` of its App or Builder aspect. |
+| `IUnlockPropertyCommand` (`Path`) | Removes the literal pattern of a `"$LOCK"` that names the property. |
+| `IMakeSecretCommand` (`Path`, `Name`, `IsOptional`, `Overwrite`) | Makes a value a secret: its handle in the configuration; in the central one, the value moves to `#Dev/Secrets.json`. |
 | `ICreateDeploymentCommand` (`Name`, `Base`, `WriteValuesPerDeployment`) | Creates a deployment ("#Staging", "Paris/Shop/#Production"), written at the next save, optionally with the values per deployment that it would inherit. |
 | `ISetCatalogSourceCommand` (`World`, `Version`) | Writes the `"$configurator"` root key: the catalog that types and checks the documents once it is opened (`IOpenCatalogCommand`). |
 | `IUndoCommand`, `IRedoCommand` | Undo and redo the edits, in any document: the state is the view of the changed one. |

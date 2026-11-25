@@ -45,6 +45,8 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     readonly SemaphoreSlim _lock = new( 1, 1 );
     readonly SolutionCheckRunner _check = new();
     readonly List<Document> _documents = new();
+    // The development secrets ("#Dev/Secrets.json"): a document of the solution (undo, save), not a view.
+    Document? _secrets;
     readonly List<UndoEntry> _undo = new();
     readonly List<UndoEntry> _redo = new();
     readonly List<EditorProblemData> _folderProblems = new();
@@ -67,8 +69,14 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         public bool IsDirty => Text != SavedText;
     }
 
-    // An entry of the undo (or redo) history: the document and its text before the edit (null: it didn't exist).
-    sealed record UndoEntry( string? Name, string? Text );
+    /// <summary>
+    /// The name of the document of the development secrets in the undo history (never a deployment: "#Dev" is refused).
+    /// </summary>
+    const string _secretsName = "#Dev/Secrets.json";
+
+    // An entry of the undo (or redo) history: the documents that an edit changed, their text before it (null: the
+    // document didn't exist), and the view to show.
+    sealed record UndoEntry( IReadOnlyList<(string? Name, string? Text)> Changes, string? View );
 
     /// <summary>
     /// Initializes a new editor service.
@@ -118,6 +126,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         return RunAsync( null, () =>
         {
             _folder = null;
+            _secrets = null;
             _documents.Clear();
             _folderProblems.Clear();
             _undo.Clear();
@@ -242,7 +251,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             InsertDocument( d );
             if( writeValuesPerDeployment ) WriteValuesPerDeployment( monitor, d );
             // One edit: undone, the deployment disappears.
-            _undo.Add( new UndoEntry( name, null ) );
+            _undo.Add( new UndoEntry( [(name, null)], name ) );
             _redo.Clear();
             monitor.Info( $"Deployment '{name}' created (written at the next save)." );
             return d.Name;
@@ -276,32 +285,37 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     /// <returns>The state of the view of the changed document.</returns>
     public Task<EditorSnapshot> RedoAsync() => RunAsync( null, () => Swap( _redo, _undo ) );
 
-    // Restores the text of the last entry of "from" and pushes the current one in "to". Returns the view to show.
+    // Restores the texts of the last entry of "from" and pushes the current ones in "to". Returns the view to show.
     string? Swap( List<UndoEntry> from, List<UndoEntry> to )
     {
         CheckOpened();
         if( from.Count == 0 ) return null;
         var entry = from[^1];
         from.RemoveAt( from.Count - 1 );
-        var d = FindDocument( entry.Name );
-        to.Add( new UndoEntry( entry.Name, d?.Text ) );
-        if( entry.Text == null )
+        var reverse = new List<(string?, string?)>();
+        foreach( var (name, text) in entry.Changes )
         {
-            // Back before the creation of the document.
-            if( d != null ) _documents.Remove( d );
-            return null;
-        }
-        if( d == null )
-        {
-            // Back after the creation of the document.
-            InsertDocument( d = new Document
+            var d = FindAnyDocument( name );
+            reverse.Add( (name, d?.Text) );
+            if( text == null )
             {
-                Name = entry.Name,
-                FilePath = Path.Combine( _folder!, CentralDeployment.FolderName, entry.Name!.Replace( '/', Path.DirectorySeparatorChar ), FileName )
-            } );
+                // Back before the creation of the document.
+                if( d != null ) _documents.Remove( d );
+                continue;
+            }
+            if( d == null )
+            {
+                // Back after the creation of the document.
+                InsertDocument( d = new Document
+                {
+                    Name = name,
+                    FilePath = Path.Combine( _folder!, CentralDeployment.FolderName, name!.Replace( '/', Path.DirectorySeparatorChar ), FileName )
+                } );
+            }
+            d.Text = text;
         }
-        d.Text = entry.Text;
-        return d.Name;
+        to.Add( new UndoEntry( reverse, entry.View ) );
+        return entry.View;
     }
 
     /// <summary>
@@ -317,7 +331,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         return RunAsync( view, () =>
         {
             CheckOpened();
-            var dirty = _documents.Where( d => d.IsDirty ).ToList();
+            var dirty = AllDocuments.Where( d => d.IsDirty ).ToList();
             if( !overwrite && dirty.FirstOrDefault( IsChangedOnDisk ) is { } changed )
             {
                 Throw.CKException( $"'{changed.FilePath}' changed on disk since it was read: reload the solution, or overwrite it." );
@@ -358,7 +372,12 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         _check.Start( _folder!, builders );
     }
 
-    string SavedTexts() => string.Join( "\0", _documents.Select( d => $"{d.Name}\0{d.SavedText}" ) );
+    string SavedTexts() => string.Join( "\0", AllDocuments.Select( d => $"{d.Name}\0{d.SavedText}" ) );
+
+    // The documents of the solution: its views and its development secrets.
+    IEnumerable<Document> AllDocuments => _secrets != null ? _documents.Append( _secrets ) : _documents;
+
+    Document? FindAnyDocument( string? name ) => name == _secretsName ? _secrets : FindDocument( name );
 
     /// <summary>
     /// Reads the documents again and finds the deployments again (the edits and their history are lost).
@@ -400,7 +419,18 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             Read( d );
             documents.Add( d );
         }
+        // The development secrets: an absent file is an empty document (written when a secret is added).
+        var secrets = new Document { Name = _secretsName, FilePath = Path.Combine( folder, "#Dev", ConfigurationSecret.DevFileName ) };
+        if( File.Exists( secrets.FilePath ) )
+        {
+            Read( secrets );
+        }
+        else
+        {
+            secrets.Text = secrets.SavedText = "";
+        }
         _folder = folder;
+        _secrets = secrets;
         _documents.Clear();
         _documents.AddRange( documents );
         _folderProblems.Clear();
@@ -473,12 +503,184 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             }
             if( result != d.Text )
             {
-                _undo.Add( new UndoEntry( d.Name, d.Text ) );
+                _undo.Add( new UndoEntry( [(d.Name, d.Text)], d.Name ) );
                 _redo.Clear();
                 d.Text = result;
             }
             return resultView;
         } );
+    }
+
+    // The names of the development secrets (the paths of the values of "#Dev/Secrets.json").
+    HashSet<string> ReadDevSecrets()
+    {
+        var names = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
+        if( _secrets == null || string.IsNullOrWhiteSpace( _secrets.Text ) ) return names;
+        try
+        {
+            foreach( var n in EditorTree.Parse( _secrets.Text ).Flatten( withOrigin: false ) )
+            {
+                if( n.Kind != "Object" ) names.Add( n.Path );
+            }
+        }
+        catch( Exception )
+        {
+            // An invalid file: the build reports it.
+        }
+        return names;
+    }
+
+    // The annotated properties of a view (its roles, locks, capabilities and secrets).
+    IReadOnlyList<EditorNodeData> GetViewNodes( Document d )
+    {
+        var centralTree = EditorTree.Parse( GetCentral().Text );
+        var (catalog, world, version) = GetCatalog( centralTree );
+        return CreateView( d, centralTree, catalog, world, version ).Nodes;
+    }
+
+    /// <summary>
+    /// Locks a property (central view): an entry of the <c>"$LOCK"</c> of the App or of the Builder aspect that contains
+    /// it, its path relative to it as the pattern. The level can't be above the capability of the code (when the catalog
+    /// gives it).
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="view">The view (only the central one).</param>
+    /// <param name="path">The path of the property.</param>
+    /// <param name="level">"Compile", "Init" or "Run".</param>
+    /// <returns>The state.</returns>
+    public Task<EditorSnapshot> LockPropertyAsync( IActivityMonitor monitor, string? view, string path, string level )
+    {
+        if( view != null ) Throw.CKException( "The locks are edited in the central configuration." );
+        return EditAsync( monitor, null, ( d, e ) =>
+        {
+            if( EditorAnnotations.Rank( level ) < 0 ) Throw.CKException( $"Invalid level '{level}': \"Compile\", \"Init\" or \"Run\" is expected." );
+            var nodes = GetViewNodes( d );
+            var n = nodes.FirstOrDefault( x => x.Path.Equals( path, _comparison ) ) ?? Throw.CKException<EditorNodeData>( $"'{path}' doesn't exist." );
+            if( n.MaxLevel != null && EditorAnnotations.Rank( level ) > EditorAnnotations.Rank( n.MaxLevel ) )
+            {
+                Throw.CKException( $"'{path}' can't be locked at the level '{level}': the code supports '{n.MaxLevel}' at most." );
+            }
+            var container = FindLockContainer( nodes, path ) ?? Throw.CKException<string>( $"'{path}' is not in an App or a Builder aspect: it can't be locked." );
+            var pattern = path.Substring( container.Length + 1 );
+            var lockPath = container.Split( ':' ).Append( "$LOCK" ).ToList();
+            var levelJson = System.Text.Json.JsonSerializer.Serialize( level );
+            var lockObject = e.Code.FindJsonObject( lockPath, _comparison );
+            if( lockObject == null )
+            {
+                return e.AddJsonProperty( container.Split( ':' ), "$LOCK", $"{{ {System.Text.Json.JsonSerializer.Serialize( pattern )}: {levelJson} }}", _comparison );
+            }
+            return lockObject.FindProperty( pattern, _comparison ) != null
+                    ? e.SetJsonValue( lockPath.Append( pattern ).ToList(), levelJson, _comparison )
+                    : e.AddJsonProperty( lockPath, pattern, levelJson, _comparison );
+        } );
+    }
+
+    /// <summary>
+    /// Unlocks a property (central view): removes the literal pattern of a <c>"$LOCK"</c> that names it (and the
+    /// <c>"$LOCK"</c> when it becomes empty). A property locked by a wildcard pattern or by a package is not unlocked.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="view">The view (only the central one).</param>
+    /// <param name="path">The path of the property.</param>
+    /// <returns>The state.</returns>
+    public Task<EditorSnapshot> UnlockPropertyAsync( IActivityMonitor monitor, string? view, string path )
+    {
+        if( view != null ) Throw.CKException( "The locks are edited in the central configuration." );
+        return EditAsync( monitor, null, ( d, e ) =>
+        {
+            var n = GetViewNodes( d ).FirstOrDefault( x => x.Path.Equals( path, _comparison ) ) ?? Throw.CKException<EditorNodeData>( $"'{path}' doesn't exist." );
+            EditorAnnotations.Annotate( GetViewNodes( d ), null, null, out var locks );
+            if( !n.CanUnlock || !locks.TryGetValue( path, out var l ) || l.Container == null || l.Pattern == null )
+            {
+                return Throw.CKException<bool>( n.LockSource != null ? $"'{path}' is locked by {n.LockSource}: it is not unlocked here." : $"'{path}' is not locked." );
+            }
+            var lockPath = l.Container.Split( ':' ).Append( "$LOCK" ).ToList();
+            if( !e.RemoveJsonProperty( lockPath.Append( l.Pattern ).ToList(), _comparison ) ) return false;
+            var lockProperty = e.Code.FindJsonProperty( lockPath, _comparison );
+            if( lockProperty?.ObjectValue != null && e.Code.GetJsonValueText( lockProperty ).Trim() == "{}" )
+            {
+                return e.RemoveJsonProperty( lockPath, _comparison );
+            }
+            return true;
+        } );
+    }
+
+    // The App ("Builders:{b}:App", "Defaults:App") or the Builder aspect that contains a property (structural).
+    static string? FindLockContainer( IReadOnlyList<EditorNodeData> nodes, string path )
+    {
+        var p = path;
+        while( true )
+        {
+            int i = p.LastIndexOf( ':' );
+            if( i < 0 ) return null;
+            p = p.Substring( 0, i );
+            if( EditorAnnotations.IsAppPath( p, withDefaults: true ) || EditorAnnotations.IsBuilderAspectPath( p ) ) return p;
+        }
+    }
+
+    /// <summary>
+    /// Makes a value a secret: its place holds a handle, <c>{ "$SECRET": "&lt;name&gt;" }</c> (or <c>"$SECRET?"</c>). In
+    /// the central view, the value moves to the development secrets (<c>#Dev/Secrets.json</c>, created if needed): a
+    /// secret of the same name with another value is replaced only when <paramref name="overwrite"/> is true. In the
+    /// view of a deployment, only the handle is written in its overlay: the secret is given to its host.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="view">The view.</param>
+    /// <param name="path">The path of the value.</param>
+    /// <param name="name">The name of the secret.</param>
+    /// <param name="isOptional">Whether the handle is optional (<c>"$SECRET?"</c>).</param>
+    /// <param name="overwrite">Whether a development secret of the same name with another value is replaced.</param>
+    /// <returns>The state.</returns>
+    public Task<EditorSnapshot> MakeSecretAsync( IActivityMonitor monitor, string? view, string path, string name, bool isOptional, bool overwrite )
+    {
+        return RunAsync( view, () =>
+        {
+            var d = GetDocument( view );
+            if( !ConfigurationSecret.IsValidName( name ) )
+            {
+                Throw.CKException( $"Invalid secret name '{name}': segments separated by ':' made of letters, digits, '_' and '-' are expected." );
+            }
+            var n = GetViewNodes( d ).FirstOrDefault( x => x.Path.Equals( path, _comparison ) ) ?? Throw.CKException<EditorNodeData>( $"'{path}' doesn't exist." );
+            if( n.Kind is not ("String" or "Number" or "Boolean") ) Throw.CKException( $"'{path}' is not a value: it can't be a secret." );
+            var handle = $"{{ {System.Text.Json.JsonSerializer.Serialize( isOptional ? ConfigurationSecret.OptionalHandleKey : ConfigurationSecret.HandleKey )}: {System.Text.Json.JsonSerializer.Serialize( name )} }}";
+            var changes = new List<(string?, string?)>();
+            if( view == null )
+            {
+                // The value moves to the development secrets.
+                var secrets = _secrets!;
+                var secretsText = string.IsNullOrWhiteSpace( secrets.Text ) ? "{" + Environment.NewLine + "}" + Environment.NewLine : secrets.Text;
+                var existing = EditorTree.Parse( secretsText ).Find( name );
+                if( existing != null && existing.Value != n.Value && !overwrite )
+                {
+                    Throw.CKException( $"The development secret '{name}' already exists with another value: overwrite it, or choose another name." );
+                }
+                var newSecrets = existing?.Value == n.Value ? secretsText : Apply( monitor, secretsText, e => WriteInOverlay( e, name, n.Value! ) );
+                changes.Add( (_secretsName, secrets.Text) );
+                secrets.Text = newSecrets;
+                var newText = Apply( monitor, d.Text, e => e.SetJsonValue( path, handle, _comparison ) );
+                changes.Add( (d.Name, d.Text) );
+                d.Text = newText;
+                monitor.Info( $"'{path}' is the secret '{name}': its value is in '{secrets.FilePath}'." );
+            }
+            else
+            {
+                var newText = Apply( monitor, d.Text, e => WriteInOverlay( e, path, handle ) );
+                changes.Add( (d.Name, d.Text) );
+                d.Text = newText;
+            }
+            _undo.Add( new UndoEntry( changes, view ) );
+            _redo.Clear();
+            return view;
+        } );
+    }
+
+    // Applies an edit to a JSON(C) text.
+    static string Apply( IActivityMonitor monitor, string text, Func<SourceCodeEditor, bool> edit )
+    {
+        var analyzer = new JsonAnalyzer();
+        using var editor = new SourceCodeEditor( monitor, analyzer.ParseOrThrow( text ), analyzer );
+        if( !edit( editor ) ) Throw.CKException( "The edit failed (see the logs)." );
+        return editor.Code.ToString();
     }
 
     // Writes in the overlay of a deployment the inherited values per deployment (the problems that "WriteHere" fixes),
@@ -639,7 +841,9 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     static bool IsChangedOnDisk( Document d )
     {
         if( d.IsNew ) return false;
-        if( !File.Exists( d.FilePath ) ) return true;
+        // A file that was absent when it was read (the development secrets) changes when it appears.
+        if( !File.Exists( d.FilePath ) ) return d.DiskHash.Length > 0;
+        if( d.DiskHash.Length == 0 ) return true;
         try
         {
             return !SHA256.HashData( File.ReadAllBytes( d.FilePath ) ).AsSpan().SequenceEqual( d.DiskHash );
@@ -682,14 +886,14 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         return new EditorSnapshot( _folder,
                                    current.Name,
                                    current.FilePath,
-                                   documents.Any( d => d.IsDirty ),
+                                   AllDocuments.Any( d => d.IsDirty ),
                                    _undo.Count > 0,
                                    _redo.Count > 0,
-                                   documents.Any( d => d.ChangedOnDisk ),
+                                   AllDocuments.Any( IsChangedOnDisk ),
                                    catalogWorld,
                                    catalogVersion,
                                    checkStatus,
-                                   checkStatus != "None" && _checkedTexts != null && (_checkedTexts != SavedTexts() || _documents.Any( d => d.IsDirty )),
+                                   checkStatus != "None" && _checkedTexts != null && (_checkedTexts != SavedTexts() || AllDocuments.Any( d => d.IsDirty )),
                                    documents,
                                    nodes,
                                    problems );
@@ -736,6 +940,8 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                                      catalog,
                                      problems );
         }
+        // The locks, the capabilities and the secrets (their status in the central view only: the development secrets).
+        nodes = EditorAnnotations.Annotate( nodes, catalog, d.Name == null ? ReadDevSecrets() : null, out _ );
         if( catalogWorld == null || catalogVersion == null )
         {
             problems.Add( new EditorProblemData( "", "Info", "The solution has no catalog (the \"$configurator\" root key of its central configuration): choose one to check the documents." ) );
@@ -904,7 +1110,40 @@ public sealed record EditorNodeData( string Path,
                                      string? Comment,
                                      string? Role = null,
                                      string? TypeName = null,
-                                     string? Origin = null );
+                                     string? Origin = null )
+{
+    /// <summary>
+    /// Gets the lowest level of the locks of the property ("Compile", "Init" or "Run"), or null when it is not locked.
+    /// </summary>
+    public string? LockLevel { get; init; }
+
+    /// <summary>
+    /// Gets what locks the property: a "$LOCK" (its object and its pattern) or a package's [ConfigurationLock].
+    /// </summary>
+    public string? LockSource { get; init; }
+
+    /// <summary>
+    /// Gets whether the property is named by a literal pattern of a "$LOCK": it can be unlocked.
+    /// </summary>
+    public bool CanUnlock { get; init; }
+
+    /// <summary>
+    /// Gets the highest level that the code supports for the property (its [ConfigurationLevel]), null when the catalog
+    /// doesn't say.
+    /// </summary>
+    public string? MaxLevel { get; init; }
+
+    /// <summary>
+    /// Gets the name of the secret when the value of the property is a handle.
+    /// </summary>
+    public string? SecretName { get; init; }
+
+    /// <summary>
+    /// Gets, in the central view, whether the development secrets have the value of the handle: "Set", "Missing" or
+    /// "MissingOptional" (an optional handle); null otherwise.
+    /// </summary>
+    public string? SecretStatus { get; init; }
+}
 
 /// <summary>
 /// A problem of a view.

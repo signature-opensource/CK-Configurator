@@ -62,5 +62,21 @@
     "CK.Configurator.Editor.Role.BuilderAspectOption": "Builder aspect option",
     "CK.Configurator.Editor.Role.AppAspectOption": "App aspect option",
     "CK.Configurator.Editor.WriteHere": "Write it here",
-    "CK.Configurator.Editor.WriteValuesPerDeployment": "Write its values per deployment"
+    "CK.Configurator.Editor.WriteValuesPerDeployment": "Write its values per deployment",
+    "CK.Configurator.Editor.Menu.Add": "Add a property...",
+    "CK.Configurator.Editor.Menu.Collapse": "Collapse",
+    "CK.Configurator.Editor.Menu.Expand": "Expand",
+    "CK.Configurator.Editor.Menu.MakeSecret": "Make it a secret...",
+    "CK.Configurator.Editor.Menu.Lock": "Lock",
+    "CK.Configurator.Editor.Menu.Unlock": "Unlock",
+    "CK.Configurator.Editor.Menu.CopyPath": "Copy the path",
+    "CK.Configurator.Editor.Locked": "Locked: {{level}}, by {{source}}",
+    "CK.Configurator.Editor.SecretOf": "The secret '{{name}}'",
+    "CK.Configurator.Editor.SecretStatus.Set": "set in #Dev/Secrets.json",
+    "CK.Configurator.Editor.SecretStatus.Missing": "missing from #Dev/Secrets.json",
+    "CK.Configurator.Editor.SecretStatus.MissingOptional": "not in #Dev/Secrets.json (optional)",
+    "CK.Configurator.Editor.SecretOptional": "Optional (\"$SECRET?\": without it, the host leaves the value absent)",
+    "CK.Configurator.Editor.SecretInCentral": "The value moves to #Dev/Secrets.json as '{{name}}' (saved with the documents); the configuration keeps its name.",
+    "CK.Configurator.Editor.SecretInDeployment": "The deployment writes the name only: its host is given the secret 'Secrets:{{name}}'. The value is not written.",
+    "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json already has '{{name}}' with another value: overwrite it, or choose another name."
 }

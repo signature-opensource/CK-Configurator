@@ -5,6 +5,9 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzContextMenuService, NzDropdownMenuComponent, NzDropdownModule } from 'ng-zorro-antd/dropdown';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
@@ -13,8 +16,9 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import {
     AddPropertyCommand, CatalogSource, CatalogSourcePicker, CheckSolutionCommand, CloseSolutionCommand, ConfigurableTypeInfo,
     CreateDeploymentCommand, EditorDocument, EditorNode, EditorProblem, EditorState, GetEditorStateQCommand, HttpCrisEndpoint,
-    MarkdownComponent, OpenSolutionCommand, PickFolderCommand, RedoCommand, ReloadCommand, RemovePropertyCommand, RevertPropertyCommand,
-    SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand
+    LockPropertyCommand, MakeSecretCommand, MarkdownComponent, OpenSolutionCommand, PickFolderCommand, RedoCommand, ReloadCommand,
+    RemovePropertyCommand, RevertPropertyCommand, SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand,
+    UnlockPropertyCommand
 } from '@local/ck-gen';
 
 /** A row of the tree: a property and its problems (its own and the ones below it). */
@@ -32,6 +36,17 @@ export interface PaletteItem {
 }
 
 const lastFolderKey = 'ck-configurator-editor-folder';
+/** The levels of a lock, the lowest first. */
+const levels = ['Compile', 'Init', 'Run'];
+
+/** The "Make it a secret" dialog: the property, the name of the secret, optional, whether an existing one is replaced. */
+export interface SecretDialog {
+    readonly path: string;
+    readonly name: string;
+    readonly optional: boolean;
+    /** True once the backend said that a development secret of this name has another value. */
+    readonly askOverwrite: boolean;
+}
 /** The polling of the state while the builders check the configuration. */
 const checkPollingMs = 2000;
 
@@ -52,6 +67,9 @@ function readLastFolder(): string {
         NzBadgeModule,
         NzButtonModule,
         NzCheckboxModule,
+        NzDropdownModule,
+        NzMenuModule,
+        NzModalModule,
         NzInputModule,
         NzSelectModule,
         NzSwitchModule,
@@ -64,6 +82,7 @@ function readLastFolder(): string {
 } )
 export class EditorPage {
     readonly #cris = inject( HttpCrisEndpoint );
+    readonly #contextMenu = inject( NzContextMenuService );
     readonly source = inject( CatalogSource );
 
     /** The folder input. */
@@ -89,6 +108,10 @@ export class EditorPage {
     /** The form of a new deployment (shown when not null): its name, its base, whether its values per deployment are written. */
     readonly newDeployment = signal<{ name: string, base: string | null, writeValues: boolean } | null>( null );
     #pollTimer: ReturnType<typeof setTimeout> | undefined;
+    /** The property of the contextual menu. */
+    readonly menuNode = signal<EditorNode | undefined>( undefined );
+    /** The "Make it a secret" dialog (shown when not null). */
+    readonly secretDialog = signal<SecretDialog | null>( null );
 
     readonly isOpened = computed( () => !!this.state()?.folder );
     readonly documents = computed<ReadonlyArray<EditorDocument>>( () => this.state()?.documents ?? [] );
@@ -305,6 +328,100 @@ export class EditorPage {
         const c = new RevertPropertyCommand();
         c.path = path;
         return this.runAsync( c );
+    }
+
+    /** Opens the contextual menu of a row (a right click): the row is selected. */
+    openMenu( event: MouseEvent, n: EditorNode, menu: NzDropdownMenuComponent ): void {
+        event.preventDefault();
+        this.select( n.path );
+        this.menuNode.set( n );
+        this.#contextMenu.create( event, menu );
+    }
+
+    /** The keyboard of the tree: the menu key or Shift+F10 opens the contextual menu of the selected row. */
+    onTreeKeydown( event: KeyboardEvent, menu: NzDropdownMenuComponent ): void {
+        if( event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10') ) return;
+        const n = this.selected();
+        const row = (event.currentTarget as HTMLElement).querySelector( '.ck-editor-selected' );
+        if( !n || !row ) return;
+        event.preventDefault();
+        const r = row.getBoundingClientRect();
+        this.menuNode.set( n );
+        this.#contextMenu.create( { x: r.left + 24, y: r.bottom }, menu );
+    }
+
+    closeMenu(): void { this.#contextMenu.close(); }
+
+    /** Whether a property is in an App ("Builders:{b}:App", "Defaults:App") or a Builder aspect: it can be locked. */
+    canLock( n: EditorNode ): boolean {
+        if( this.isDeploymentView() ) return false;
+        const s = n.path.split( ':' );
+        for( let i = s.length - 1; i > 0; --i ) {
+            const p = s.slice( 0, i );
+            const isApp = (p.length === 3 && p[0] === 'Builders' && p[2].toLowerCase() === 'app')
+                          || (p.length === 2 && p[0].toLowerCase() === 'defaults' && p[1].toLowerCase() === 'app');
+            const isAspect = p.length === 4 && p[0] === 'Builders' && p[2].toLowerCase() === 'aspects' && !p[3].startsWith( '$' );
+            if( isApp || isAspect ) return true;
+        }
+        return false;
+    }
+
+    /** The levels at which a property can be locked: up to the capability of the code when the catalog gives it. */
+    lockLevels( n: EditorNode ): string[] {
+        const max = n.maxLevel ? levels.indexOf( n.maxLevel ) : levels.length - 1;
+        return levels.slice( 0, max + 1 );
+    }
+
+    /** Whether a value can be made a secret (a value that is not a handle). */
+    canBeSecret( n: EditorNode ): boolean {
+        return !n.secretName && (n.kind === 'String' || n.kind === 'Number' || n.kind === 'Boolean') && !n.path.includes( '$LOCK' );
+    }
+
+    /** The tooltip of the lock mark: its level, and what locks it. */
+    lockTitle( n: EditorNode ): string {
+        return `${n.lockLevel}: ${n.lockSource ?? ''}`;
+    }
+
+    lockAsync( path: string, level: string ): Promise<void> {
+        const c = new LockPropertyCommand();
+        c.path = path;
+        c.level = level;
+        return this.runAsync( c );
+    }
+
+    unlockAsync( path: string ): Promise<void> {
+        const c = new UnlockPropertyCommand();
+        c.path = path;
+        return this.runAsync( c );
+    }
+
+    async copyPathAsync( path: string ): Promise<void> {
+        try { await navigator.clipboard.writeText( path ); } catch { this.error.set( path ); }
+    }
+
+    /** Opens the "Make it a secret" dialog: the name is the last two names of the path ("Google:ClientSecret"). */
+    startSecret( n: EditorNode ): void {
+        const name = n.path.split( ':' ).slice( -2 ).map( s => s.replace( /[^A-Za-z0-9_-]/g, '_' ) ).join( ':' );
+        this.secretDialog.set( { path: n.path, name, optional: false, askOverwrite: false } );
+    }
+
+    async makeSecretAsync( overwrite: boolean ): Promise<void> {
+        const d = this.secretDialog();
+        if( !d ) return;
+        const c = new MakeSecretCommand();
+        c.path = d.path;
+        c.name = d.name.trim();
+        c.isOptional = d.optional;
+        c.overwrite = overwrite;
+        await this.runAsync( c );
+        const e = this.error();
+        if( !e ) {
+            this.secretDialog.set( null );
+        }
+        else if( e.includes( 'already exists with another value' ) ) {
+            this.error.set( null );
+            this.secretDialog.set( { ...d, askOverwrite: true } );
+        }
     }
 
     /** Whether a property of a deployment view is written by its overlay (it can be reverted to the inherited one). */

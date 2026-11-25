@@ -123,7 +123,11 @@ static class DeploymentChecker
         }
         if( merged == null || overlay == null ) return;
         var patterns = markers.Select( m => new PerDeploymentPattern( m.ObjectPath, m.Pattern, $"\"{CentralDeployment.PerDeploymentKey}\" of {m.Source}" ) ).ToList();
-        if( catalog != null ) patterns.AddRange( GetTypePatterns( nodes, catalog ) );
+        if( catalog != null )
+        {
+            patterns.AddRange( EditorAnchors.Place( nodes, catalog, t => t.PerDeployment.Select( p => (p, p) ) )
+                                            .Select( p => new PerDeploymentPattern( p.AppPath, p.Pattern, $"[ConfigurationPerDeployment( \"{p.Declaration}\" )] of '{p.Type.CSharpName}'", IsApp: true ) ) );
+        }
         var inherited = CentralDeployment.FindInheritedValues( merged, overlay, patterns, out _ );
         if( inherited.Count == 0 ) return;
         // One problem per property that an overlay writes as a whole: an item of an array is its array (the merge patch
@@ -165,57 +169,5 @@ static class DeploymentChecker
             p = i < 0 ? "" : p.Substring( 0, i );
         }
         return p;
-    }
-
-    // The [ConfigurationPerDeployment( "Party:Urls" )] of the configurable types, as the build declares them on an App
-    // (AppBuilderConfiguration.CollectPerDeploymentKeys): the path in each anchor of the kind of parties (the local party
-    // "Local" and its fallback "Defaults" for "Party" and "Local", each client of the local party for "Client"), then the
-    // section of the type (an option: in the section of each of its owners), then the rest of the path.
-    static IEnumerable<PerDeploymentPattern> GetTypePatterns( IReadOnlyList<EditorNodeData> nodes, CatalogModel catalog )
-    {
-        var types = catalog.Packages.SelectMany( p => p.Assemblies ).SelectMany( a => a.Types )
-                           .Where( t => t.Configurable != null && t.PerDeployment.Count > 0 )
-                           .ToList();
-        if( types.Count == 0 ) yield break;
-        foreach( var app in nodes.Where( n => n.Role == "App" && n.Path.StartsWith( "Builders:", StringComparison.OrdinalIgnoreCase ) ) )
-        {
-            var clients = nodes.Where( n => n.Role == "Client" && n.Path.StartsWith( app.Path + ":", StringComparison.OrdinalIgnoreCase ) )
-                               .Select( n => n.Path.Substring( app.Path.Length + 1 ) )
-                               .ToList();
-            foreach( var t in types )
-            {
-                var sections = GetSections( t, catalog );
-                foreach( var declaration in t.PerDeployment )
-                {
-                    var parts = declaration.Split( ':', 2 );
-                    if( parts.Length != 2 || parts[0].Length == 0 ) continue;
-                    IEnumerable<string> anchors = parts[0] switch
-                    {
-                        "Party" or "Local" => ["Local", "Defaults"],
-                        "Client" => clients,
-                        _ => []
-                    };
-                    var source = $"[ConfigurationPerDeployment( \"{declaration}\" )] of '{t.CSharpName}'";
-                    foreach( var anchor in anchors )
-                    {
-                        foreach( var section in sections )
-                        {
-                            var pattern = parts[1].Length == 0 ? $"{anchor}:{section}" : $"{anchor}:{section}:{parts[1]}";
-                            yield return new PerDeploymentPattern( app.Path, pattern, source, IsApp: true );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    static IReadOnlyList<string> GetSections( TypeAnalysis t, CatalogModel catalog )
-    {
-        var name = t.Configurable!.Name;
-        if( !t.Configurable.Kind.EndsWith( "Option", StringComparison.Ordinal ) ) return [name];
-        return t.OptionOwners.Select( o => catalog.FindType( o )?.Type.Configurable?.Name )
-                             .Where( o => o != null )
-                             .Select( o => $"{o}:{name}" )
-                             .ToList();
     }
 }

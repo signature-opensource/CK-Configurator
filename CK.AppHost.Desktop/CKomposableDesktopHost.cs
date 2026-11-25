@@ -105,7 +105,7 @@ public static class CKomposableDesktopHost
     {
         if( LogFile.RootLogPath != null ) return;
         var published = Path.Combine( AppContext.BaseDirectory, CKomposableAppHost.PublishedFileName );
-        if( !File.Exists( published ) ) return;
+        if( !IsPublished ) return;
         string? name = null;
         try
         {
@@ -130,6 +130,12 @@ public static class CKomposableDesktopHost
         LogFile.RootLogPath = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.LocalApplicationData ), name, "Logs" );
     }
 
+    /// <summary>
+    /// Gets whether this host is published (its <see cref="CKomposableAppHost.PublishedFileName"/> is next to it), not
+    /// run from its project in Development.
+    /// </summary>
+    internal static bool IsPublished => File.Exists( Path.Combine( AppContext.BaseDirectory, CKomposableAppHost.PublishedFileName ) );
+
     static volatile IInfiniFrameWindow? _window;
 
     /// <summary>
@@ -152,6 +158,9 @@ public static class CKomposableDesktopHost
             var window = InfiniFrameWindowBuilder.Create()
                             .SetTitle( settings.Title )
                             .SetSize( settings.Width, settings.Height )
+                            // The browser's menu (Back, Reload, Save as...) is not the one of an application: the client
+                            // shows its own menus. It is kept in Development (Inspect).
+                            .EnableContextMenu( !IsPublished )
                             .SetStartPageContent( Page( settings.Title, "starting...", null, readyMessageId: _startPageLoadedId ) )
                             .RegisterWebMessagePostHandler( _startPageLoadedId, ( IInfiniFrameWindow w, string? payload ) => startPageLoaded.TrySetResult() )
                             .RegisterCustomSchemeHandler( DesktopInProcessBridge.Scheme, bridge.HandleScheme )

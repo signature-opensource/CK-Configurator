@@ -62,5 +62,21 @@
     "CK.Configurator.Editor.Role.BuilderAspectOption": "option d'aspect de Builder",
     "CK.Configurator.Editor.Role.AppAspectOption": "option d'aspect d'App",
     "CK.Configurator.Editor.WriteHere": "L'écrire ici",
-    "CK.Configurator.Editor.WriteValuesPerDeployment": "Écrire ses valeurs par déploiement"
+    "CK.Configurator.Editor.WriteValuesPerDeployment": "Écrire ses valeurs par déploiement",
+    "CK.Configurator.Editor.Menu.Add": "Ajouter une propriété...",
+    "CK.Configurator.Editor.Menu.Collapse": "Replier",
+    "CK.Configurator.Editor.Menu.Expand": "Déplier",
+    "CK.Configurator.Editor.Menu.MakeSecret": "En faire un secret...",
+    "CK.Configurator.Editor.Menu.Lock": "Verrouiller",
+    "CK.Configurator.Editor.Menu.Unlock": "Déverrouiller",
+    "CK.Configurator.Editor.Menu.CopyPath": "Copier le chemin",
+    "CK.Configurator.Editor.Locked": "Verrouillé : {{level}}, par {{source}}",
+    "CK.Configurator.Editor.SecretOf": "Le secret '{{name}}'",
+    "CK.Configurator.Editor.SecretStatus.Set": "présent dans #Dev/Secrets.json",
+    "CK.Configurator.Editor.SecretStatus.Missing": "absent de #Dev/Secrets.json",
+    "CK.Configurator.Editor.SecretStatus.MissingOptional": "absent de #Dev/Secrets.json (optionnel)",
+    "CK.Configurator.Editor.SecretOptional": "Optionnel (\"$SECRET?\" : sans lui, l'hôte laisse la valeur absente)",
+    "CK.Configurator.Editor.SecretInCentral": "La valeur va dans #Dev/Secrets.json sous '{{name}}' (enregistré avec les documents) ; la configuration garde son nom.",
+    "CK.Configurator.Editor.SecretInDeployment": "Le déploiement n'écrit que le nom : son hôte reçoit le secret 'Secrets:{{name}}'. La valeur n'est pas écrite.",
+    "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json a déjà '{{name}}' avec une autre valeur : l'écraser, ou choisir un autre nom."
 }

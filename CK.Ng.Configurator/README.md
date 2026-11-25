@@ -67,8 +67,14 @@ a view (`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md
   comes from), what its overlay writes is marked and what it removes is struck through; the selected property says its
   origin and offers "Write it here" (inherited) or "Revert to inherited" (written), and "Remove" is "Remove here". An
   inherited value per deployment has "Write it here" in the problems too. An undo shows the view of the document it changed.
+- **The contextual menu** of a row of the tree (a right click, or Shift+F10 and the menu key on the selected row): the
+  actions that apply to it: Collapse/Expand, Add a property, Write it here, Revert to inherited, Make it a secret...,
+  Lock (the levels up to the capability of the code) and Unlock, Remove (or Remove here), Copy the path. "Make it a
+  secret..." proposes the last two names of the path as the name of the secret, "Optional", and asks before replacing
+  a development secret of the same name.
 - **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
-  a party, a feature, a client, an option) with their role, the counts of their errors and warnings. A builder is shown
+  a party, a feature, a client, an option) with their role, the counts of their errors and warnings, a lock mark (its
+  level and what locks it in a tooltip) and a key mark on a secret. A builder is shown
   without its ".Builder" suffix (in the paths too); the keys of the document don't change. The three panes take the
   height of the window and scroll on their own.
 - **The selected property** (centre): its path, its role and its configurable type, its problems, the comment written

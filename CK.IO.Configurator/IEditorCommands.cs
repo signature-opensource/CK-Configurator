@@ -112,6 +112,65 @@ public interface IRevertPropertyCommand : ICommand<IEditorState>, ICommandEditor
 }
 
 /// <summary>
+/// Locks a property in the central configuration: an entry of the <c>"$LOCK"</c> of the App or of the Builder aspect that
+/// contains it (its path relative to it as the pattern). The level can't be above the capability of the code
+/// (<see cref="IEditorNode.MaxLevel"/>).
+/// </summary>
+public interface ILockPropertyCommand : ICommand<IEditorState>, ICommandEditorView
+{
+    /// <summary>
+    /// Gets or sets the path of the property.
+    /// </summary>
+    string Path { get; set; }
+
+    /// <summary>
+    /// Gets or sets the level: "Compile", "Init" or "Run".
+    /// </summary>
+    string Level { get; set; }
+}
+
+/// <summary>
+/// Unlocks a property in the central configuration: removes the literal pattern of a <c>"$LOCK"</c> that names it
+/// (<see cref="IEditorNode.CanUnlock"/>).
+/// </summary>
+public interface IUnlockPropertyCommand : ICommand<IEditorState>, ICommandEditorView
+{
+    /// <summary>
+    /// Gets or sets the path of the property.
+    /// </summary>
+    string Path { get; set; }
+}
+
+/// <summary>
+/// Makes a value a secret: its place holds a handle, <c>{ "$SECRET": "&lt;Name&gt;" }</c>. In the central configuration,
+/// the value moves to the development secrets (<c>#Dev/Secrets.json</c>, a document of the solution saved with the
+/// others); in a deployment, only the handle is written in its overlay (its host is given the secret).
+/// </summary>
+public interface IMakeSecretCommand : ICommand<IEditorState>, ICommandEditorView
+{
+    /// <summary>
+    /// Gets or sets the path of the value.
+    /// </summary>
+    string Path { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the secret: segments separated by ':' made of letters, digits, '_' and '-'.
+    /// </summary>
+    string Name { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the handle is optional (<c>"$SECRET?"</c>: the host leaves the path absent without the secret).
+    /// </summary>
+    bool IsOptional { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether a development secret of the same name with another value is replaced (otherwise the command
+    /// fails).
+    /// </summary>
+    bool Overwrite { get; set; }
+}
+
+/// <summary>
 /// Creates a deployment: its overlay ("Deployment/{Name}/ckonf.json") is written at the next save. The returned state is
 /// the view of the new deployment.
 /// </summary>
@@ -368,6 +427,39 @@ public interface IEditorNode : IPoco
     /// origin) or "Removed" (a <c>null</c> of the overlay removes it).
     /// </summary>
     string? Origin { get; set; }
+
+    /// <summary>
+    /// Gets or sets the lowest level of the locks of the property ("Compile", "Init" or "Run"), or null when it is not
+    /// locked: the <c>"$LOCK"</c> patterns that cover it and the <c>[ConfigurationLock]</c> of the packages.
+    /// </summary>
+    string? LockLevel { get; set; }
+
+    /// <summary>
+    /// Gets or sets what locks the property (for the user).
+    /// </summary>
+    string? LockSource { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether a literal pattern of a <c>"$LOCK"</c> names the property: <see cref="IUnlockPropertyCommand"/> applies.
+    /// </summary>
+    bool CanUnlock { get; set; }
+
+    /// <summary>
+    /// Gets or sets the highest level that the code supports for the property (its <c>[ConfigurationLevel]</c>), null when
+    /// the catalog doesn't say.
+    /// </summary>
+    string? MaxLevel { get; set; }
+
+    /// <summary>
+    /// Gets or sets the name of the secret when the value of the property is a handle.
+    /// </summary>
+    string? SecretName { get; set; }
+
+    /// <summary>
+    /// Gets or sets, in the central view, whether the development secrets (<c>#Dev/Secrets.json</c>) have the value of the
+    /// handle: "Set", "Missing" or "MissingOptional"; null otherwise. The value itself is never given.
+    /// </summary>
+    string? SecretStatus { get; set; }
 }
 
 /// <summary>

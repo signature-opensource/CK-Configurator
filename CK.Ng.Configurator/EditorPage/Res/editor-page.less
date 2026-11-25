@@ -27,6 +27,7 @@
         .ck-editor-deployment-name { max-width: 260px; }
     }
     .ck-editor-dirty-doc { font-style: italic; }
+    .ck-editor-secret-dialog { display: flex; flex-direction: column; gap: 8px; }
     .ck-editor-dirty-doc::after { content: ' *'; }
 
     .ck-editor-catalog {
@@ -71,6 +72,8 @@
         .ck-editor-written { border-left: 3px solid #1890ff; }
         .ck-editor-removed { text-decoration: line-through; opacity: 0.6; border-left: 3px solid #ff4d4f; }
         .ck-editor-origin { font-size: 11px; opacity: 0.7; font-style: italic; }
+        .ck-editor-lock, .ck-editor-secret { font-size: 11px; cursor: default; }
+        &:focus { outline: none; }
     }
 
     .ck-editor-detail {
@@ -89,6 +92,7 @@
         }
         .ck-editor-add { display: flex; gap: 6px; }
         .ck-editor-origin-line { display: flex; gap: 8px; align-items: center; font-style: italic; }
+        .ck-editor-missing { color: #fa8c16; }
         .ck-editor-json { font-size: 12px; }
         .ck-editor-doc-title { margin-top: 12px; }
         .ck-editor-remarks { opacity: 0.85; }

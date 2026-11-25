@@ -51,6 +51,8 @@ of the root party has "DesktopWindow", the application runs with its window, oth
   says that a feature failed), where the logs are, and the exception. The window stays open until it is closed. A
   failure to build the host (before anything is configured) opens a window that shows it, when a window can be opened.
 - Closing the window stops the host; stopping the host closes the window.
+- The browser's context menu (Back, Reload, Save as...) is off in a published host (its `CK.AppHost.Published.json`
+  is next to it): the client shows its own menus. In Development, it is kept (Inspect).
 - The exit code is 0, or 1 on failure.
 
 ## The in-process endpoint: no port

@@ -54,6 +54,12 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
                     node.Role = n.Role;
                     node.TypeName = n.TypeName;
                     node.Origin = n.Origin;
+                    node.LockLevel = n.LockLevel;
+                    node.LockSource = n.LockSource;
+                    node.CanUnlock = n.CanUnlock;
+                    node.MaxLevel = n.MaxLevel;
+                    node.SecretName = n.SecretName;
+                    node.SecretStatus = n.SecretStatus;
                 } ) );
             }
             foreach( var p in s.Problems )
@@ -118,6 +124,27 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
     [CommandHandler]
     public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, IRevertPropertyCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
         => ToState( pocos, await editor.RevertPropertyAsync( monitor, command.Deployment, command.Path ).ConfigureAwait( false ) );
+
+    /// <summary>
+    /// Locks a property.
+    /// </summary>
+    [CommandHandler]
+    public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, ILockPropertyCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
+        => ToState( pocos, await editor.LockPropertyAsync( monitor, command.Deployment, command.Path, command.Level ).ConfigureAwait( false ) );
+
+    /// <summary>
+    /// Unlocks a property.
+    /// </summary>
+    [CommandHandler]
+    public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, IUnlockPropertyCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
+        => ToState( pocos, await editor.UnlockPropertyAsync( monitor, command.Deployment, command.Path ).ConfigureAwait( false ) );
+
+    /// <summary>
+    /// Makes a value a secret.
+    /// </summary>
+    [CommandHandler]
+    public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, IMakeSecretCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
+        => ToState( pocos, await editor.MakeSecretAsync( monitor, command.Deployment, command.Path, command.Name, command.IsOptional, command.Overwrite ).ConfigureAwait( false ) );
 
     /// <summary>
     /// Creates a deployment.
