@@ -61,7 +61,7 @@ public class ConfiguratorEditorServiceTests
         s.IsDirty.ShouldBeFalse();
         s.ChangedOnDisk.ShouldBeFalse();
         // Its catalog is not opened: nothing is checked.
-        s.Problems.ShouldHaveSingleItem().Message.ShouldContain( "is not opened: the document is not checked" );
+        s.Problems.ShouldHaveSingleItem().Message.ShouldContain( "is not opened: the documents are not checked" );
         var domain = s.Nodes.Single( n => n.Path == "Domain" );
         domain.ShouldBe( new EditorNodeData( "Domain", "Domain", 0, "String", "\"CK\"", "The domain of the parties." ) );
         var endpoint = s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint" );
@@ -86,13 +86,13 @@ public class ConfiguratorEditorServiceTests
         await editor.OpenAsync( TestHelper.Monitor, folder );
 
         // The names are case insensitive.
-        var s = await editor.SetValueAsync( TestHelper.Monitor, "domain", "\"Other\"" );
+        var s = await editor.SetValueAsync( TestHelper.Monitor, null, "domain", "\"Other\"" );
         s.IsDirty.ShouldBeTrue();
         s.CanUndo.ShouldBeTrue();
         s.Nodes.Single( n => n.Path == "Domain" ).Value.ShouldBe( "\"Other\"" );
-        s = await editor.AddPropertyAsync( TestHelper.Monitor, _local, "PartyClient", "{ \"App\": { \"NgApp\": true } }" );
+        s = await editor.AddPropertyAsync( TestHelper.Monitor, null, _local, "PartyClient", "{ \"App\": { \"NgApp\": true } }" );
         s.Nodes.Single( n => n.Path == _local + ":PartyClient:App:NgApp" ).Value.ShouldBe( "true" );
-        s = await editor.RemovePropertyAsync( TestHelper.Monitor, _local + ":Nothing" );
+        s = await editor.RemovePropertyAsync( TestHelper.Monitor, null, _local + ":Nothing" );
         s.Nodes.ShouldNotContain( n => n.Name == "Nothing" );
 
         s = await editor.UndoAsync();
@@ -102,7 +102,7 @@ public class ConfiguratorEditorServiceTests
         s.Nodes.ShouldNotContain( n => n.Name == "Nothing" );
         s.CanRedo.ShouldBeFalse();
 
-        s = await editor.SaveAsync( TestHelper.Monitor, overwrite: false );
+        s = await editor.SaveAsync( TestHelper.Monitor, null, overwrite: false );
         s.IsDirty.ShouldBeFalse();
         var bytes = File.ReadAllBytes( file );
         bytes.AsSpan().StartsWith( Encoding.UTF8.GetPreamble() ).ShouldBeTrue();
@@ -125,23 +125,23 @@ public class ConfiguratorEditorServiceTests
         var file = Path.Combine( folder, "ckonf.json" );
         var editor = CreateEditor();
         await editor.OpenAsync( TestHelper.Monitor, folder );
-        await editor.SetValueAsync( TestHelper.Monitor, "Domain", "\"Mine\"" );
+        await editor.SetValueAsync( TestHelper.Monitor, null, "Domain", "\"Mine\"" );
 
         File.WriteAllText( file, _central.Replace( "\"CK\"", "\"Theirs\"" ) );
         (await editor.GetStateAsync()).ChangedOnDisk.ShouldBeTrue();
-        var ex = await Should.ThrowAsync<CKException>( () => editor.SaveAsync( TestHelper.Monitor, overwrite: false ) );
+        var ex = await Should.ThrowAsync<CKException>( () => editor.SaveAsync( TestHelper.Monitor, null, overwrite: false ) );
         ex.Message.ShouldContain( "changed on disk since it was read" );
         File.ReadAllText( file ).ShouldContain( "\"Theirs\"" );
 
-        var s = await editor.ReloadAsync( TestHelper.Monitor );
+        var s = await editor.ReloadAsync( TestHelper.Monitor, null );
         s.ChangedOnDisk.ShouldBeFalse();
         s.IsDirty.ShouldBeFalse();
         s.CanUndo.ShouldBeFalse();
         s.Nodes.Single( n => n.Path == "Domain" ).Value.ShouldBe( "\"Theirs\"" );
 
-        await editor.SetValueAsync( TestHelper.Monitor, "Domain", "\"Mine\"" );
+        await editor.SetValueAsync( TestHelper.Monitor, null, "Domain", "\"Mine\"" );
         File.WriteAllText( file, _central );
-        s = await editor.SaveAsync( TestHelper.Monitor, overwrite: true );
+        s = await editor.SaveAsync( TestHelper.Monitor, null, overwrite: true );
         s.ChangedOnDisk.ShouldBeFalse();
         File.ReadAllText( file ).ShouldContain( "\"Mine\"" );
     }
@@ -158,9 +158,9 @@ public class ConfiguratorEditorServiceTests
         (await Should.ThrowAsync<CKException>( () => editor.OpenAsync( TestHelper.Monitor, invalid ) )).Message.ShouldContain( "is not a valid JSON(C) document" );
 
         await editor.OpenAsync( TestHelper.Monitor, CreateSolution( "errors", _central ) );
-        await Should.ThrowAsync<CKException>( () => editor.SetValueAsync( TestHelper.Monitor, "Missing", "1" ) );
-        await Should.ThrowAsync<CKException>( () => editor.AddPropertyAsync( TestHelper.Monitor, "", "Domain", "1" ) );
-        await Should.ThrowAsync<CKException>( () => editor.SetValueAsync( TestHelper.Monitor, "Domain", "{ oops" ) );
+        await Should.ThrowAsync<CKException>( () => editor.SetValueAsync( TestHelper.Monitor, null, "Missing", "1" ) );
+        await Should.ThrowAsync<CKException>( () => editor.AddPropertyAsync( TestHelper.Monitor, null, "", "Domain", "1" ) );
+        await Should.ThrowAsync<CKException>( () => editor.SetValueAsync( TestHelper.Monitor, null, "Domain", "{ oops" ) );
         var s = await editor.GetStateAsync();
         s.IsDirty.ShouldBeFalse();
         s.CanUndo.ShouldBeFalse();

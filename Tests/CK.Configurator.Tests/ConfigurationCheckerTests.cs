@@ -126,4 +126,109 @@ public class ConfigurationCheckerTests
         p.Severity.ShouldBe( severity );
         p.Message.ShouldContain( message );
     }
+
+    static readonly CatalogModel _requirements = CatalogModel.Create( TestHelper.Monitor, null!,
+    [
+        new PackageAnalysis
+        {
+            PackageId = "Sample",
+            Version = "1.0.0",
+            Assemblies =
+            [
+                new AssemblyAnalysis
+                {
+                    Name = "Sample",
+                    Types =
+                    [
+                        Configurable( "Sample.AuthCenter", "PartyFeature", "AuthCenter" ),
+                        Configurable( "Sample.MailSender", "PartyFeature", "MailSender" ),
+                        Configurable( "Sample.Password", "PartyFeatureOption", "Password", owners: ["Sample.AuthCenter"] ),
+                        Requiring( Configurable( "Sample.PasswordLost", "PartyFeatureOption", "PasswordLost", owners: ["Sample.AuthCenter"] ),
+                                   "Sample.Password", "Sample.MailSender" ),
+                        Requiring( Configurable( "Sample.AutoLost", "PartyFeatureOption", "AutoLost", activation: "ByDefault", owners: ["Sample.AuthCenter"] ),
+                                   "Sample.PasswordLost" ),
+                        Requiring( Configurable( "Sample.Audit", "PartyFeatureOption", "Audit", activation: "ByDefault", owners: ["Sample.AuthCenter"] ),
+                                   "Sample.AutoLost" ),
+                        Configurable( "Sample.SqlServer", "AppBuilderAspect", "SqlServer" ),
+                        Requiring( Configurable( "Sample.Pool", "AppBuilderAspectOption", "Pool", owners: ["Sample.SqlServer"] ),
+                                   "Sample.Globalization" ),
+                        Configurable( "Sample.Globalization", "AppAspect", "Globalization", activation: "ByDefault" )
+                    ]
+                }
+            ]
+        }
+    ] );
+
+    static TypeAnalysis Requiring( TypeAnalysis t, params string[] targets )
+        => new()
+        {
+            FullName = t.FullName,
+            CSharpName = t.CSharpName,
+            Configurable = t.Configurable,
+            OptionOwners = t.OptionOwners,
+            Relations = targets.Select( r => new TypeRelation( "Requires", r, IsOptional: false ) ).ToList()
+        };
+
+    static EditorProblemData[] CheckRequirements( string local, string defaults = "{}", string aspects = "{}" )
+    {
+        var text = $$"""
+            {
+              "Defaults": { "App": { "Defaults": {{defaults}} } },
+              "Builders": { "B": { "Aspects": {{aspects}}, "App": { "Local": {{local}} } } }
+            }
+            """;
+        return ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), _requirements ).Problems.ToArray();
+    }
+
+    [Test]
+    public void an_explicit_option_that_requires_a_disabled_type_is_an_error()
+    {
+        var problems = CheckRequirements( """{ "AuthCenter": { "PasswordLost": true } }""" );
+        problems.Select( p => (p.Path, p.Severity, p.Message) ).ShouldBe(
+        [
+            ("Builders:B:App:Local:AuthCenter:PasswordLost", "Error", "The option 'PasswordLost' requires the option 'Password' that is disabled.")
+        ] );
+        // Password is there: MailSender is missing.
+        CheckRequirements( """{ "AuthCenter": { "Password": true, "PasswordLost": {} } }""" ).ShouldHaveSingleItem()
+            .Message.ShouldBe( "The option 'PasswordLost' requires the party feature 'MailSender' that is disabled." );
+        // MailSender declared in the central "Defaults:App:Defaults": met.
+        CheckRequirements( """{ "AuthCenter": { "Password": true, "PasswordLost": true } }""", defaults: """{ "MailSender": {} }""" ).ShouldBeEmpty();
+        // ...unless the party disables it.
+        CheckRequirements( """{ "MailSender": false, "AuthCenter": { "Password": true, "PasswordLost": true } }""", defaults: """{ "MailSender": {} }""" )
+            .ShouldHaveSingleItem().Severity.ShouldBe( "Error" );
+        // A disabled owner: nothing is checked.
+        CheckRequirements( """{ "AuthCenter": false }""" ).ShouldBeEmpty();
+    }
+
+    [Test]
+    public void an_option_enabled_by_default_is_disabled_with_its_requirements_and_the_disabling_cascades()
+    {
+        var problems = CheckRequirements( """{ "AuthCenter": true }""" );
+        problems.Select( p => (p.Path, p.Severity, p.Message) ).ShouldBe(
+        [
+            ("Builders:B:App:Local:AuthCenter", "Info", "The option 'AutoLost' (enabled by default) is disabled: it requires the option 'PasswordLost' that is disabled."),
+            ("Builders:B:App:Local:AuthCenter", "Info", "The option 'Audit' (enabled by default) is disabled: it requires the option 'AutoLost' that is disabled.")
+        ], ignoreOrder: true );
+        // The options declared in the "Defaults" of the party count.
+        CheckRequirements( """{ "AuthCenter": true }""", defaults: """{ "MailSender": true, "AuthCenter": { "Password": true, "PasswordLost": true } }""" ).ShouldBeEmpty();
+    }
+
+    [Test]
+    public void the_options_of_the_aspects_are_typed_and_checked()
+    {
+        var text = """{ "Builders": { "B": { "Aspects": { "SqlServer": { "Pool": true } }, "App": { "Aspects": { "Globalization": false } } } } }""";
+        var (nodes, problems) = ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), _requirements );
+        nodes.Single( n => n.Path == "Builders:B:Aspects:SqlServer:Pool" ).Role.ShouldBe( "BuilderAspectOption" );
+        problems.ShouldHaveSingleItem().Message.ShouldBe( "The option 'Pool' requires the App aspect 'Globalization' that is disabled." );
+        // Globalization is ByDefault: not declared, it is active.
+        CheckRequirements( "{}", aspects: """{ "SqlServer": { "Pool": true } }""" ).ShouldBeEmpty();
+    }
+
+    [Test]
+    public void the_root_key_BASE_is_accepted_in_the_view_of_a_deployment()
+    {
+        var nodes = ConfiguratorEditorService.ReadNodes( """{ "$BASE": "#Production" }""" );
+        ConfigurationChecker.Check( nodes, _catalog ).Problems.ShouldHaveSingleItem().Message.ShouldContain( "Unknown root key '$BASE'" );
+        ConfigurationChecker.Check( nodes, _catalog, isDeployment: true ).Problems.ShouldBeEmpty();
+    }
 }

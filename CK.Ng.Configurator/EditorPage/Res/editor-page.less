@@ -11,7 +11,23 @@
         flex-wrap: wrap;
         .ck-editor-folder { max-width: 520px; }
         .ck-editor-sep { width: 16px; }
+        .ck-editor-check { font-size: 12px; opacity: 0.85; }
+        .ck-editor-check-Running { color: #1890ff; }
+        .ck-editor-check-Succeeded { color: #52c41a; }
+        .ck-editor-check-Failed { color: #ff4d4f; }
     }
+
+    // The view (the central configuration or a deployment) and the creation of a deployment.
+    .ck-editor-views {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        .ck-editor-view-select { min-width: 260px; }
+        .ck-editor-deployment-name { max-width: 260px; }
+    }
+    .ck-editor-dirty-doc { font-style: italic; }
+    .ck-editor-dirty-doc::after { content: ' *'; }
 
     .ck-editor-catalog {
         display: flex;
@@ -26,7 +42,7 @@
         display: flex;
         gap: 16px;
         align-items: stretch;
-        height: calc(100vh - 210px);
+        height: calc(100vh - 250px);
         min-height: 320px;
         > div { overflow-y: auto; }
     }
@@ -50,6 +66,11 @@
         .ck-editor-typed { font-weight: 600; }
         .ck-editor-role { font-size: 11px; opacity: 0.6; }
         .ck-editor-value { opacity: 0.75; overflow: hidden; text-overflow: ellipsis; }
+        // The view of a deployment: what it inherits is dimmed, what it writes is marked, what it removes is struck through.
+        .ck-editor-inherited { opacity: 0.6; }
+        .ck-editor-written { border-left: 3px solid #1890ff; }
+        .ck-editor-removed { text-decoration: line-through; opacity: 0.6; border-left: 3px solid #ff4d4f; }
+        .ck-editor-origin { font-size: 11px; opacity: 0.7; font-style: italic; }
     }
 
     .ck-editor-detail {
@@ -67,6 +88,7 @@
             background: rgba(0, 0, 0, 0.03);
         }
         .ck-editor-add { display: flex; gap: 6px; }
+        .ck-editor-origin-line { display: flex; gap: 8px; align-items: center; font-style: italic; }
         .ck-editor-json { font-size: 12px; }
         .ck-editor-doc-title { margin-top: 12px; }
         .ck-editor-remarks { opacity: 0.85; }

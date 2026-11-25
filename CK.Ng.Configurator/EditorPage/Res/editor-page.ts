@@ -1,17 +1,19 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import {
-    AddPropertyCommand, CatalogSource, CatalogSourcePicker, CloseSolutionCommand, ConfigurableTypeInfo, EditorNode, EditorProblem,
-    EditorState, GetEditorStateQCommand, HttpCrisEndpoint, MarkdownComponent, OpenSolutionCommand, PickFolderCommand, RedoCommand,
-    ReloadCommand, RemovePropertyCommand, SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand
+    AddPropertyCommand, CatalogSource, CatalogSourcePicker, CheckSolutionCommand, CloseSolutionCommand, ConfigurableTypeInfo,
+    CreateDeploymentCommand, EditorDocument, EditorNode, EditorProblem, EditorState, GetEditorStateQCommand, HttpCrisEndpoint,
+    MarkdownComponent, OpenSolutionCommand, PickFolderCommand, RedoCommand, ReloadCommand, RemovePropertyCommand, RevertPropertyCommand,
+    SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand
 } from '@local/ck-gen';
 
 /** A row of the tree: a property and its problems (its own and the ones below it). */
@@ -29,6 +31,8 @@ export interface PaletteItem {
 }
 
 const lastFolderKey = 'ck-configurator-editor-folder';
+/** The polling of the state while the builders check the configuration. */
+const checkPollingMs = 2000;
 
 function readLastFolder(): string {
     try { return localStorage.getItem( lastFolderKey ) ?? ''; } catch { return ''; }
@@ -47,6 +51,7 @@ function readLastFolder(): string {
         NzBadgeModule,
         NzButtonModule,
         NzInputModule,
+        NzSelectModule,
         NzSwitchModule,
         NzTagModule,
         NzTooltipModule,
@@ -77,8 +82,16 @@ export class EditorPage {
     /** The property to add to the selected object. */
     readonly newName = signal( '' );
     readonly newValue = signal( 'true' );
+    /** The deployment of the view (null for the central configuration). */
+    readonly view = signal<string | null>( null );
+    /** The form of a new deployment (shown when not null): its name and its base. */
+    readonly newDeployment = signal<{ name: string, base: string | null } | null>( null );
+    #pollTimer: ReturnType<typeof setTimeout> | undefined;
 
     readonly isOpened = computed( () => !!this.state()?.folder );
+    readonly documents = computed<ReadonlyArray<EditorDocument>>( () => this.state()?.documents ?? [] );
+    readonly deployments = computed( () => this.documents().filter( d => d.name != null ) );
+    readonly isDeploymentView = computed( () => this.view() != null );
     readonly problems = computed<ReadonlyArray<EditorProblem>>( () => this.state()?.problems ?? [] );
 
     /** The visible rows of the tree (the children of a collapsed object are hidden). */
@@ -179,6 +192,29 @@ export class EditorPage {
             const n = this.selected();
             untracked( () => this.valueText.set( n?.value ?? '' ) );
         } );
+        // While the builders check the saved configuration, the state is polled.
+        effect( () => {
+            const running = this.state()?.checkStatus === 'Running';
+            clearTimeout( this.#pollTimer );
+            if( running ) this.#pollTimer = setTimeout( () => void this.#pollAsync(), checkPollingMs );
+        } );
+        inject( DestroyRef ).onDestroy( () => clearTimeout( this.#pollTimer ) );
+    }
+
+    async #pollAsync(): Promise<void> {
+        if( this.busy() ) {
+            this.#pollTimer = setTimeout( () => void this.#pollAsync(), checkPollingMs );
+            return;
+        }
+        const c = new GetEditorStateQCommand();
+        c.deployment = this.view() ?? undefined;
+        try {
+            const s = await this.#cris.sendOrThrowAsync( c ) as EditorState;
+            // The view may have changed meanwhile: only a state of the current view is taken.
+            if( s.view == this.view() ) this.#takeState( s );
+        } catch {
+            // The next command shows the error.
+        }
     }
 
     typeOf( n: EditorNode | undefined ): ConfigurableTypeInfo | undefined {
@@ -220,13 +256,55 @@ export class EditorPage {
         }
     }
 
-    /** Sends an editor command and takes its state. */
+    /** Sends an editor command (on the current view when it has a view) and takes its state: its view becomes the current one. */
     async runAsync( command: any ): Promise<void> {
+        if( 'deployment' in command ) command.deployment = this.view() ?? undefined;
         const s = await this.#sendAsync<EditorState>( command );
-        if( s ) {
-            this.state.set( s );
-            if( this.selectedPath() && !s.nodes.some( n => n.path === this.selectedPath() ) ) this.selectedPath.set( undefined );
-        }
+        if( s ) this.#takeState( s );
+    }
+
+    #takeState( s: EditorState ): void {
+        this.state.set( s );
+        this.view.set( s.view ?? null );
+        if( this.selectedPath() && !s.nodes.some( n => n.path === this.selectedPath() ) ) this.selectedPath.set( undefined );
+    }
+
+    /** Shows another view (the central configuration: null). */
+    selectViewAsync( deployment: string | null ): Promise<void> {
+        this.view.set( deployment );
+        return this.runAsync( new GetEditorStateQCommand() );
+    }
+
+    startNewDeployment(): void {
+        this.newDeployment.set( { name: '#', base: null } );
+    }
+
+    async createDeploymentAsync(): Promise<void> {
+        const f = this.newDeployment();
+        if( !f ) return;
+        const c = new CreateDeploymentCommand();
+        c.name = f.name.trim();
+        c.base = f.base ?? undefined;
+        await this.runAsync( c );
+        if( !this.error() ) this.newDeployment.set( null );
+    }
+
+    checkAsync(): Promise<void> { return this.runAsync( new CheckSolutionCommand() ); }
+
+    revertAsync( path: string ): Promise<void> {
+        const c = new RevertPropertyCommand();
+        c.path = path;
+        return this.runAsync( c );
+    }
+
+    /** Whether a property of a deployment view is written by its overlay (it can be reverted to the inherited one). */
+    isWrittenHere( n: EditorNode ): boolean {
+        return n.origin === 'Deployment' || n.origin === 'Removed';
+    }
+
+    /** Whether a property of a deployment view is inherited (from the central configuration or a base). */
+    isInherited( n: EditorNode ): boolean {
+        return !!n.origin && !this.isWrittenHere( n );
     }
 
     async openCatalogAsync( world: string, version: string ): Promise<void> {
@@ -253,6 +331,8 @@ export class EditorPage {
     async openAsync(): Promise<void> {
         const c = new OpenSolutionCommand();
         c.folder = this.folder().trim();
+        this.view.set( null );
+        this.newDeployment.set( null );
         this.selectedPath.set( undefined );
         this.collapsed.set( new Set() );
         await this.runAsync( c );

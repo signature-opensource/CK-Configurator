@@ -25,6 +25,13 @@ namespace CK.Configurator;
 ///   <c>true</c>, <c>false</c> or a section.
 ///   </item>
 ///   <item>
+///   The required types of the options ("only with it", as the build selects the options): an option enabled explicitly
+///   that requires a disabled type (another option of its owner, a party feature, a client feature, an App or a Builder
+///   aspect) is an error; an option enabled by default is disabled with it (an information on its owner), and so are
+///   the options that require it in turn. A declaration is looked up as the run time does: in the party (or the client,
+///   the aspects of the App), then in the "Defaults" above it, the central "Defaults:App" merged under each App.
+///   </item>
+///   <item>
 ///   The syntax of <c>"$LOCK"</c> (levels "Compile", "Init" or "Run"), <c>"$PER_DEPLOYMENT"</c> (an array of paths) and
 ///   <c>{ "$SECRET": "..." }</c> (the only key of its object); a secret of a type written as a plain value.
 ///   </item>
@@ -46,28 +53,34 @@ public static class ConfigurationChecker
     /// <param name="nodes">The properties of the document, in document order.</param>
     /// <param name="catalog">The catalog.</param>
     /// <returns>The typed properties and the problems.</returns>
+    /// <param name="isDeployment">True for the merged view of a deployment: its <c>"$BASE"</c> root key is accepted.</param>
     public static (IReadOnlyList<EditorNodeData> Nodes, IReadOnlyList<EditorProblemData> Problems) Check( IReadOnlyList<EditorNodeData> nodes,
-                                                                                                         CatalogModel catalog )
+                                                                                                         CatalogModel catalog,
+                                                                                                         bool isDeployment = false )
     {
-        var c = new Checker( nodes, catalog );
+        var c = new Checker( nodes, catalog, isDeployment );
         c.Run();
         return (nodes.Select( n => c.Roles.TryGetValue( n.Path, out var r ) ? n with { Role = r.Role, TypeName = r.TypeName } : n ).ToList(),
-                c.Problems);
+                c.Problems.Distinct().ToList());
     }
 
     sealed class Checker
     {
         readonly CatalogModel _catalog;
         readonly Dictionary<string, List<EditorNodeData>> _children = new( StringComparer.OrdinalIgnoreCase );
+        readonly Dictionary<string, EditorNodeData> _byPath = new( StringComparer.OrdinalIgnoreCase );
         readonly HashSet<string> _centralKeys;
+        readonly bool _isDeployment;
         public readonly Dictionary<string, (string Role, string? TypeName)> Roles = new( StringComparer.OrdinalIgnoreCase );
         public readonly List<EditorProblemData> Problems = new();
 
-        public Checker( IReadOnlyList<EditorNodeData> nodes, CatalogModel catalog )
+        public Checker( IReadOnlyList<EditorNodeData> nodes, CatalogModel catalog, bool isDeployment )
         {
             _catalog = catalog;
+            _isDeployment = isDeployment;
             foreach( var n in nodes )
             {
+                _byPath[n.Path] = n;
                 var parent = ParentPath( n.Path );
                 if( !_children.TryGetValue( parent, out var list ) ) _children.Add( parent, list = new List<EditorNodeData>() );
                 list.Add( n );
@@ -95,12 +108,14 @@ public static class ConfigurationChecker
                 else if( n.Name.Equals( "Builders", StringComparison.OrdinalIgnoreCase ) ) CheckBuilders( n );
                 else if( n.Name.Equals( "Defaults", StringComparison.OrdinalIgnoreCase ) ) CheckDefaults( n );
                 // A "$LOCK" is reported by CheckSyntax (it is outside the Apps and the Builder aspects).
+                else if( _isDeployment && n.Name.Equals( "$BASE", StringComparison.OrdinalIgnoreCase ) ) continue;
                 else if( !_rootKeys.Contains( n.Name ) && !_centralKeys.Contains( n.Name ) && !n.Name.Equals( "$LOCK", StringComparison.OrdinalIgnoreCase ) )
                 {
                     Warn( n.Path, $"Unknown root key '{n.Name}': no package of the catalog declares it (the build refuses a key that no contributor claims)." );
                 }
             }
             CheckSyntax();
+            CheckRequirements();
         }
 
         void CheckConfigurator( EditorNodeData n )
@@ -171,6 +186,7 @@ public static class ConfigurationChecker
                     continue;
                 }
                 Typed( a, role, t, partyKind: null );
+                if( a.Kind == "Object" ) CheckOptions( a, t, kind + "Option", role + "Option", partyKind: null );
             }
         }
 
@@ -194,7 +210,7 @@ public static class ConfigurationChecker
                 }
                 else
                 {
-                    CheckOptions( k, t, "PartyFeatureOption", isLocal ? "Local" : "Party" );
+                    CheckOptions( k, t, "PartyFeatureOption", "PartyFeatureOption", isLocal ? "Local" : "Party" );
                 }
             }
         }
@@ -218,12 +234,12 @@ public static class ConfigurationChecker
                     continue;
                 }
                 Typed( k, "ClientFeature", t, "Local" );
-                if( k.Kind == "Object" ) CheckOptions( k, t, "PartyClientFeatureOption", "Local" );
+                if( k.Kind == "Object" ) CheckOptions( k, t, "PartyClientFeatureOption", "ClientFeatureOption", "Local" );
             }
         }
 
         // The options of an owner: a key that names an option of another owner is a warning; the other keys are free.
-        void CheckOptions( EditorNodeData owner, TypeAnalysis ownerType, string optionKind, string partyKind )
+        void CheckOptions( EditorNodeData owner, TypeAnalysis ownerType, string optionKind, string role, string? partyKind )
         {
             foreach( var k in Children( owner.Path ) )
             {
@@ -237,7 +253,7 @@ public static class ConfigurationChecker
                     Warn( k.Path, $"'{k.Name}' is an option of '{string.Join( "', '", owners )}', not of '{owner.Name}'." );
                     continue;
                 }
-                Typed( k, optionKind == "PartyFeatureOption" ? "PartyFeatureOption" : "ClientFeatureOption", mine, partyKind );
+                Typed( k, role, mine, partyKind );
             }
         }
 
@@ -290,6 +306,141 @@ public static class ConfigurationChecker
                 if( index == segments.Length - 1 ) yield return c;
                 else foreach( var m in Match( c.Path, segments, index + 1 ) ) yield return m;
             }
+        }
+
+        // A scope where configurable types are declared: its levels, the nearest first (a declaration is looked up in each
+        // level, the first one wins).
+        sealed record Scope( IReadOnlyList<string> Levels );
+
+        // The scopes of the owners of options in a builder: its Builder aspects; for its App: the App aspects, the local
+        // party and each of its clients.
+        sealed record BuilderScopes( Scope BuilderAspects, Scope? AppAspects, Scope? Party, IReadOnlyList<(string Client, Scope Scope)> Clients );
+
+        IEnumerable<BuilderScopes> GetScopes()
+        {
+            foreach( var b in Roles.Where( r => r.Value.Role == "Builder" ).Select( r => r.Key ) )
+            {
+                var builderAspects = new Scope( [$"{b}:Aspects"] );
+                var app = $"{b}:App";
+                if( !_byPath.TryGetValue( app, out var appNode ) || appNode.Kind != "Object" )
+                {
+                    yield return new BuilderScopes( builderAspects, null, null, [] );
+                    continue;
+                }
+                var appAspects = new Scope( [$"{app}:Aspects", "Defaults:App:Aspects"] );
+                var party = new Scope( [$"{app}:Local", "Defaults:App:Local", $"{app}:Defaults", "Defaults:App:Defaults"] );
+                var clients = party.Levels.SelectMany( l => Children( $"{l}:PartyClient" ) )
+                                   .Where( c => Roles.TryGetValue( c.Path, out var r ) && r.Role == "Client" )
+                                   .Select( c => c.Name )
+                                   .Distinct( StringComparer.OrdinalIgnoreCase )
+                                   .Select( c => (c, new Scope( party.Levels.Select( l => $"{l}:PartyClient:{c}" ).ToList() )) )
+                                   .ToList();
+                yield return new BuilderScopes( builderAspects, appAspects, party, clients );
+            }
+        }
+
+        EditorNodeData? Lookup( Scope scope, string relative )
+        {
+            foreach( var level in scope.Levels )
+            {
+                if( _byPath.TryGetValue( $"{level}:{relative}", out var n ) ) return n;
+            }
+            return null;
+        }
+
+        static bool IsOff( EditorNodeData n ) => n.Kind == "Null" || (n.Kind == "Boolean" && n.Value == "false");
+
+        // Active: a Required type always; otherwise its declaration (true or a section, not false) or, without
+        // declaration, its activation (ByDefault).
+        static bool IsActive( TypeAnalysis t, EditorNodeData? declaration )
+            => t.Configurable!.Activation == "Required" || (declaration != null ? !IsOff( declaration ) : t.Configurable.Activation == "ByDefault");
+
+        IEnumerable<TypeAnalysis> AllTypes => _catalog.Packages.SelectMany( p => p.Assemblies ).SelectMany( a => a.Types );
+
+        void CheckRequirements()
+        {
+            foreach( var s in GetScopes() )
+            {
+                CheckOwners( s, s.BuilderAspects, "AppBuilderAspect" );
+                if( s.AppAspects != null ) CheckOwners( s, s.AppAspects, "AppAspect" );
+                if( s.Party != null ) CheckOwners( s, s.Party, "PartyFeature" );
+                foreach( var (_, client) in s.Clients ) CheckOwners( s, client, "PartyClientFeature", client );
+            }
+        }
+
+        // The owners of a kind declared in a scope (and not disabled) and their options.
+        void CheckOwners( BuilderScopes scopes, Scope scope, string ownerKind, Scope? client = null )
+        {
+            var names = scope.Levels.SelectMany( Children ).Select( n => n.Name ).Distinct( StringComparer.OrdinalIgnoreCase );
+            foreach( var name in names )
+            {
+                var declaration = Lookup( scope, name )!;
+                if( IsOff( declaration ) ) continue;
+                var ownerType = FindConfigurable( name, ownerKind );
+                if( ownerType == null ) continue;
+                var options = AllTypes.Where( t => t.Configurable?.Kind == ownerKind + "Option" && t.OptionOwners.Contains( ownerType.FullName ) ).ToList();
+                if( options.Count == 0 ) continue;
+                CheckOptionRequirements( scopes, scope, client, declaration, name, options );
+            }
+        }
+
+        void CheckOptionRequirements( BuilderScopes scopes, Scope scope, Scope? client, EditorNodeData owner, string ownerName, List<TypeAnalysis> options )
+        {
+            var declarations = options.ToDictionary( o => o, o => Lookup( scope, $"{ownerName}:{o.Configurable!.Name}" ) );
+            var enabled = options.Where( o => IsActive( o, declarations[o] ) ).ToHashSet();
+            var reported = new HashSet<TypeAnalysis>();
+            bool changed = true;
+            while( changed )
+            {
+                changed = false;
+                foreach( var o in options.Where( enabled.Contains ).ToList() )
+                {
+                    var missing = FindMissingRequirement( scopes, client, o, options, enabled );
+                    if( missing == null ) continue;
+                    var declaration = declarations[o];
+                    var name = o.Configurable!.Name;
+                    if( o.Configurable.Activation == "Required" || (declaration != null && !IsOff( declaration )) )
+                    {
+                        // The build fails: the option stays enabled for the others.
+                        if( reported.Add( o ) ) Error( declaration?.Path ?? owner.Path, $"The option '{name}' requires {missing} that is disabled." );
+                    }
+                    else
+                    {
+                        enabled.Remove( o );
+                        changed = true;
+                        Problems.Add( new EditorProblemData( owner.Path, "Info", $"The option '{name}' (enabled by default) is disabled: it requires {missing} that is disabled." ) );
+                    }
+                }
+            }
+        }
+
+        // Names the first non optional requirement of an option that is not met, null when they are all met. A requirement
+        // that the catalog doesn't know (or that is not a configurable type) is ignored.
+        string? FindMissingRequirement( BuilderScopes scopes, Scope? client, TypeAnalysis option, List<TypeAnalysis> options, HashSet<TypeAnalysis> enabled )
+        {
+            foreach( var r in option.Relations )
+            {
+                if( r.Kind != "Requires" || r.IsOptional ) continue;
+                var target = _catalog.FindType( r.Target )?.Type;
+                if( target?.Configurable == null ) continue;
+                var name = target.Configurable.Name;
+                if( options.Contains( target ) )
+                {
+                    if( !enabled.Contains( target ) ) return $"the option '{name}'";
+                    continue;
+                }
+                var (scope, description) = target.Configurable.Kind switch
+                {
+                    "PartyFeature" => (scopes.Party, "the party feature"),
+                    "PartyClientFeature" => (client, "the client feature"),
+                    "AppAspect" => (scopes.AppAspects, "the App aspect"),
+                    "AppBuilderAspect" => (scopes.BuilderAspects, "the Builder aspect"),
+                    _ => (null, "")
+                };
+                if( scope == null ) continue;
+                if( !IsActive( target, Lookup( scope, name ) ) ) return $"{description} '{name}'";
+            }
+            return null;
         }
 
         // The "$LOCK", "$PER_DEPLOYMENT" and "$SECRET" of the whole document.

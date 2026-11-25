@@ -15,6 +15,14 @@
             @if ( state()!.isDirty ) {
                 <nz-tag nzColor="orange">{{ 'CK.Configurator.Editor.Dirty' | translate }}</nz-tag>
             }
+            <span class="ck-editor-sep"></span>
+            <span class="ck-editor-check" [class]="'ck-editor-check-' + state()!.checkStatus">
+                {{ ('CK.Configurator.Editor.Check.' + state()!.checkStatus) | translate }}
+                @if ( state()!.checkIsStale ) {
+                    <nz-tag>{{ 'CK.Configurator.Editor.Check.Stale' | translate }}</nz-tag>
+                }
+            </span>
+            <button nz-button (click)="checkAsync()" [disabled]="busy() || state()!.checkStatus === 'Running'">{{ 'CK.Configurator.Editor.Check' | translate }}</button>
         }
     </div>
 
@@ -24,6 +32,33 @@
 
     @if ( state(); as s ) {
         @if ( s.folder ) {
+            <div class="ck-editor-views">
+                <span>{{ 'CK.Configurator.Editor.View' | translate }}</span>
+                <nz-select class="ck-editor-view-select" [ngModel]="view() ?? ''" (ngModelChange)="selectViewAsync( $event || null )" [nzDisabled]="busy()">
+                    @for ( d of documents(); track d.name ) {
+                        <nz-option nzCustomContent [nzValue]="d.name ?? ''" [nzLabel]="d.name ?? ('CK.Configurator.Editor.Development' | translate)">
+                            <span [class.ck-editor-dirty-doc]="d.isDirty">{{ d.name ?? ('CK.Configurator.Editor.Development' | translate) }}</span>
+                            @if ( d.isNew ) { <nz-tag nzColor="blue">{{ 'CK.Configurator.Editor.New' | translate }}</nz-tag> }
+                            @if ( d.errors > 0 ) { <nz-badge nzStandalone [nzCount]="d.errors" /> }
+                            @if ( d.warnings > 0 ) { <nz-badge nzStandalone [nzCount]="d.warnings" [nzStyle]="{ backgroundColor: '#faad14' }" /> }
+                        </nz-option>
+                    }
+                </nz-select>
+                @if ( newDeployment(); as f ) {
+                    <input nz-input class="ck-editor-deployment-name" [placeholder]="'CK.Configurator.Editor.DeploymentName' | translate"
+                           [ngModel]="f.name" (ngModelChange)="newDeployment.set( { name: $event, base: f.base } )" (keyup.enter)="createDeploymentAsync()" />
+                    <nz-select class="ck-editor-view-select" [ngModel]="f.base ?? ''" (ngModelChange)="newDeployment.set( { name: f.name, base: $event || null } )">
+                        <nz-option nzValue="" [nzLabel]="'CK.Configurator.Editor.NoBase' | translate" />
+                        @for ( d of deployments(); track d.name ) {
+                            <nz-option [nzValue]="d.name" [nzLabel]="'CK.Configurator.Editor.BaseOf' | translate: { name: d.name }" />
+                        }
+                    </nz-select>
+                    <button nz-button nzType="primary" (click)="createDeploymentAsync()" [disabled]="busy() || f.name.trim().length < 2">{{ 'CK.Configurator.Editor.Create' | translate }}</button>
+                    <button nz-button (click)="newDeployment.set( null )">{{ 'CK.Configurator.Editor.Cancel' | translate }}</button>
+                } @else {
+                    <button nz-button (click)="startNewDeployment()" [disabled]="busy()">{{ 'CK.Configurator.Editor.NewDeployment' | translate }}</button>
+                }
+            </div>
             <span class="sub">{{ s.filePath }}</span>
             @if ( s.changedOnDisk ) {
                 <nz-alert nzType="warning" nzShowIcon [nzMessage]="'CK.Configurator.Editor.ChangedOnDisk' | translate" [nzAction]="changedActions" />
@@ -63,6 +98,8 @@
                 <div class="ck-editor-tree">
                     @for ( r of rows(); track r.node.path ) {
                         <div class="ck-editor-row" [class.ck-editor-selected]="selectedPath() === r.node.path"
+                             [class.ck-editor-inherited]="isInherited( r.node )" [class.ck-editor-written]="r.node.origin === 'Deployment'"
+                             [class.ck-editor-removed]="r.node.origin === 'Removed'"
                              [style.padding-left.px]="4 + r.node.depth * 16" (click)="select( r.node.path )">
                             @if ( isObject( r.node ) ) {
                                 <span class="ck-editor-toggle" (click)="toggleCollapsed( r.node ); $event.stopPropagation()">{{ collapsed().has( r.node.path ) ? '▸' : '▾' }}</span>
@@ -75,6 +112,9 @@
                             }
                             @if ( !isObject( r.node ) ) {
                                 <span class="ck-editor-value">{{ r.node.value }}</span>
+                            }
+                            @if ( r.node.origin && r.node.origin !== 'Deployment' && r.node.origin !== 'Removed' && r.node.origin !== 'Central' ) {
+                                <span class="ck-editor-origin">{{ r.node.origin }}</span>
                             }
                             @if ( r.errors > 0 ) {
                                 <nz-badge nzStandalone [nzCount]="r.errors" />
@@ -93,6 +133,16 @@
                         <span class="sub">{{ shortPath( n.path ) }}</span>
                         @if ( n.role ) {
                             <span>{{ ('CK.Configurator.Editor.Role.' + n.role) | translate }} @if ( n.typeName ) { <b>{{ n.typeName }}</b> }</span>
+                        }
+                        @if ( n.origin ) {
+                            <span class="ck-editor-origin-line">
+                                @if ( isInherited( n ) ) {
+                                    {{ 'CK.Configurator.Editor.OriginOf' | translate: { name: n.origin === 'Central' ? ('CK.Configurator.Editor.Origin.Central' | translate) : n.origin } }}
+                                } @else {
+                                    {{ ('CK.Configurator.Editor.Origin.' + n.origin) | translate }}
+                                    <button nz-button nzSize="small" (click)="revertAsync( n.path )" [disabled]="busy()">{{ 'CK.Configurator.Editor.Revert' | translate }}</button>
+                                }
+                            </span>
                         }
                         @for ( p of selectedProblems(); track $index ) {
                             <nz-alert [nzType]="p.severity === 'Error' ? 'error' : p.severity === 'Warning' ? 'warning' : 'info'" [nzMessage]="p.message" nzShowIcon />
@@ -127,7 +177,9 @@
                                 <button nz-button (click)="setValueAsync( n.path, valueText() )" [disabled]="busy() || !valueText().trim()">{{ 'CK.Configurator.Editor.Apply' | translate }}</button>
                             </details>
                         }
-                        <div><button nz-button nzDanger (click)="removeAsync( n.path )" [disabled]="busy()">{{ 'CK.Configurator.Editor.Remove' | translate }}</button></div>
+                        @if ( n.origin !== 'Removed' ) {
+                            <div><button nz-button nzDanger (click)="removeAsync( n.path )" [disabled]="busy()">{{ (isDeploymentView() ? 'CK.Configurator.Editor.RemoveHere' : 'CK.Configurator.Editor.Remove') | translate }}</button></div>
+                        }
 
                         @if ( selectedType(); as t ) {
                             <span class="header ck-editor-doc-title">{{ t.name }} <span class="sub">({{ t.packageId }})</span></span>
@@ -158,7 +210,7 @@
                     <span class="header">{{ 'CK.Configurator.Editor.Problems' | translate: { count: problems().length } }}</span>
                     @for ( p of problems(); track $index ) {
                         <div class="ck-editor-problem" [class]="'ck-editor-' + p.severity" (click)="p.path && select( p.path )">
-                            <b>{{ p.severity }}</b> @if ( p.path ) { <span class="sub">{{ shortPath( p.path ) }}</span> }
+                            <b>{{ p.severity }}</b> @if ( p.layer === 'Build' ) { <nz-tag>{{ 'CK.Configurator.Editor.Layer.Build' | translate }}</nz-tag> } @if ( p.path ) { <span class="sub">{{ shortPath( p.path ) }}</span> }
                             <div>{{ p.message }}</div>
                         </div>
                     }
