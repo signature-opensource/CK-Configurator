@@ -21,6 +21,7 @@ namespace CK.AppIdentity;
 /// </summary>
 [Requires<HostingClientFeature>]
 [PartyClientFeature( "DesktopWindow", TypeActivation.Optional )]
+[Configuration<DesktopWindowConfiguration>]
 public sealed class DesktopWindowClientFeature : ClientFeature
 {
     readonly HttpEndpointFeatureDriver _http;
@@ -83,45 +84,58 @@ public sealed record DesktopWindowSettings( string Title, int Width, int Height 
     public const int DefaultHeight = 800;
 
     /// <summary>
-    /// Reads the "DesktopWindow" section of a client: <c>true</c>, or an object with "Title", "Width" and "Height".
+    /// Looks at the "DesktopWindow" section of a client before the host starts (the window opens at once): the "Title",
+    /// "Width" and "Height" when they are valid, the defaults otherwise. The configuration model of the feature
+    /// (<see cref="DesktopWindowConfiguration"/>) checks the section when the host starts.
     /// </summary>
     /// <param name="section">The "DesktopWindow" section.</param>
     /// <param name="defaultTitle">The title when the section has none (the client name).</param>
-    /// <param name="error">The error when null is returned.</param>
-    /// <returns>The settings or null on error.</returns>
-    public static DesktopWindowSettings? Read( IConfigurationSection section, string defaultTitle, out string? error )
+    /// <returns>The settings of the window.</returns>
+    public static DesktopWindowSettings Peek( IConfigurationSection section, string defaultTitle )
     {
-        error = null;
-        string? title = null;
-        int width = DefaultWidth;
-        int height = DefaultHeight;
-        foreach( var k in section.GetChildren() )
-        {
-            if( k.Key.Equals( "Title", StringComparison.OrdinalIgnoreCase ) ) title = k.Value;
-            else if( k.Key.Equals( "Width", StringComparison.OrdinalIgnoreCase ) )
-            {
-                if( !TryReadSize( k.Value, out width ) ) error = $"Invalid \"{k.Path}\": a positive integer is expected.";
-            }
-            else if( k.Key.Equals( "Height", StringComparison.OrdinalIgnoreCase ) )
-            {
-                if( !TryReadSize( k.Value, out height ) ) error = $"Invalid \"{k.Path}\": a positive integer is expected.";
-            }
-            else error = $"Unknown \"{k.Path}\": the keys of \"DesktopWindow\" are Title, Width and Height.";
-            if( error != null ) return null;
-        }
-        return new DesktopWindowSettings( string.IsNullOrWhiteSpace( title ) ? defaultTitle : title, width, height );
+        var title = section["Title"];
+        return new DesktopWindowSettings( string.IsNullOrWhiteSpace( title ) ? defaultTitle : title,
+                                          Size( section["Width"], DefaultWidth ),
+                                          Size( section["Height"], DefaultHeight ) );
 
-        static bool TryReadSize( string? text, out int value )
-        {
-            return int.TryParse( text, NumberStyles.None, CultureInfo.InvariantCulture, out value ) && value > 0;
-        }
+        static int Size( string? text, int defaultValue )
+            => int.TryParse( text, NumberStyles.None, CultureInfo.InvariantCulture, out var v ) && v > 0 ? v : defaultValue;
+    }
+}
+
+/// <summary>
+/// The configuration of the "DesktopWindow" feature of a client: <c>true</c>, or its title and its size.
+/// </summary>
+[ConfigurationModel]
+public sealed class DesktopWindowConfiguration : IConfigurationModel
+{
+    /// <summary>
+    /// Gets the title of the window (the client name by default).
+    /// </summary>
+    public string? Title { get; init; }
+
+    /// <summary>
+    /// Gets the width of the window.
+    /// </summary>
+    public int Width { get; init; } = DesktopWindowSettings.DefaultWidth;
+
+    /// <summary>
+    /// Gets the height of the window.
+    /// </summary>
+    public int Height { get; init; } = DesktopWindowSettings.DefaultHeight;
+
+    /// <inheritdoc />
+    public void Validate( IConfigurationValidationContext context )
+    {
+        if( Width <= 0 ) context.Error( $"'{context.Path}:Width' is {Width}: a positive integer is expected." );
+        if( Height <= 0 ) context.Error( $"'{context.Path}:Height' is {Height}: a positive integer is expected." );
     }
 }
 
 /// <summary>
 /// The driver of the <see cref="DesktopWindowClientFeature"/>: only one client of the root party can have it.
 /// </summary>
-public sealed class DesktopWindowClientFeatureDriver : ClientFeatureDriver<DesktopWindowClientFeature>
+public sealed class DesktopWindowClientFeatureDriver : ClientFeatureDriver<DesktopWindowClientFeature, DesktopWindowConfiguration>
 {
     readonly ApplicationIdentityService _root;
     readonly HttpEndpointFeatureDriver _http;
@@ -139,7 +153,7 @@ public sealed class DesktopWindowClientFeatureDriver : ClientFeatureDriver<Deskt
     }
 
     /// <inheritdoc />
-    protected override DesktopWindowClientFeature? Create( IActivityMonitor monitor, PartyClient client, ImmutableConfigurationSection configuration )
+    protected override DesktopWindowClientFeature? Create( IActivityMonitor monitor, PartyClient client, ImmutableConfigurationSection configuration, DesktopWindowConfiguration model )
     {
         if( client.Party != _root )
         {
@@ -151,12 +165,7 @@ public sealed class DesktopWindowClientFeatureDriver : ClientFeatureDriver<Deskt
             monitor.Error( $"The {client} declares \"DesktopWindow\" but the {_feature.Client} has it: a desktop application has one window." );
             return null;
         }
-        var settings = DesktopWindowSettings.Read( configuration, client.Name, out var error );
-        if( settings == null )
-        {
-            monitor.Error( error! );
-            return null;
-        }
+        var settings = new DesktopWindowSettings( string.IsNullOrWhiteSpace( model.Title ) ? client.Name : model.Title, model.Width, model.Height );
         // The requirements are checked: "Hosting" is here.
         var hosting = client.GetFeature<HostingClientFeature>();
         Throw.CheckState( hosting != null );

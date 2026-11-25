@@ -87,10 +87,7 @@ public static class CKomposableDesktopHost
             var w = c.GetSection( "DesktopWindow" );
             if( !w.Exists() || string.Equals( w.Value, "false", StringComparison.OrdinalIgnoreCase ) ) continue;
             // Invalid settings are a setup error (shown in the window): the window opens with the defaults.
-            return DesktopWindowSettings.Read( w, c.Key, out _ )
-                   ?? new DesktopWindowSettings( w["Title"] is { Length: > 0 } t ? t : c.Key,
-                                                 DesktopWindowSettings.DefaultWidth,
-                                                 DesktopWindowSettings.DefaultHeight );
+            return DesktopWindowSettings.Peek( w, c.Key );
         }
         return null;
     }

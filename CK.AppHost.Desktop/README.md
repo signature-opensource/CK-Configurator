@@ -32,7 +32,9 @@ client where the endpoint of the party serves it. It is configured in the sectio
 }
 ```
 
-- The title defaults to the client name, the size to 1280x800. An invalid value or an unknown key is a setup error.
+- Its configuration model is `DesktopWindowConfiguration` (its driver is a `ClientFeatureDriver<T, TModel>`): the title
+  defaults to the client name, the size to 1280x800. An invalid value or an unknown key is a setup error, shown in the
+  window: the window opens before (`DesktopWindowSettings.Peek` looks at the section: the defaults for what is invalid).
 - Only a client of the root party can have it, and only one client: a second one is a setup error.
 - `DesktopWindowClientFeature.Url` is the url of the window: the `RunningHttpEndpoint.DefaultUrl` of the endpoint (a
   port 0 is resolved) followed by the `RequestPath` of the client. It is null until the endpoint is started.
