@@ -107,7 +107,8 @@ public class ConfiguratorDeploymentTests
         s = await editor.GetStateAsync( "#Production" );
         s.Nodes.Single( n => n.Path == _local + ":Demo" ).Origin.ShouldBe( "Removed" );
         s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Urls" ).Value.ShouldBe( "\"https://*:443\"" );
-        (await Should.ThrowAsync<CKException>( () => editor.GetStateAsync( "#Unknown" ) )).Message.ShouldContain( "doesn't exist" );
+        // An unknown view is the central one (a deployment may disappear on a reload).
+        (await editor.GetStateAsync( "#Unknown" )).View.ShouldBeNull();
     }
 
     [Test]

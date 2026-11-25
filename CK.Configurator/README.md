@@ -23,18 +23,27 @@ the catalogs of [CK.Configurator.Catalog](../CK.Configurator.Catalog/README.md).
 
 ## The editor
 
-[`ConfiguratorEditorService`](Editor/ConfiguratorEditorService.cs) (a singleton) holds the document of the editor: the
-central configuration (`ckonf.json`) of one solution. Its methods return an `EditorSnapshot`, mapped to the `IEditorState`
-of every editor command by [`ConfiguratorEditorHandlers`](Editor/ConfiguratorEditorHandlers.cs).
+[`ConfiguratorEditorService`](Editor/ConfiguratorEditorService.cs) (a singleton) holds the documents of the editor: the
+central configuration (`ckonf.json`) of one solution and the overlays of its deployments (`Deployment/#Production/ckonf.json`,
+found with `CentralDeployment.DiscoverFolders` of CK.Engine.Configuration). Its methods return an `EditorSnapshot` of a
+view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEditorHandlers`](Editor/ConfiguratorEditorHandlers.cs).
 
 - **The text is edited with the JSON language** of CK.TypeScript.Transform (`JsonCodeEditorExtensions`): an edit
   changes only its tokens, the comments and the layout are kept. The property names are case insensitive, like the
   configuration keys.
-- **Undo and redo** keep the texts before the edits (a document is a few kilobytes). A document is dirty when its text
-  differs from the saved one: undoing back to it makes it clean.
-- **The file is read and written as bytes:** its encoding (UTF-8, with or without BOM) is kept. Its SHA-256 detects a
-  change on disk since it was read or saved (an editor, a pull): a save is then refused unless it overwrites, or the
-  document is reloaded (its edits are lost).
+- **Undo and redo** keep the texts before the edits (a document is a few kilobytes), in one history for the solution:
+  an undo changes one document and returns its view. A document is dirty when its text differs from the saved one:
+  undoing back to it makes it clean. Creating a deployment (`CreateDeploymentAsync`, its name checked by
+  `CentralDeployment.ValidateName`) is an edit too: its overlay is written at the next save.
+- **The files are read and written as bytes:** their encoding (UTF-8, with or without BOM) is kept. Their SHA-256
+  detects a change on disk since they were read or saved (an editor, a pull): a save (of every dirty document) is then
+  refused unless it overwrites, or the solution is reloaded (its edits are lost).
+- **The view of a deployment** ([`EditorTree`](Editor/EditorTree.cs)) is its merged configuration: the central one, the
+  overlays of its bases (`"$BASE"`), its own overlay (a JSON Merge Patch, case insensitive), each property with its
+  origin ("Central", a base, "Deployment" when its overlay writes it, "Removed" for a `null`). Its edits are written in
+  its overlay: a value with the objects of its path that the overlay doesn't have, "Remove here" (a `null`, or the
+  removal of what only the overlay writes), "Revert to inherited" (the removal from the overlay, and of the objects that
+  become an empty `{}` where an object is inherited).
 - **The snapshot lists the properties** in document order, with their path (the names separated by `:`), their depth,
   their kind, the JSON text of a value that is not an object, and the comments written on the lines above them (the
   documentation that people read). The `"$configurator"` root key gives the source of the catalog of the solution.
@@ -46,5 +55,17 @@ of every editor command by [`ConfiguratorEditorHandlers`](Editor/ConfiguratorEdi
   configurable types known by the catalog (a key of a party that is no feature is a warning: the build leaves it to the
   run time), an option under another owner, a required type set to `false`, a configurable type that is not `true`,
   `false` or a section, the syntax of `"$LOCK"`, `"$PER_DEPLOYMENT"` and `{ "$SECRET": "..." }`, a secret written as a
-  plain value. Without its catalog, a document has an Info problem that says so. The keys of a section are free.
+  plain value, and the required types of the options ("only with it": an explicit option that requires a disabled type
+  is an error, an option enabled by default is disabled with it, an Info). The view of a deployment is checked the same
+  way, then by [`DeploymentChecker`](Editor/DeploymentChecker.cs): the keys that an overlay can't write, its `"$BASE"`,
+  the builders of its `"Deployment"` settings, and the values per deployment that it inherits
+  (`CentralDeployment.FindInheritedValues`: the `"$PER_DEPLOYMENT"` markers and the `[ConfigurationPerDeployment]` of the
+  types of the catalog on the local party, its defaults and its clients). Without its catalog, a document has an Info
+  problem that says so. The keys of a section are free.
+- **Once saved, the builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): each
+  builder of the `"Builders"` is restored, built without running it (`-p:CKAppBuilderRunAfterBuild=false`) and run with
+  `--check <file>` (CK.AppBuilder: the run stops before the engine), two at a time. A builder whose CK.AppBuilder
+  package doesn't have the check is neither built nor run (its build would run the whole builder). Their warnings and
+  errors are the problems of the "Build" layer: on the property that starts their message when it is found, otherwise
+  on their builder; the ones about a deployment are in its view.
 - The commands are serialized.

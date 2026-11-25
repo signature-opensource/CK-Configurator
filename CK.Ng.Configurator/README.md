@@ -52,8 +52,8 @@ pages: "CK.Configurator.CatalogPage", "CK.Configurator.EditorPage"), default and
 ## The editor page
 
 `EditorPageComponent` is routed at `ckomposable/editor`. It edits the central configuration (`ckonf.json`) of a
-solution, held by the backend: every action is an editor command that returns the whole state of the document
-(`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md#the-editor)).
+solution and its deployments, held by the backend: every action is an editor command that returns the whole state of
+a view (`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md#the-editor)).
 
 - **Opening:** the folder of the solution is typed (the last one is remembered in the browser) or chosen with the
   folder dialog of a desktop window ("Browse...", `IPickFolderCommand`: hidden when the command fails, in a browser).
@@ -61,6 +61,11 @@ solution, held by the backend: every action is an editor command that returns th
   checks the document. Without one, the opened catalog of the picker can be used for the document
   (`ISetCatalogSourceCommand`: written in the document); an opened catalog that is not the one of the document is a
   warning.
+- **The view:** the central configuration ("Development") or a deployment, each with its counts of errors and warnings
+  and its "new" tag; "New deployment" creates one (its name and the deployment it overlays). In the view of a
+  deployment, what it inherits is dimmed (the name of the base it comes from), what its overlay writes is marked and
+  what it removes is struck through; the selected property says its origin and offers "Revert to inherited", and
+  "Remove" is "Remove here". An undo shows the view of the document it changed.
 - **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
   a party, a feature, a client, an option) with their role, the counts of their errors and warnings. A builder is shown
   without its ".Builder" suffix (in the paths too); the keys of the document don't change. The three panes take the
@@ -73,6 +78,8 @@ solution, held by the backend: every action is an editor command that returns th
   party, the client features of a client, the options of a feature or of a client feature, the aspects of an
   `"Aspects"`. Then **the problems** of the document: a click selects the property.
 - **Undo, Redo, Save, Close**, the "Not saved" tag; a file that changed on disk offers "Reload" or "Overwrite".
+- **The check by the builders:** its status after a save (running, checked, problems found, "changed since") and
+  "Check"; the state is polled while it runs, and its problems are tagged "build".
 
 The backend of these commands is [CK.Configurator](../CK.Configurator/README.md): an application that references both
 serves the pages.

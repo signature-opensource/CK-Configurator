@@ -385,7 +385,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                 problems.Add( new EditorProblemData( "", "Error", $"Invalid deployment folder '{f.Folder}': {f.Error}" ) );
                 continue;
             }
-            var d = new Document { Name = f.Name, FilePath = f.Folder.AppendPart( FileName ) };
+            var d = new Document { Name = f.Name, FilePath = Path.GetFullPath( f.Folder.AppendPart( FileName ) ) };
             if( !File.Exists( d.FilePath ) )
             {
                 problems.Add( new EditorProblemData( "", "Error", $"The deployment folder '{f.Folder}' has no '{FileName}'." ) );
@@ -536,7 +536,8 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         {
             var b = EditorTree.Parse( current.Text ).Root.FirstOrDefault( n => n.Name.Equals( CentralDeployment.BaseKey, _comparison ) );
             if( b == null ) break;
-            var path = current == d ? CentralDeployment.BaseKey : "";
+            // The problems of the chain are on the "$BASE" of the view.
+            var path = CentralDeployment.BaseKey;
             string? baseName = b.Kind == "String" ? System.Text.Json.JsonSerializer.Deserialize<string>( b.Value! )?.Replace( '\\', '/' ).Trim().Trim( '/' ) : null;
             if( string.IsNullOrWhiteSpace( baseName ) )
             {

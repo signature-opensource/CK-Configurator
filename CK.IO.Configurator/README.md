@@ -36,24 +36,33 @@ Xml documentation of their type, in Markdown.
 
 ## The editor
 
-The editor edits the central configuration (`ckonf.json`) of one solution, held by the backend. Every command returns
-the `IEditorState` of the document: its folder and file, whether it is dirty, can undo or redo, changed on disk, the
-source of its catalog (its `"$configurator"` root key: `CatalogWorld`, `CatalogVersion`), its properties (`IEditorNode`,
-in document order: path, name, depth, kind, value, comment, and the `Role` and the `TypeName` that the catalog gives
-them) and its problems (`IEditorProblem`: the static checks, once the catalog of the document is opened).
+The editor edits the central configuration (`ckonf.json`) of one solution and the overlays of its deployments
+(`Deployment/#Production/ckonf.json`), held by the backend. A view is the central configuration or a deployment (the
+`ICommandEditorView` part of a command: its `Deployment`, null for the central one): the view of a deployment is its
+merged configuration, and its edits are written in its overlay. Every command returns the `IEditorState` of a view: its
+folder and file, whether a document is dirty, can undo or redo, changed on disk, the source of the catalog (the
+`"$configurator"` root key of the central configuration: `CatalogWorld`, `CatalogVersion`), the documents
+(`IEditorDocument`: name, base, file, dirty, new, changed on disk, the counts of the errors and warnings of their view),
+the properties of the view (`IEditorNode`, in document order: path, name, depth, kind, value, comment, the `Role` and
+the `TypeName` that the catalog gives them, and their `Origin` in the view of a deployment), its problems
+(`IEditorProblem`: the "Static" checks once the catalog is opened, the "Build" ones of the check by the builders) and
+the status of that check (`CheckStatus`, `CheckIsStale`).
 
 | Command | What it does |
 |---|---|
-| `IOpenSolutionCommand` (`Folder`) | Opens the `ckonf.json` of the folder (an opened document is closed). |
-| `IGetEditorStateQCommand` | Returns the state. |
-| `ISetValueCommand` (`Path`, `Json`) | Replaces the value of an existing property; the comments around it are kept. |
+| `IOpenSolutionCommand` (`Folder`) | Opens the `ckonf.json` of the folder and the overlays of its deployments (an opened solution is closed). |
+| `IGetEditorStateQCommand` | Returns the state of a view. |
+| `ISetValueCommand` (`Path`, `Json`) | Sets the value of a property; the comments around it are kept. In a deployment, it is written in its overlay. |
 | `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
-| `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments. |
-| `ISetCatalogSourceCommand` (`World`, `Version`) | Writes the `"$configurator"` root key: the catalog that types and checks the document once it is opened (`IOpenCatalogCommand`). |
-| `IUndoCommand`, `IRedoCommand` | Undo and redo the edits. |
-| `ISaveCommand` (`Overwrite`) | Saves the document; a file that changed on disk is overwritten only with `Overwrite`. |
-| `IReloadCommand` | Reads the file again (the edits are lost). |
-| `ICloseSolutionCommand` | Closes the document. |
+| `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments; in a deployment, an inherited one is removed by a `null`. |
+| `IRevertPropertyCommand` (`Path`) | In a deployment, removes a property from its overlay: it is inherited again. |
+| `ICreateDeploymentCommand` (`Name`, `Base`) | Creates a deployment ("#Staging", "Paris/Shop/#Production"), written at the next save. |
+| `ISetCatalogSourceCommand` (`World`, `Version`) | Writes the `"$configurator"` root key: the catalog that types and checks the documents once it is opened (`IOpenCatalogCommand`). |
+| `IUndoCommand`, `IRedoCommand` | Undo and redo the edits, in any document: the state is the view of the changed one. |
+| `ISaveCommand` (`Overwrite`) | Saves the dirty documents (a file that changed on disk is overwritten only with `Overwrite`), then the builders check the configuration. |
+| `ICheckSolutionCommand` | Checks the saved configuration with the builders again. |
+| `IReloadCommand` | Reads the documents again (the edits are lost). |
+| `ICloseSolutionCommand` | Closes the solution. |
 
 A path is the property names separated by `:`, case insensitive (`"Builders:App/App.Builder:App:Local:HttpEndpoint"`); a
 value is JSON text. An edit that fails (a missing path, an existing property, an invalid value) is an error result.

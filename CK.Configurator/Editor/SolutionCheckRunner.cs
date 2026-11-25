@@ -17,8 +17,9 @@ namespace CK.Configurator;
 /// of its "Builders" is built, then run with <c>--check &lt;file&gt;</c> (CK.AppBuilder's <c>CKomposableAppBuilder.CheckArgument</c>:
 /// the run stops before the engine). Two builders at a time; a new check cancels the running one.
 /// <para>
-/// A builder is run only when its CK.AppBuilder has the check (its <c>CheckArgument</c> is in the metadata of the built
-/// assembly): an older one would run the whole build (the generated code, a database setup).
+/// A builder runs after its build (CK.AppBuilder.targets): it is built with <c>CKAppBuilderRunAfterBuild=false</c>, and
+/// only once it is restored and its CK.AppBuilder package has the check (its <c>CheckArgument</c> is in the metadata of
+/// the assembly of the package): an older one would run the whole build (the generated code, a database setup).
 /// </para>
 /// </summary>
 sealed class SolutionCheckRunner
@@ -140,16 +141,21 @@ sealed class SolutionCheckRunner
             return new BuilderCheck( builder, [], $"The project '{project}' doesn't exist." );
         }
         var output = new List<string>();
-        if( await RunAsync( monitor, ["build", project, "-c", "Debug", "--nologo", "-v", "q"], projectFolder, output, cancel ).ConfigureAwait( false ) != 0 )
+        // A builder runs after its build (CK.AppBuilder.targets): the CK.AppBuilder that it references is checked before
+        // it is built, from the restored package, so that an older one is neither built nor run.
+        if( await RunAsync( monitor, ["restore", project, "--nologo", "-v", "q"], projectFolder, output, cancel ).ConfigureAwait( false ) != 0 )
+        {
+            return new BuilderCheck( builder, [], $"The restore of the builder failed: {Summarize( output )}" );
+        }
+        var support = FindAppBuilderSupport( projectFolder );
+        if( support != null )
+        {
+            return new BuilderCheck( builder, [], support );
+        }
+        output.Clear();
+        if( await RunAsync( monitor, ["build", project, "-c", "Debug", "--nologo", "-v", "q", "-p:CKAppBuilderRunAfterBuild=false"], projectFolder, output, cancel ).ConfigureAwait( false ) != 0 )
         {
             return new BuilderCheck( builder, [], $"The build of the builder failed: {Summarize( output )}" );
-        }
-        var appBuilder = Directory.EnumerateFiles( Path.Combine( projectFolder, "bin", "Debug" ), "CK.AppBuilder.dll", SearchOption.AllDirectories )
-                                  .OrderByDescending( File.GetLastWriteTimeUtc )
-                                  .FirstOrDefault();
-        if( appBuilder == null || !HasCheck( appBuilder ) )
-        {
-            return new BuilderCheck( builder, [], "Its CK.AppBuilder can't check a configuration (it has no --check): a newer version is needed. The builder is not run (it would run the whole build)." );
         }
         var resultFile = Path.Combine( Path.GetTempPath(), $"ck-configurator-check-{Guid.NewGuid():N}.json" );
         try
@@ -177,6 +183,42 @@ sealed class SolutionCheckRunner
     {
         var errors = output.Where( l => l.Contains( ": error " ) ).Distinct().Take( 10 ).ToList();
         return string.Join( Environment.NewLine, errors.Count > 0 ? errors : output.TakeLast( 15 ) );
+    }
+
+    // Null when the CK.AppBuilder package that the restored builder references has the check, otherwise why it can't be
+    // checked. A project reference (the CK-AppBuilder repository itself) is its current source: it has it.
+    internal static string? FindAppBuilderSupport( string projectFolder )
+    {
+        const string noCheck = "Its CK.AppBuilder can't check a configuration (it has no --check): a newer version is needed. The builder is not built nor run (a build runs it: the whole build).";
+        var assets = Path.Combine( projectFolder, "obj", "project.assets.json" );
+        if( !File.Exists( assets ) ) return $"'{assets}' doesn't exist: the builder is not restored.";
+        using var d = JsonDocument.Parse( File.ReadAllText( assets ) );
+        var root = d.RootElement;
+        foreach( var library in root.GetProperty( "libraries" ).EnumerateObject() )
+        {
+            if( !library.Name.StartsWith( "CK.AppBuilder/", StringComparison.OrdinalIgnoreCase ) ) continue;
+            var l = library.Value;
+            if( l.TryGetProperty( "type", out var type ) && type.GetString() == "project" ) return null;
+            var path = l.GetProperty( "path" ).GetString()!;
+            var dll = l.GetProperty( "files" ).EnumerateArray()
+                       .Select( f => f.GetString()! )
+                       .Where( f => f.StartsWith( "lib/", StringComparison.Ordinal ) && f.EndsWith( "/CK.AppBuilder.dll", StringComparison.OrdinalIgnoreCase ) )
+                       .OrderByDescending( f => f, StringComparer.Ordinal )
+                       .FirstOrDefault();
+            if( dll == null ) return noCheck;
+            foreach( var folder in root.GetProperty( "packageFolders" ).EnumerateObject() )
+            {
+                var file = Path.Combine( folder.Name, path, dll );
+                if( !File.Exists( file ) ) continue;
+                // The check, and the build that doesn't run the builder.
+                var targets = Path.Combine( folder.Name, path, "buildTransitive", "CK.AppBuilder.targets" );
+                return HasCheck( file ) && File.Exists( targets ) && File.ReadAllText( targets ).Contains( "CKAppBuilderRunAfterBuild", StringComparison.Ordinal )
+                        ? null
+                        : noCheck;
+            }
+            return noCheck;
+        }
+        return "The builder doesn't reference CK.AppBuilder.";
     }
 
     // Whether the CK.AppBuilder assembly declares CKomposableAppBuilder.CheckArgument (read from its metadata: the
