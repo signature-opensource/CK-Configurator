@@ -66,6 +66,21 @@ public class ConfiguratorLocksAndSecretsTests
         s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Urls" ).LockLevel.ShouldBeNull();
         // The entries of a "$LOCK" are not locked values.
         s.Nodes.Where( n => n.Path.Contains( "$LOCK" ) ).ShouldAllBe( n => n.LockLevel == null );
+        // "Local:Demo" names no property of "Defaults:App": an absent property, below "Defaults:App", that can be unlocked.
+        var absent = s.Nodes.Single( n => n.Path == "Defaults:App:Local:Demo" );
+        absent.ShouldSatisfyAllConditions( n => n.Kind.ShouldBe( "Absent" ),
+                                           n => n.Name.ShouldBe( "Local:Demo" ),
+                                           n => n.Depth.ShouldBe( 2 ),
+                                           n => n.LockLevel.ShouldBe( "Init" ),
+                                           n => n.CanUnlock.ShouldBeTrue() );
+        // After the properties of "Defaults:App".
+        var index = s.Nodes.ToList().FindIndex( n => n.Path == "Defaults:App:Local:Demo" );
+        s.Nodes[index - 1].Path.ShouldStartWith( "Defaults:App" );
+        s.Nodes[index + 1].Path.ShouldBe( "Builders" );
+        // Unlocked: it disappears.
+        s = await editor.UnlockPropertyAsync( TestHelper.Monitor, null, "Defaults:App:Local:Demo" );
+        s.Nodes.ShouldNotContain( n => n.Kind == "Absent" );
+        s.Nodes.ShouldNotContain( n => n.Path == "Defaults:App:$LOCK" );
     }
 
     [Test]

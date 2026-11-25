@@ -410,7 +410,10 @@ public interface IEditorNode : IPoco
     int Depth { get; set; }
 
     /// <summary>
-    /// Gets or sets the kind of the value: "Object", "Array", "String", "Number", "Boolean" or "Null".
+    /// Gets or sets the kind of the value: "Object", "Array", "String", "Number", "Boolean" or "Null"; or "Absent" for a
+    /// value that is not in the document but that a literal pattern of a <c>"$LOCK"</c> locks (at Compile, the build burns
+    /// its absence: no configuration can set it). An absent property is below the deepest property of its path that
+    /// exists: its name is the rest of its path.
     /// </summary>
     string Kind { get; set; }
 

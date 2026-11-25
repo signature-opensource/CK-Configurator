@@ -77,7 +77,8 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
   `"$LOCK"` patterns that cover it, a `"$LOCK"` of `Defaults:App` or of the `Defaults` of an App applying like the build
   applies it, and the `[ConfigurationLock]` of the types of the catalog, placed on the anchors by
   [`EditorAnchors`](Editor/EditorAnchors.cs) like the values per deployment), its capability (`[ConfigurationLevel]`)
-  and its secret (the name of a handle, and whether the development secrets have it).
+  and its secret (the name of a handle, and whether the development secrets have it). A literal pattern that names no
+  property (the build burns its absence) is a property of kind "Absent" at its path, so that the lock is visible.
 - **Once saved, the builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): each
   builder of the `"Builders"` is restored, built without running it (`-p:CKAppBuilderRunAfterBuild=false`) and run with
   `--check <file>` (CK.AppBuilder: the run stops before the engine), two at a time. A builder whose CK.AppBuilder

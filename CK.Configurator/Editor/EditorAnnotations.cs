@@ -19,6 +19,11 @@ namespace CK.Configurator;
 ///   party too) and of the <c>[ConfigurationLock]</c> of the types of the catalog (placed on the anchors like the build:
 ///   <see cref="EditorAnchors"/>). A property locked by a literal pattern at its own path can be unlocked.
 ///   </item>
+///   <item>
+///   <b>The absent values that are locked</b>: a literal pattern of a <c>"$LOCK"</c> that names no property (the build
+///   burns its absence at Compile) is a property of kind <see cref="AbsentKind"/> at its path, below the deepest
+///   property of its path that exists (its name is the rest of the path). It can be unlocked.
+///   </item>
 ///   <item><b>Their capability</b>: the highest level that the code supports (the <c>[ConfigurationLevel]</c> of the
 ///   property of the nearest configurable type), null when the catalog doesn't say.</item>
 ///   <item><b>Their secret</b>: the name of a handle (<c>{ "$SECRET": "..." }</c>) and, in the central view, whether
@@ -28,6 +33,11 @@ namespace CK.Configurator;
 static class EditorAnnotations
 {
     static readonly string[] _levels = ["Compile", "Init", "Run"];
+
+    /// <summary>
+    /// The kind of a property that is not in the document: an absent value that a literal pattern of a <c>"$LOCK"</c> locks.
+    /// </summary>
+    public const string AbsentKind = "Absent";
 
     /// <summary>
     /// The lock of a property.
@@ -134,8 +144,45 @@ static class EditorAnnotations
                 SecretStatus = secretStatus
             } );
         }
+        AddAbsentLocks( result, rules, found );
         locks = found;
         return result;
+    }
+
+    // The literal patterns of the "$LOCK" (at their own object, not on their fallbacks) that name no property: an absent
+    // property, inserted after the last property below the deepest property of its path that exists.
+    static void AddAbsentLocks( List<EditorNodeData> result, List<Rule> rules, Dictionary<string, Lock> found )
+    {
+        var existing = new HashSet<string>( result.Select( n => n.Path ), StringComparer.OrdinalIgnoreCase );
+        var absent = new Dictionary<string, Rule>( StringComparer.OrdinalIgnoreCase );
+        foreach( var r in rules )
+        {
+            if( r.Container == null || r.Container.Length == 0 || !r.Container.Equals( r.Target, StringComparison.OrdinalIgnoreCase ) || !r.Pattern.IsLiteral ) continue;
+            var full = $"{r.Container}:{r.Pattern.Text}";
+            if( existing.Contains( full ) ) continue;
+            // The lowest level wins.
+            if( !absent.TryGetValue( full, out var other ) || Rank( r.Level ) < Rank( other.Level ) ) absent[full] = r;
+        }
+        foreach( var (full, r) in absent )
+        {
+            var segments = full.Split( ':' );
+            int k = segments.Length - 1;
+            while( k > 0 && !existing.Contains( string.Join( ':', segments, 0, k ) ) ) --k;
+            if( k == 0 ) continue;
+            var anchorPath = string.Join( ':', segments, 0, k );
+            int index = result.FindIndex( n => n.Path.Equals( anchorPath, StringComparison.OrdinalIgnoreCase ) );
+            var depth = result[index].Depth;
+            int insert = index + 1;
+            while( insert < result.Count && result[insert].Depth > depth ) ++insert;
+            var l = new Lock( r.Level, r.Source, r.Container, r.Pattern.Text, CanUnlock: true );
+            found[full] = l;
+            result.Insert( insert, new EditorNodeData( full, string.Join( ':', segments, k, segments.Length - k ), depth + 1, AbsentKind, null, null )
+            {
+                LockLevel = l.Level,
+                LockSource = l.Source,
+                CanUnlock = true
+            } );
+        }
     }
 
     // A property of a "$LOCK" (its patterns are keys): not a value of the configuration.

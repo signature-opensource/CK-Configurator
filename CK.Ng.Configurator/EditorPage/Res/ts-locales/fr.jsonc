@@ -79,5 +79,9 @@
     "CK.Configurator.Editor.SecretInCentral": "La valeur va dans #Dev/Secrets.json sous '{{name}}' (enregistré avec les documents) ; la configuration garde son nom.",
     "CK.Configurator.Editor.SecretInDeployment": "Le déploiement n'écrit que le nom : son hôte reçoit le secret 'Secrets:{{name}}'. La valeur n'est pas écrite.",
     "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json a déjà '{{name}}' avec une autre valeur : l'écraser, ou choisir un autre nom.",
-    "CK.Configurator.Editor.LocksHere": "Le \"$LOCK\" ici (motifs relatifs à cet objet) :"
+    "CK.Configurator.Editor.LocksHere": "Le \"$LOCK\" ici (motifs relatifs à cet objet) :",
+    "CK.Configurator.Editor.Absent": "(absent)",
+    "CK.Configurator.Editor.AbsentLocked.Compile": "Absent et verrouillé à Compile : le build fige son absence, aucune configuration ne peut le définir.",
+    "CK.Configurator.Editor.AbsentLocked.Init": "Absent et verrouillé à Init : il ne peut pas être défini pendant que l'application tourne.",
+    "CK.Configurator.Editor.AbsentLocked.Run": "Absent et verrouillé à Run (le plus haut niveau) : un verrou qui ne restreint rien."
 }

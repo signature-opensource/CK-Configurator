@@ -154,23 +154,42 @@ export class EditorPage {
         return path ? this.state()?.nodes.find( n => n.path === path ) : undefined;
     } );
 
-    /** The entries of the "$LOCK" of the selected property (an App, a Builder aspect...): its rows are not in the tree. */
+    /** The entries of the "$LOCK" by the path of the object that holds it (an App, a Builder aspect...): not rows of the tree. */
+    readonly lockEntries = computed<ReadonlyMap<string, ReadonlyArray<LockEntry>>>( () => {
+        const nodes = this.state()?.nodes ?? [];
+        const result = new Map<string, LockEntry[]>();
+        for( let i = 0; i < nodes.length; ++i ) {
+            const l = nodes[i];
+            if( l.name !== '$LOCK' || l.kind !== 'Object' ) continue;
+            const holder = l.depth === 0 ? '' : l.path.substring( 0, l.path.length - l.name.length - 1 );
+            const entries: LockEntry[] = [];
+            for( let j = i + 1; j < nodes.length && nodes[j].depth > l.depth; ++j ) {
+                const e = nodes[j];
+                if( e.depth !== l.depth + 1 ) continue;
+                let level = e.value ?? '';
+                try { level = JSON.parse( level ); } catch { }
+                entries.push( { pattern: e.name, level } );
+            }
+            result.set( holder, entries );
+        }
+        return result;
+    } );
+
+    /** The entries of the "$LOCK" of the selected property. */
     readonly selectedLocks = computed<ReadonlyArray<LockEntry>>( () => {
         const n = this.selected();
-        const nodes = this.state()?.nodes ?? [];
-        if( !n ) return [];
-        const i = nodes.findIndex( x => x.path === n.path + ':$LOCK' );
-        if( i < 0 ) return [];
-        const entries: LockEntry[] = [];
-        for( let j = i + 1; j < nodes.length && nodes[j].depth > nodes[i].depth; ++j ) {
-            const e = nodes[j];
-            if( e.depth !== nodes[i].depth + 1 ) continue;
-            let level = e.value ?? '';
-            try { level = JSON.parse( level ); } catch { }
-            entries.push( { pattern: e.name, level } );
-        }
-        return entries;
+        return n ? this.lockEntries().get( n.path ) ?? [] : [];
     } );
+
+    /** The tooltip of the lock counter of the object that holds a "$LOCK": its patterns and their level. */
+    lockEntriesTitle( path: string ): string {
+        return ( this.lockEntries().get( path ) ?? [] ).map( e => `${e.pattern}: ${e.level}` ).join( '\n' );
+    }
+
+    /** Whether a property is absent: a value that a literal pattern of a "$LOCK" locks. */
+    isAbsent( n: EditorNode ): boolean {
+        return n.kind === 'Absent';
+    }
 
     readonly selectedProblems = computed( () => {
         const path = this.selectedPath();

@@ -102,7 +102,7 @@
                     @for ( r of rows(); track r.node.path ) {
                         <div class="ck-editor-row" [class.ck-editor-selected]="selectedPath() === r.node.path"
                              [class.ck-editor-inherited]="isInherited( r.node )" [class.ck-editor-written]="r.node.origin === 'Deployment'"
-                             [class.ck-editor-removed]="r.node.origin === 'Removed'"
+                             [class.ck-editor-removed]="r.node.origin === 'Removed'" [class.ck-editor-absent]="isAbsent( r.node )"
                              [style.padding-left.px]="4 + r.node.depth * 16" (click)="select( r.node.path )"
                              (contextmenu)="openMenu( $event, r.node, rowMenu )">
                             @if ( isObject( r.node ) ) {
@@ -120,8 +120,14 @@
                             @if ( r.node.secretName ) {
                                 <span class="ck-editor-secret" nz-tooltip [nzTooltipTitle]="'CK.Configurator.Editor.SecretOf' | translate: { name: r.node.secretName }">&#128273;</span>
                             }
+                            @if ( isAbsent( r.node ) ) {
+                                <span class="ck-editor-value">{{ 'CK.Configurator.Editor.Absent' | translate }}</span>
+                            }
                             @if ( r.node.lockLevel ) {
                                 <span class="ck-editor-lock" nz-tooltip [nzTooltipTitle]="lockTitle( r.node )">&#128274;</span>
+                            }
+                            @if ( lockEntries().get( r.node.path ); as entries ) {
+                                <span class="ck-editor-lock-count" nz-tooltip [nzTooltipTitle]="lockEntriesTitle( r.node.path )">&#128274; {{ entries.length }}</span>
                             }
                             @if ( r.node.origin && r.node.origin !== 'Deployment' && r.node.origin !== 'Removed' && r.node.origin !== 'Central' ) {
                                 <span class="ck-editor-origin">{{ r.node.origin }}</span>
@@ -193,7 +199,11 @@
                             <pre class="ck-editor-comment">{{ n.comment }}</pre>
                         }
 
+                        @if ( isAbsent( n ) ) {
+                            <nz-alert nzType="info" nzShowIcon [nzMessage]="('CK.Configurator.Editor.AbsentLocked.' + n.lockLevel) | translate" />
+                        }
                         @switch ( n.kind ) {
+                            @case ( 'Absent' ) { }
                             @case ( 'Boolean' ) {
                                 <div><nz-switch [ngModel]="n.value === 'true'" (ngModelChange)="setValueAsync( n.path, $event ? 'true' : 'false' )" [nzDisabled]="busy()" /></div>
                             }
@@ -219,7 +229,7 @@
                                 <button nz-button (click)="setValueAsync( n.path, valueText() )" [disabled]="busy() || !valueText().trim()">{{ 'CK.Configurator.Editor.Apply' | translate }}</button>
                             </details>
                         }
-                        @if ( n.origin !== 'Removed' ) {
+                        @if ( n.origin !== 'Removed' && !isAbsent( n ) ) {
                             <div><button nz-button nzDanger (click)="removeAsync( n.path )" [disabled]="busy()">{{ (isDeploymentView() ? 'CK.Configurator.Editor.RemoveHere' : 'CK.Configurator.Editor.Remove') | translate }}</button></div>
                         }
 
@@ -291,7 +301,7 @@
                                 <li nz-menu-item (click)="unlockAsync( m.path )">{{ 'CK.Configurator.Editor.Menu.Unlock' | translate }}</li>
                             }
                         }
-                        @if ( m.origin !== 'Removed' ) {
+                        @if ( m.origin !== 'Removed' && !isAbsent( m ) ) {
                             <li nz-menu-item nzDanger (click)="removeAsync( m.path )">{{ (isDeploymentView() ? 'CK.Configurator.Editor.RemoveHere' : 'CK.Configurator.Editor.Remove') | translate }}</li>
                         }
                         <li nz-menu-divider></li>
