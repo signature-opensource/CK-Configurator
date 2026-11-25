@@ -152,7 +152,9 @@ public class ConfiguratorCommandsTests
         package.Version.ShouldBe( FixturePackages.GetVersion( "CK.AppIdentity.HttpEndpoint" ) );
         package.Readme.ShouldNotBeNullOrWhiteSpace();
         types.Single( t => t.Name == "ForwardedHeaders" ).OptionOwners.ShouldBe( [http.TypeName] );
-        http.ConfigurationSchema.ShouldBeNull();
+        // A feature driver has a configuration model: its schema is in the catalog (the forms of the editor).
+        http.ConfigurationModel.ShouldBe( "CK.AppIdentity.HttpEndpointConfiguration" );
+        http.ConfigurationSchema.ShouldNotBeNull().ShouldContain( "\"Urls\"" );
         var globalization = types.Single( t => t.Name == "Globalization" );
         globalization.ConfigurationModel.ShouldBe( "CK.Globalization.GlobalizationAppAspectConfiguration" );
         globalization.ConfigurationSchema.ShouldNotBeNull().ShouldContain( "\"ActiveCultures\"" );
