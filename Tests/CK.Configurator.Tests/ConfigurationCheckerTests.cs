@@ -113,6 +113,7 @@ public class ConfigurationCheckerTests
     [TestCase( """{ "Builders": { "B": { "App": { "Local": { "AuthCenter": { "Oidc": { "G": { "ClientSecret": "s3cr3t" } } } } } } } }""", "Builders:B:App:Local:AuthCenter:Oidc:G:ClientSecret", "Warning", "'ClientSecret' is a secret" )]
     [TestCase( """{ "Builders": { "B": { "App": { "Local": { "PartyClient": { "App": { "Unknown": true } } } } } } }""", "Builders:B:App:Local:PartyClient:App:Unknown", "Warning", "'Unknown' is not a client feature of the catalog." )]
     [TestCase( """{ "Builders": { "B": { "Aspects": { "SqlServer": { "$LOCK": { "Db": "Later" } } } } } }""", "Builders:B:Aspects:SqlServer:$LOCK", "Error", "\"$LOCK\" must be an object" )]
+    [TestCase( """{ "Builders": { "B": { "App": { "$LOCK": { "Local:HttpEndpoint:Urls": "Later" } } } } }""", "Builders:B:App:$LOCK", "Error", "\"$LOCK\" must be an object" )]
     [TestCase( """{ "Builders": { "B": { "App": { "$PER_DEPLOYMENT": [ 1 ] } } } }""", "Builders:B:App:$PER_DEPLOYMENT", "Error", "\"$PER_DEPLOYMENT\" must be an array of paths" )]
     [TestCase( """{ "Builders": { "B": { "App": { "X": { "$SECRET": "k", "Other": 1 } } } } }""", "Builders:B:App:X:$SECRET", "Error", "must be the only key of its object" )]
     [TestCase( """{ "Defaults": { "Party": {} } }""", "Defaults:Party", "Warning", "Unknown key 'Party' in \"Defaults\"" )]

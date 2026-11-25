@@ -78,10 +78,15 @@ public static class ConfigurationChecker
         {
             _catalog = catalog;
             _isDeployment = isDeployment;
+            // The parent of a property is the last one above it at a lower depth (document order): a key may contain ':'
+            // (the patterns of a "$LOCK"), its path can't be cut at its last ':'.
+            var ancestors = new List<string>();
             foreach( var n in nodes )
             {
                 _byPath[n.Path] = n;
-                var parent = ParentPath( n.Path );
+                if( ancestors.Count > n.Depth ) ancestors.RemoveRange( n.Depth, ancestors.Count - n.Depth );
+                var parent = n.Depth == 0 || ancestors.Count < n.Depth ? ParentPath( n.Path ) : ancestors[n.Depth - 1];
+                ancestors.Add( n.Path );
                 if( !_children.TryGetValue( parent, out var list ) ) _children.Add( parent, list = new List<EditorNodeData>() );
                 list.Add( n );
             }
