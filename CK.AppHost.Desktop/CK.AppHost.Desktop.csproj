@@ -5,12 +5,12 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <!-- The bootstrap of the host (CKomposableAppHost.Build): its code only, its build targets are the conventions of a host project. -->
-    <PackageReference Include="CK.AppHost" Version="25.0.0-0.uc.3.ci.74" ExcludeAssets="build" />
-    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.3.ci.74" />
+    <PackageReference Include="CK.AppHost" Version="25.0.0-0.uc.3.ci.77" ExcludeAssets="build" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.3.ci.77" />
     <!-- The in-process endpoint ("InProcess" option): the window relays the requests of its page, no port is opened. -->
-    <PackageReference Include="CK.AppIdentity.HttpEndpoint.InProcess" Version="25.0.0-0.uc.3.ci.74" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint.InProcess" Version="25.0.0-0.uc.3.ci.77" />
     <!-- The "Hosting" feature of a client: the window shows the client that the endpoint serves. -->
-    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.3.ci.135" />
+    <PackageReference Include="CK.TS.AspNet.Clients" Version="3.0.1-0.uc.3.ci.137" />
     <PackageReference Include="InfiniLore.InfiniFrame" Version="0.62.1" />
   </ItemGroup>
   <ItemGroup>

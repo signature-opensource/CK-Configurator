@@ -4,14 +4,14 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Testing.Engine" Version="37.0.0-0.uc.3.ci.68" />
-    <PackageReference Include="CK.Cris.Executor.Engine" Version="3.0.0-0.uc.3.ci.206" />
+    <PackageReference Include="CK.Testing.Engine" Version="37.0.0-0.uc.3.ci.69" />
+    <PackageReference Include="CK.Cris.Executor.Engine" Version="3.0.0-0.uc.3.ci.208" />
     <!-- The packages of the test profiles (FixturePackages): their versions are the ones of the profiles. -->
-    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.uc.3.ci.181" />
-    <PackageReference Include="CK.AppIdentity.TransportLayer" Version="4.0.0-0.uc.3.ci.86" />
-    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.3.ci.74" />
-    <PackageReference Include="CK.IO.DynamicConfiguration" Version="3.0.0-0.uc.3.ci.124" />
-    <PackageReference Include="CK.Globalization.StObj" Version="3.0.0-0.uc.3.ci.91" />
+    <PackageReference Include="CK.AppIdentity.PartyClient" Version="3.0.0-0.uc.3.ci.186" />
+    <PackageReference Include="CK.AppIdentity.TransportLayer" Version="4.0.0-0.uc.3.ci.90" />
+    <PackageReference Include="CK.AppIdentity.HttpEndpoint" Version="25.0.0-0.uc.3.ci.77" />
+    <PackageReference Include="CK.IO.DynamicConfiguration" Version="3.0.0-0.uc.3.ci.125" />
+    <PackageReference Include="CK.Globalization.StObj" Version="3.0.0-0.uc.3.ci.93" />
     <Compile Include="..\CK.Configurator.Catalog.Tests\FixturePackages.cs" Link="FixturePackages.cs" />
     <PackageReference Include="CK.Testing.Nunit" Version="18.0.0-0.uc.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" PrivateAssets="all" />
