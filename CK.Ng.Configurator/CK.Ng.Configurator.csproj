@@ -3,9 +3,9 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.3.ci.211" />
-    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.3.ci.122" />
-    <PackageReference Include="CK.Ng.Markdown" Version="3.0.1-0.uc.3.ci.122" />
+    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.3.ci.212" />
+    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.3.ci.123" />
+    <PackageReference Include="CK.Ng.Markdown" Version="3.0.1-0.uc.3.ci.123" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
