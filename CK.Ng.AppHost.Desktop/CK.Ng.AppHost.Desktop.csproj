@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.3" />
+    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.3.ci.205" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.IO.AppHost.Desktop\CK.IO.AppHost.Desktop.csproj" />
