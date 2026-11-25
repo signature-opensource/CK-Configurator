@@ -16,7 +16,7 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import {
     AddPropertyCommand, CatalogSource, CatalogSourcePicker, CheckSolutionCommand, CloseSolutionCommand, ConfigurableTypeInfo,
     CreateDeploymentCommand, EditorDocument, EditorNode, EditorProblem, EditorState, GetEditorStateQCommand, HttpCrisEndpoint,
-    LockPropertyCommand, MakeSecretCommand, MarkdownComponent, OpenSolutionCommand, PickFolderCommand, RedoCommand, ReloadCommand,
+    LockPropertyCommand, MakeSecretCommand, MarkdownComponent, ModelForm, OpenSolutionCommand, PickFolderCommand, RedoCommand, ReloadCommand,
     RemoveLockEntryCommand, RemovePropertyCommand, RevertPropertyCommand, SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand,
     UnlockPropertyCommand
 } from '@local/ck-gen';
@@ -87,7 +87,8 @@ function readLastFolder(): string {
         NzTagModule,
         NzTooltipModule,
         CatalogSourcePicker,
-        MarkdownComponent
+        MarkdownComponent,
+        ModelForm
     ],
     templateUrl: './editor-page.html'
 } )
@@ -294,7 +295,9 @@ export class EditorPage {
     typeOf( n: EditorNode | undefined ): ConfigurableTypeInfo | undefined {
         if( !n?.typeName ) return undefined;
         const kind = n.role === 'BuilderAspect' ? 'AppBuilderAspect'
+                   : n.role === 'BuilderAspectOption' ? 'AppBuilderAspectOption'
                    : n.role === 'AppAspect' ? 'AppAspect'
+                   : n.role === 'AppAspectOption' ? 'AppAspectOption'
                    : n.role === 'PartyFeature' ? 'PartyFeature'
                    : n.role === 'PartyFeatureOption' ? 'PartyFeatureOption'
                    : n.role === 'ClientFeature' ? 'PartyClientFeature'
@@ -365,6 +368,27 @@ export class EditorPage {
     }
 
     checkAsync(): Promise<void> { return this.runAsync( new CheckSolutionCommand() ); }
+
+    /** Whether the selected property is a modeled section (true or a section of a type that has a model): its form is shown. */
+    readonly selectedSchema = computed( () => {
+        const n = this.selected();
+        const schema = this.selectedType()?.configurationSchema;
+        return n && schema && (n.kind === 'Object' || n.value === 'true') ? schema : undefined;
+    } );
+
+    /** A key written by the form of a model: its section and the missing objects of its path are created. */
+    writeKeyAsync( w: { path: string, json: string } ): Promise<void> {
+        const c = new SetValueCommand();
+        c.path = w.path;
+        c.json = w.json;
+        c.createPath = true;
+        return this.runAsync( c );
+    }
+
+    /** A key reset by the form of a model: removed (in a deployment: back to the inherited value). */
+    resetKeyAsync( n: EditorNode ): Promise<void> {
+        return this.isDeploymentView() ? this.revertAsync( n.path ) : this.removeAsync( n.path );
+    }
 
     /** Writes the inherited value of a property in the overlay of the deployment of the view (the "WriteHere" fix). */
     writeHereAsync( path: string ): Promise<void> {

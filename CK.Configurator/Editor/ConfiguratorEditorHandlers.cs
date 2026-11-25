@@ -27,6 +27,15 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
             state.CatalogVersion = s.CatalogVersion;
             state.CheckStatus = s.CheckStatus;
             state.CheckIsStale = s.CheckIsStale;
+            foreach( var v in s.DefaultedValues )
+            {
+                state.DefaultedValues.Add( pocos.Create<IEditorDefaultedValue>( dv =>
+                {
+                    dv.Path = v.Path;
+                    dv.Value = v.Value;
+                    dv.From = v.From;
+                } ) );
+            }
             foreach( var d in s.Documents )
             {
                 state.Documents.Add( pocos.Create<IEditorDocument>( document =>
@@ -102,7 +111,7 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
     /// </summary>
     [CommandHandler]
     public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, ISetValueCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
-        => ToState( pocos, await editor.SetValueAsync( monitor, command.Deployment, command.Path, command.Json ).ConfigureAwait( false ) );
+        => ToState( pocos, await editor.SetValueAsync( monitor, command.Deployment, command.Path, command.Json, command.CreatePath ).ConfigureAwait( false ) );
 
     /// <summary>
     /// Adds a property.

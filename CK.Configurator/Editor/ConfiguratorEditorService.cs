@@ -145,10 +145,14 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     /// <param name="view">The deployment of the view, null for the central configuration.</param>
     /// <param name="path">The path of the property.</param>
     /// <param name="json">The value.</param>
+    /// <param name="createPath">
+    /// Whether a missing property is added, with the objects of its path that don't exist (a section that is <c>true</c>
+    /// becomes an object). Always the case in the view of a deployment (its overlay).
+    /// </param>
     /// <returns>The state.</returns>
-    public Task<EditorSnapshot> SetValueAsync( IActivityMonitor monitor, string? view, string path, string json )
+    public Task<EditorSnapshot> SetValueAsync( IActivityMonitor monitor, string? view, string path, string json, bool createPath = false )
     {
-        return EditAsync( monitor, view, ( d, e ) => view == null
+        return EditAsync( monitor, view, ( d, e ) => view == null && !createPath
                                                      ? e.SetJsonValue( path, json, _comparison )
                                                      : WriteInOverlay( e, path, json ) );
     }
@@ -769,7 +773,18 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             if( i == segments.Length - 1 ) return e.SetJsonValue( path, json, _comparison );
             if( p.ObjectValue == null )
             {
-                Throw.CKException( $"The overlay replaces '{string.Join( ':', segments, 0, i + 1 )}' as a whole: edit its value." );
+                var prefix = string.Join( ':', segments, 0, i + 1 );
+                // A configurable type enabled by true: its section with the value (true is its defaults).
+                if( e.Code.GetJsonValueText( p ).Trim() == "true" )
+                {
+                    var value = json;
+                    for( int j = segments.Length - 1; j > i; --j )
+                    {
+                        value = $"{{ {System.Text.Json.JsonSerializer.Serialize( segments[j] )}: {value} }}";
+                    }
+                    return e.SetJsonValue( prefix, value, _comparison );
+                }
+                Throw.CKException( $"'{prefix}' is not a section: edit its value." );
             }
             o = p.ObjectValue;
         }
@@ -896,6 +911,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         var documents = new List<EditorDocumentData>();
         IReadOnlyList<EditorNodeData> nodes = [];
         IReadOnlyList<EditorProblemData> problems = [];
+        IReadOnlyList<EditorDefaultedValueData> defaulted = [];
         foreach( var d in _documents )
         {
             var (dNodes, dProblems) = CreateView( d, centralTree, catalog, catalogWorld, catalogVersion );
@@ -904,6 +920,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             {
                 nodes = dNodes;
                 problems = dProblems;
+                if( catalog != null ) defaulted = EditorDefaults.Compute( dNodes.Where( n => n.Kind != EditorAnnotations.AbsentKind ).ToList(), catalog );
             }
             documents.Add( new EditorDocumentData( d.Name,
                                                    d.Name != null ? ReadBaseName( d ) : null,
@@ -927,7 +944,10 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                                    checkStatus != "None" && _checkedTexts != null && (_checkedTexts != SavedTexts() || AllDocuments.Any( d => d.IsDirty )),
                                    documents,
                                    nodes,
-                                   problems );
+                                   problems )
+        {
+            DefaultedValues = defaulted
+        };
     }
 
     // The nodes and the static problems of the view of a document.
@@ -1099,6 +1119,11 @@ public sealed record EditorSnapshot( string? Folder,
     /// The state when no solution is opened.
     /// </summary>
     public static readonly EditorSnapshot Closed = new( null, null, null, false, false, false, false, null, null, "None", false, [], [], [] );
+
+    /// <summary>
+    /// Gets the values that the absent keys of the modeled sections of the view take from another level (the "Defaults").
+    /// </summary>
+    public IReadOnlyList<EditorDefaultedValueData> DefaultedValues { get; init; } = [];
 }
 
 /// <summary>

@@ -1,0 +1,120 @@
+<div class="ck-model-form">
+    @if ( model(); as m ) {
+        <ng-container *ngTemplateOutlet="modelTpl; context: { schema: m.root, path: path() }" />
+    } @else {
+        <span class="sub">{{ 'CK.Configurator.ModelForm.InvalidSchema' | translate }}</span>
+    }
+</div>
+
+<!-- The properties of a model at a path (the section, a nested model, an entry of a dictionary). -->
+<ng-template #modelTpl let-schema="schema" let-path="path">
+    @for ( p of properties( schema ); track p.name ) {
+        @let keyPath = path + ':' + p.name;
+        @let n = node( keyPath );
+        <div class="ck-model-form-row" [class.ck-model-form-absent]="!n" [class.ck-model-form-inherited]="!!n?.origin && n?.origin !== 'Deployment'">
+            <div class="ck-model-form-label">
+                <a (click)="n && selectPath.emit( n.path )" [class.ck-model-form-written]="!!n">{{ p.name }}</a>
+                @if ( p.required ) { <nz-tag nzColor="red">{{ 'CK.Configurator.ModelForm.Required' | translate }}</nz-tag> }
+                @if ( p.level ) { <nz-tag>{{ p.level }}</nz-tag> }
+                @if ( p.secret ) { <nz-tag nzColor="purple">{{ 'CK.Configurator.ModelForm.Secret' | translate }}</nz-tag> }
+                @if ( p.perDeployment ) { <nz-tag nzColor="blue">{{ 'CK.Configurator.ModelForm.PerDeployment' | translate }}</nz-tag> }
+                @if ( n?.lockLevel ) { <span nz-tooltip [nzTooltipTitle]="n!.lockLevel + ': ' + n!.lockSource">&#128274;</span> }
+                @if ( n?.secretName ) { <span nz-tooltip [nzTooltipTitle]="'CK.Configurator.Editor.SecretOf' | translate: { name: n!.secretName }">&#128273;</span> }
+                @if ( deploymentView() && n?.origin ) { <span class="ck-model-form-origin">{{ n!.origin }}</span> }
+            </div>
+
+            <div class="ck-model-form-editor">
+                @if ( isHandle( keyPath ) ) {
+                    <span class="sub">{{ 'CK.Configurator.Editor.SecretOf' | translate: { name: n!.secretName } }}</span>
+                } @else {
+                    @switch ( p.kind ) {
+                        @case ( 'boolean' ) {
+                            <nz-switch [ngModel]="value( keyPath ) === true" (ngModelChange)="emitWrite( keyPath, $event ? 'true' : 'false' )" [nzDisabled]="disabled()" />
+                        }
+                        @case ( 'integer' ) {
+                            <nz-input-number [ngModel]="value( keyPath )" (ngModelChange)="writeNumber( keyPath, $event )" [nzPrecision]="0" [nzDisabled]="disabled()"
+                                             [nzPlaceHolder]="effective( keyPath, p )?.text ?? ''" />
+                        }
+                        @case ( 'number' ) {
+                            <nz-input-number [ngModel]="value( keyPath )" (ngModelChange)="writeNumber( keyPath, $event )" [nzDisabled]="disabled()"
+                                             [nzPlaceHolder]="effective( keyPath, p )?.text ?? ''" />
+                        }
+                        @case ( 'enum' ) {
+                            <nz-select class="ck-model-form-select" [ngModel]="value( keyPath )" (ngModelChange)="emitWrite( keyPath, toJson( $event ) )" [nzDisabled]="disabled()"
+                                       [nzPlaceHolder]="effective( keyPath, p )?.text ?? ''">
+                                @for ( v of p.enumValues; track v ) { <nz-option [nzValue]="v" [nzLabel]="v" /> }
+                            </nz-select>
+                        }
+                        @case ( 'stringList' ) {
+                            <nz-select class="ck-model-form-select" nzMode="tags" [ngModel]="stringList( keyPath )" (ngModelChange)="emitWrite( keyPath, toJson( $event ) )"
+                                       [nzDisabled]="disabled()" [nzPlaceHolder]="effective( keyPath, p )?.text ?? ''" />
+                        }
+                        @case ( 'model' ) { }
+                        @case ( 'dictionary' ) { }
+                        @case ( 'list' ) {
+                            <textarea nz-input rows="2" #t [ngModel]="jsonText( keyPath )" [placeholder]="effective( keyPath, p )?.text ?? '[ ]'"></textarea>
+                            <button nz-button nzSize="small" (click)="t.value.trim() && emitWrite( keyPath, t.value )" [disabled]="disabled()">{{ 'CK.Configurator.Editor.Apply' | translate }}</button>
+                        }
+                        @case ( 'opaque' ) {
+                            <textarea nz-input rows="3" #t [ngModel]="jsonText( keyPath )" [placeholder]="effective( keyPath, p )?.text ?? '{ }'"></textarea>
+                            <span>
+                                <button nz-button nzSize="small" (click)="t.value.trim() && emitWrite( keyPath, t.value )" [disabled]="disabled()">{{ 'CK.Configurator.Editor.Apply' | translate }}</button>
+                                @if ( p.schemaUri ) { <a [href]="p.schemaUri" target="_blank" rel="noopener">{{ 'CK.Configurator.ModelForm.ItsSchema' | translate }}</a> }
+                            </span>
+                        }
+                        @default {
+                            <!-- string, timespan, uuid, uri: checked by the backend (its problems). -->
+                            <input nz-input #s [ngModel]="value( keyPath ) ?? ''" [placeholder]="effective( keyPath, p )?.text ?? ''"
+                                   (keyup.enter)="writeText( keyPath, s.value )" (blur)="writeText( keyPath, s.value )" [disabled]="disabled()" />
+                            @if ( p.kind === 'timespan' ) { <span class="sub">{{ 'CK.Configurator.ModelForm.TimeSpanHint' | translate }}</span> }
+                        }
+                    }
+                }
+                @if ( p.secret && n && !n.secretName && (n.kind === 'String' || n.kind === 'Number') ) {
+                    <button nz-button nzSize="small" (click)="makeSecret.emit( n )" [disabled]="disabled()">{{ 'CK.Configurator.Editor.Menu.MakeSecret' | translate }}</button>
+                }
+                @if ( canReset( n ) && p.kind !== 'model' && p.kind !== 'dictionary' ) {
+                    <a class="ck-model-form-reset" (click)="reset.emit( n! )">{{ (deploymentView() ? 'CK.Configurator.Editor.Revert' : 'CK.Configurator.ModelForm.Reset') | translate }}</a>
+                }
+            </div>
+
+            @if ( !n && effective( keyPath, p ); as e ) {
+                <div class="ck-model-form-effective">
+                    @if ( e.from ) {
+                        {{ 'CK.Configurator.ModelForm.FromDefaults' | translate: { value: e.text, from: e.from } }}
+                    } @else {
+                        {{ 'CK.Configurator.ModelForm.Default' | translate: { value: e.text } }}
+                    }
+                </div>
+            }
+            @if ( p.description ) { <div class="ck-model-form-doc">{{ p.description }}</div> }
+        </div>
+
+        @if ( p.kind === 'model' && p.model ) {
+            <fieldset class="ck-model-form-nested">
+                <legend>{{ p.name }}</legend>
+                <ng-container *ngTemplateOutlet="modelTpl; context: { schema: p.model, path: keyPath }" />
+            </fieldset>
+        }
+        @if ( p.kind === 'dictionary' ) {
+            <fieldset class="ck-model-form-nested">
+                <legend>{{ p.name }}</legend>
+                @for ( e of entries( keyPath ); track e ) {
+                    <fieldset class="ck-model-form-nested">
+                        <legend>{{ e }}</legend>
+                        @if ( p.model ) {
+                            <ng-container *ngTemplateOutlet="modelTpl; context: { schema: p.model, path: keyPath + ':' + e }" />
+                        }
+                    </fieldset>
+                }
+                <div class="ck-model-form-add">
+                    <input nz-input [placeholder]="'CK.Configurator.ModelForm.EntryName' | translate" [ngModel]="newEntry().get( keyPath ) ?? ''"
+                           (ngModelChange)="setNewEntry( keyPath, $event )" (keyup.enter)="addEntry( keyPath )" />
+                    <button nz-button nzSize="small" (click)="addEntry( keyPath )" [disabled]="disabled() || !(newEntry().get( keyPath ) ?? '').trim()">
+                        {{ 'CK.Configurator.ModelForm.AddEntry' | translate }}
+                    </button>
+                </div>
+            </fieldset>
+        }
+    }
+</ng-template>

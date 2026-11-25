@@ -47,16 +47,17 @@ the properties of the view (`IEditorNode`, in document order: path, name, depth,
 the `TypeName` that the catalog gives them, their `Origin` in the view of a deployment, their lock: `LockLevel`,
 `LockSource`, `CanUnlock`, the capability of the code: `MaxLevel`, and their secret: `SecretName`, `SecretStatus` in the
 central view), its problems
-(`IEditorProblem`: the "Static" checks once the catalog is opened, the "Build" ones of the check by the builders, and
+(`IEditorProblem`: the "Static" checks once the catalog is opened, a modeled section checked against its schema included, the "Build" ones of the check by the builders, and
 the `Fix` that the editor offers: "WriteHere" for an inherited value per deployment, its value written by an
 `ISetValueCommand`) and
-the status of that check (`CheckStatus`, `CheckIsStale`).
+the status of that check (`CheckStatus`, `CheckIsStale`), and the values that the absent keys of the modeled sections take
+from a `Defaults` level (`IEditorDefaultedValue`: path, value, the property that gives it).
 
 | Command | What it does |
 |---|---|
 | `IOpenSolutionCommand` (`Folder`) | Opens the `ckonf.json` of the folder and the overlays of its deployments (an opened solution is closed). |
 | `IGetEditorStateQCommand` | Returns the state of a view. |
-| `ISetValueCommand` (`Path`, `Json`) | Sets the value of a property; the comments around it are kept. In a deployment, it is written in its overlay. |
+| `ISetValueCommand` (`Path`, `Json`, `CreatePath`) | Sets the value of a property; the comments around it are kept. In a deployment, it is written in its overlay. `CreatePath` adds a missing property with the objects of its path (the forms). |
 | `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
 | `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments; in a deployment, an inherited one is removed by a `null`. |
 | `IRevertPropertyCommand` (`Path`) | In a deployment, removes a property from its overlay: it is inherited again. |

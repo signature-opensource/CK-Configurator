@@ -60,6 +60,12 @@ public interface ISetValueCommand : ICommand<IEditorState>, ICommandEditorView
     /// Gets or sets the new value (JSON text: <c>"text"</c>, <c>12</c>, <c>true</c>, <c>{ ... }</c>...).
     /// </summary>
     string Json { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether a missing property is added with the objects of its path that don't exist (a section that is
+    /// <c>true</c> becomes an object): the form of a model writes any of its keys. Always the case in a deployment.
+    /// </summary>
+    bool CreatePath { get; set; }
 }
 
 /// <summary>
@@ -338,6 +344,12 @@ public interface IEditorState : IPoco
     IList<IEditorNode> Nodes { get; }
 
     /// <summary>
+    /// Gets the values that the absent keys of the modeled sections of the view take from another level: the
+    /// <c>"Defaults"</c>, key by key as the reader of the models does.
+    /// </summary>
+    IList<IEditorDefaultedValue> DefaultedValues { get; }
+
+    /// <summary>
     /// Gets the problems of the view.
     /// </summary>
     IList<IEditorProblem> Problems { get; }
@@ -480,6 +492,27 @@ public interface IEditorNode : IPoco
     /// handle: "Set", "Missing" or "MissingOptional"; null otherwise. The value itself is never given.
     /// </summary>
     string? SecretStatus { get; set; }
+}
+
+/// <summary>
+/// The value that an absent key of a modeled section takes from another level (a <c>"Defaults"</c>).
+/// </summary>
+public interface IEditorDefaultedValue : IPoco
+{
+    /// <summary>
+    /// Gets or sets the path of the absent key.
+    /// </summary>
+    string Path { get; set; }
+
+    /// <summary>
+    /// Gets or sets the JSON text of the value (null for a section).
+    /// </summary>
+    string? Value { get; set; }
+
+    /// <summary>
+    /// Gets or sets the path of the property that gives it.
+    /// </summary>
+    string From { get; set; }
 }
 
 /// <summary>

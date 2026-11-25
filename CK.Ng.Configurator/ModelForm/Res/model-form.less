@@ -1,0 +1,43 @@
+.ck-model-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .ck-model-form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    }
+    // An absent key: its value comes from a "Defaults" level or the default of the model.
+    .ck-model-form-absent .ck-model-form-label a { opacity: 0.6; }
+    .ck-model-form-inherited { opacity: 0.75; }
+    .ck-model-form-label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+        a { cursor: pointer; }
+        .ck-model-form-written { font-weight: 600; }
+    }
+    .ck-model-form-origin { font-size: 11px; font-style: italic; opacity: 0.7; }
+    .ck-model-form-editor {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+        > input, > textarea { flex: 1; min-width: 160px; }
+    }
+    .ck-model-form-select { min-width: 220px; }
+    .ck-model-form-reset { font-size: 12px; cursor: pointer; }
+    .ck-model-form-effective { font-size: 12px; font-style: italic; opacity: 0.75; }
+    .ck-model-form-doc { font-size: 12px; opacity: 0.8; white-space: pre-wrap; }
+    .ck-model-form-nested {
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        padding: 4px 8px 8px 12px;
+        margin: 0 0 4px 12px;
+        legend { font-size: 12px; font-weight: 600; width: auto; padding: 0 4px; margin: 0; border: none; }
+    }
+    .ck-model-form-add { display: flex; gap: 6px; max-width: 360px; }
+}

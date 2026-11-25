@@ -281,6 +281,15 @@ public static class ConfigurationChecker
                 Error( n.Path, $"'{n.Name}' is required: it can't be disabled." );
             }
             if( n.Kind == "Object" && partyKind != null ) CheckSecrets( n, t, partyKind );
+            // A modeled section: its keys against the schema of its model (true is its defaults).
+            if( t.ConfigurationSchema != null && (n.Kind == "Object" || n.Value == "true") )
+            {
+                var reserved = AllTypes.Where( o => o.OptionOwners.Contains( t.FullName ) && o.Configurable != null )
+                                       .Select( o => o.Configurable!.Name )
+                                       .ToHashSet( StringComparer.OrdinalIgnoreCase );
+                bool isDefaults = n.Path.StartsWith( "Defaults:", StringComparison.OrdinalIgnoreCase ) || n.Path.Contains( ":Defaults:", StringComparison.OrdinalIgnoreCase );
+                new SchemaChecker( Children, p => _byPath.GetValueOrDefault( p ), Error ).Check( n, t.ConfigurationSchema, t.Configurable.Name, reserved, checkRequired: !isDefaults );
+            }
         }
 
         // A secret path is "{kind of the parties}:{path in the section}" ('*' matches any name): "Party" applies to every

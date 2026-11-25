@@ -1,0 +1,15 @@
+{
+    "CK.Configurator.ModelForm.TimeSpanHint": "hh:mm:ss, or d.hh:mm:ss",
+    "CK.Configurator.ModelForm.Secret": "secret",
+    "CK.Configurator.ModelForm.FromDefaults": "{{value}}, from {{from}}",
+    "CK.Configurator.ModelForm.EntryName": "Name of a new entry",
+    "CK.Configurator.ModelForm.PerDeployment": "per deployment",
+    "CK.Configurator.ModelForm.ItsSchema": "its schema",
+    "CK.Configurator.ModelForm.Required": "required",
+    "CK.Configurator.ModelForm.Form": "Form",
+    "CK.Configurator.ModelForm.AddEntry": "Add an entry",
+    "CK.Configurator.ModelForm.InvalidSchema": "The schema of this model can't be read.",
+    "CK.Configurator.ModelForm.Default": "default: {{value}}",
+    "CK.Configurator.ModelForm.Reset": "Reset to default",
+    "CK.Configurator.ModelForm.Json": "Keys"
+}

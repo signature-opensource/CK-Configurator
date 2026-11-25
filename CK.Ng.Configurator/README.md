@@ -46,7 +46,9 @@ The detail panel shows the summary and the remarks of a type, and a package name
 (`IGetPackageQCommand`). The Markdown is rendered by the `<ck-markdown>` component of CK.Ng.Markdown (CK-TS-Angular).
 
 The page is read-only: its own state (the selection, the closure, the opened packages) is reset when another catalog
-is opened. The texts are in the `Res/ts-locales` of the page, of the picker and of the package (the names of the
+is opened. A type that has a configuration model shows its keys as a table (`schemaKeys` of `config-schema.ts`: their
+path, type, default, flags and documentation) and its raw JSON Schema. The texts are in the `Res/ts-locales` of the
+page, of the picker, of the form and of the package (the names of the
 pages: "CK.Configurator.CatalogPage", "CK.Configurator.EditorPage"), default and French.
 
 ## The editor page
@@ -84,6 +86,15 @@ a view (`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md
   above it, its value (a switch for a boolean, a text for a string, JSON text otherwise; "Edit as JSON" replaces it by
   any value), the addition of a property to an object, its removal, and the documentation of its type (its summary
   and remarks, in Markdown).
+- **The form of a modeled section** (`ck-model-form`, `ModelFormComponent`: the selected section's type has a
+  configuration model, its JSON Schema in the catalog): every property of the model, present or not, its editor by
+  kind (a switch, a number, a select for an `enum`, tags for a list of strings, a text for a string, a time span, a uuid
+  or an uri, a fieldset for a nested model, one fieldset per entry of a dictionary and "Add an entry", the JSON editor
+  for another list and an opaque section with a link to its schema), "required", its level, secret and per deployment
+  flags, its lock and its origin, its documentation, and for an absent key the value that it takes from a `Defaults`
+  level or the default of the model. An edit writes the key (`ISetValueCommand` with `CreatePath`); "Reset to default"
+  removes it ("Revert to inherited" in a deployment); a secret property offers "Make it a secret". The form is driven by
+  `ModelSchema` (`config-schema.ts`, shared with the catalog page's table of the keys, `schemaKeys`).
 - **The palette** (right): what the catalog offers at the selected property, added as `true`: the party features of a
   party, the client features of a client, the options of a feature or of a client feature, the aspects of an
   `"Aspects"`. Then **the problems** of the document: a click selects the property.

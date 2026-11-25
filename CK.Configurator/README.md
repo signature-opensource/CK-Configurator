@@ -79,6 +79,15 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
   [`EditorAnchors`](Editor/EditorAnchors.cs) like the values per deployment), its capability (`[ConfigurationLevel]`)
   and its secret (the name of a handle, and whether the development secrets have it). A literal pattern that names no
   property (the build burns its absence) is a property of kind "Absent" at its path, so that the lock is visible.
+- **A modeled section** (a configurable type that has a configuration model: its JSON Schema in the catalog) is checked
+  against its schema by [`SchemaChecker`](Editor/SchemaChecker.cs): an unknown key is an error (the model is closed), and
+  so are a value of the wrong type, outside its `enum`, a time span, a uuid or an uri that doesn't parse, and a missing
+  required key, looked up along the levels of the section ([`EditorLevels`](Editor/EditorLevels.cs): the party, the
+  `Defaults` above it, the central `Defaults:App`; not in a `Defaults` section: the defaults are partial). The names of
+  the options of its owner are reserved keys. What only code checks (the model's `Validate`) is the builders'.
+  [`EditorDefaults`](Editor/EditorDefaults.cs) gives the values that the absent keys of a modeled section take from a
+  `Defaults` level (key by key, as the reader of the models), for the forms. `SetValueAsync` with `createPath` writes a
+  key with the missing objects of its path (a section that is `true` becomes an object).
 - **Once saved, the builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): each
   builder of the `"Builders"` is restored, built without running it (`-p:CKAppBuilderRunAfterBuild=false`) and run with
   `--check <file>` (CK.AppBuilder: the run stops before the engine), two at a time. A builder whose CK.AppBuilder

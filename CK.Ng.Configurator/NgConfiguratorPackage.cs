@@ -18,6 +18,7 @@ namespace CK.Ng.Configurator;
 [TypeScriptPackage]
 [Requires<CrisAspNetPackage, ZorroPackage, MarkdownPackage>]
 [TypeScriptFile( "catalog-source.ts", "CatalogSource" )]
+[TypeScriptFile( "config-schema.ts", "JsonSchema", "SchemaKey", "ModelPropertyKind", "ModelProperty", "ModelSchema", "schemaKeys" )]
 [RegisterTypeScriptType( typeof( IGetWorldsQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetBranchesQCommand ) )]
 [RegisterTypeScriptType( typeof( IGetProfilesQCommand ) )]

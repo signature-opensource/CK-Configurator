@@ -269,12 +269,18 @@ static class EditorAnnotations
             if( byPath.TryGetValue( parent, out var p ) && p.TypeName != null )
             {
                 var property = n.Path.Substring( parent.Length + 1 ).Split( ':' )[0];
-                var type = catalog.FindConfigurable( p.TypeName ).Select( c => c.Type ).FirstOrDefault( t => KindOf( p.Role ) == t.Configurable!.Kind );
+                var type = FindType( catalog, p.TypeName, p.Role );
                 return type?.PropertyLevels.FirstOrDefault( l => l.Property.Equals( property, StringComparison.OrdinalIgnoreCase ) )?.Level;
             }
             path = parent;
         }
     }
+
+    /// <summary>
+    /// Finds the configurable type of a typed property (its configuration name and its role).
+    /// </summary>
+    public static TypeAnalysis? FindType( CatalogModel catalog, string typeName, string? role )
+        => catalog.FindConfigurable( typeName ).Select( c => c.Type ).FirstOrDefault( t => KindOf( role ) == t.Configurable!.Kind );
 
     static string? KindOf( string? role ) => role switch
     {

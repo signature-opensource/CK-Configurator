@@ -1,0 +1,15 @@
+{
+    "CK.Configurator.ModelForm.TimeSpanHint": "hh:mm:ss, ou j.hh:mm:ss",
+    "CK.Configurator.ModelForm.Secret": "secret",
+    "CK.Configurator.ModelForm.FromDefaults": "{{value}}, de {{from}}",
+    "CK.Configurator.ModelForm.EntryName": "Nom d'une nouvelle entrée",
+    "CK.Configurator.ModelForm.PerDeployment": "par déploiement",
+    "CK.Configurator.ModelForm.ItsSchema": "son schéma",
+    "CK.Configurator.ModelForm.Required": "requis",
+    "CK.Configurator.ModelForm.Form": "Formulaire",
+    "CK.Configurator.ModelForm.AddEntry": "Ajouter une entrée",
+    "CK.Configurator.ModelForm.InvalidSchema": "Le schéma de ce modèle ne peut pas être lu.",
+    "CK.Configurator.ModelForm.Default": "défaut : {{value}}",
+    "CK.Configurator.ModelForm.Reset": "Revenir au défaut",
+    "CK.Configurator.ModelForm.Json": "Clés"
+}

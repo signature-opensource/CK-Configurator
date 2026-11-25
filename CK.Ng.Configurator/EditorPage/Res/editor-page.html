@@ -198,6 +198,12 @@
                         @if ( n.comment ) {
                             <pre class="ck-editor-comment">{{ n.comment }}</pre>
                         }
+                        @if ( selectedSchema(); as schema ) {
+                            <ck-model-form [schema]="schema" [path]="n.path" [nodes]="s.nodes" [defaulted]="s.defaultedValues"
+                                           [deploymentView]="isDeploymentView()" [disabled]="busy()"
+                                           (write)="writeKeyAsync( $event )" (reset)="resetKeyAsync( $event )"
+                                           (makeSecret)="startSecret( $event )" (selectPath)="select( $event )" />
+                        }
 
                         @if ( isAbsent( n ) ) {
                             <nz-alert nzType="info" nzShowIcon [nzMessage]="('CK.Configurator.Editor.AbsentLocked.' + n.lockLevel) | translate" />
