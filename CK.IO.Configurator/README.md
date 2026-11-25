@@ -62,6 +62,7 @@ the status of that check (`CheckStatus`, `CheckIsStale`).
 | `IRevertPropertyCommand` (`Path`) | In a deployment, removes a property from its overlay: it is inherited again. |
 | `ILockPropertyCommand` (`Path`, `Level`) | In the central configuration, locks a property: an entry of the `"$LOCK"` of its App or Builder aspect. |
 | `IUnlockPropertyCommand` (`Path`) | Removes the literal pattern of a `"$LOCK"` that names the property. |
+| `IRemoveLockEntryCommand` (`ObjectPath`, `Pattern`) | Removes an entry of the `"$LOCK"` of an object, even one that names no property. |
 | `IMakeSecretCommand` (`Path`, `Name`, `IsOptional`, `Overwrite`) | Makes a value a secret: its handle in the configuration; in the central one, the value moves to `#Dev/Secrets.json`. |
 | `ICreateDeploymentCommand` (`Name`, `Base`, `WriteValuesPerDeployment`) | Creates a deployment ("#Staging", "Paris/Shop/#Production"), written at the next save, optionally with the values per deployment that it would inherit. |
 | `ISetCatalogSourceCommand` (`World`, `Version`) | Writes the `"$configurator"` root key: the catalog that types and checks the documents once it is opened (`IOpenCatalogCommand`). |

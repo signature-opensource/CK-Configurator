@@ -140,6 +140,13 @@ public sealed class ConfiguratorEditorHandlers : ISingletonAutoService
         => ToState( pocos, await editor.UnlockPropertyAsync( monitor, command.Deployment, command.Path ).ConfigureAwait( false ) );
 
     /// <summary>
+    /// Removes an entry of a "$LOCK".
+    /// </summary>
+    [CommandHandler]
+    public async Task<IEditorState> HandleAsync( IActivityMonitor monitor, IRemoveLockEntryCommand command, ConfiguratorEditorService editor, PocoDirectory pocos )
+        => ToState( pocos, await editor.RemoveLockEntryAsync( monitor, command.Deployment, command.ObjectPath, command.Pattern ).ConfigureAwait( false ) );
+
+    /// <summary>
     /// Makes a value a secret.
     /// </summary>
     [CommandHandler]

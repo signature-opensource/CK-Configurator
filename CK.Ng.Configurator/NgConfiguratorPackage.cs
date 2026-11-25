@@ -38,6 +38,7 @@ namespace CK.Ng.Configurator;
 [RegisterTypeScriptType( typeof( ICheckSolutionCommand ) )]
 [RegisterTypeScriptType( typeof( ILockPropertyCommand ) )]
 [RegisterTypeScriptType( typeof( IUnlockPropertyCommand ) )]
+[RegisterTypeScriptType( typeof( IRemoveLockEntryCommand ) )]
 [RegisterTypeScriptType( typeof( IMakeSecretCommand ) )]
 [RegisterTypeScriptType( typeof( ISetCatalogSourceCommand ) )]
 [RegisterTypeScriptType( typeof( IUndoCommand ) )]

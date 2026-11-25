@@ -106,6 +106,24 @@ public class ConfiguratorLocksAndSecretsTests
     }
 
     [Test]
+    public async Task an_entry_of_a_LOCK_that_names_no_property_is_removed_by_its_holder_Async()
+    {
+        var folder = CreateSolution( "lock-entry" );
+        var editor = CreateEditor();
+        await editor.OpenAsync( TestHelper.Monitor, folder );
+        // "Store" is in the "Defaults" of the App: "Local:Nothing" names no property (it burns an absence).
+        await editor.LockPropertyAsync( TestHelper.Monitor, null, _local + ":HttpEndpoint:Limit", "Init" );
+        var s = await editor.RemoveLockEntryAsync( TestHelper.Monitor, null, _app, "Local:HttpEndpoint:Limit" );
+        s.Nodes.ShouldNotContain( n => n.Path == _app + ":$LOCK" );
+        s = await editor.RemoveLockEntryAsync( TestHelper.Monitor, null, "Defaults:App", "Local:Demo" );
+        s.Nodes.Single( n => n.Path == _local + ":Demo:Password" ).LockLevel.ShouldBeNull();
+        (await Should.ThrowAsync<CKException>( () => editor.RemoveLockEntryAsync( TestHelper.Monitor, null, _app, "Nope" ) )).Message.ShouldContain( "has no \"$LOCK\" entry 'Nope'" );
+        await Should.ThrowAsync<CKException>( () => editor.RemoveLockEntryAsync( TestHelper.Monitor, "#Production", _app, "Nope" ) );
+        await editor.SaveAsync( TestHelper.Monitor, null, overwrite: false );
+        File.ReadAllText( Path.Combine( folder, "ckonf.json" ) ).ShouldNotContain( "Local:Demo" );
+    }
+
+    [Test]
     public async Task a_value_becomes_a_secret_in_the_development_secrets_Async()
     {
         var folder = CreateSolution( "secret" );

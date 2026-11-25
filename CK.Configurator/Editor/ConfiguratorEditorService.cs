@@ -594,15 +594,46 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             {
                 return Throw.CKException<bool>( n.LockSource != null ? $"'{path}' is locked by {n.LockSource}: it is not unlocked here." : $"'{path}' is not locked." );
             }
-            var lockPath = l.Container.Split( ':' ).Append( "$LOCK" ).ToList();
-            if( !e.RemoveJsonProperty( lockPath.Append( l.Pattern ).ToList(), _comparison ) ) return false;
-            var lockProperty = e.Code.FindJsonProperty( lockPath, _comparison );
-            if( lockProperty?.ObjectValue != null && e.Code.GetJsonValueText( lockProperty ).Trim() == "{}" )
-            {
-                return e.RemoveJsonProperty( lockPath, _comparison );
-            }
-            return true;
+            return RemoveLockEntry( e, l.Container, l.Pattern );
         } );
+    }
+
+    /// <summary>
+    /// Removes an entry of a <c>"$LOCK"</c> (central view), even one that names no property (it burns an absence), and
+    /// the <c>"$LOCK"</c> when it becomes empty.
+    /// </summary>
+    /// <param name="monitor">The monitor.</param>
+    /// <param name="view">The view (only the central one).</param>
+    /// <param name="objectPath">The path of the object that holds the "$LOCK" (an App, a Builder aspect...).</param>
+    /// <param name="pattern">The pattern: the key of the entry.</param>
+    /// <returns>The state.</returns>
+    public Task<EditorSnapshot> RemoveLockEntryAsync( IActivityMonitor monitor, string? view, string objectPath, string pattern )
+    {
+        if( view != null ) Throw.CKException( "The locks are edited in the central configuration." );
+        return EditAsync( monitor, null, ( d, e ) =>
+        {
+            var lockObject = e.Code.FindJsonObject( SplitObjectPath( objectPath ).Append( "$LOCK" ).ToList(), _comparison );
+            if( lockObject?.FindProperty( pattern, _comparison ) == null )
+            {
+                Throw.CKException( $"'{objectPath}' has no \"$LOCK\" entry '{pattern}'." );
+            }
+            return RemoveLockEntry( e, objectPath, pattern );
+        } );
+    }
+
+    static IEnumerable<string> SplitObjectPath( string objectPath ) => objectPath.Length == 0 ? [] : objectPath.Split( ':' );
+
+    // Removes the entry of a "$LOCK" (its key is a pattern: a ':' path), then the "$LOCK" if it became empty.
+    static bool RemoveLockEntry( SourceCodeEditor e, string container, string pattern )
+    {
+        var lockPath = SplitObjectPath( container ).Append( "$LOCK" ).ToList();
+        if( !e.RemoveJsonProperty( lockPath.Append( pattern ).ToList(), _comparison ) ) return false;
+        var lockProperty = e.Code.FindJsonProperty( lockPath, _comparison );
+        if( lockProperty?.ObjectValue != null && e.Code.GetJsonValueText( lockProperty ).Trim() == "{}" )
+        {
+            return e.RemoveJsonProperty( lockPath, _comparison );
+        }
+        return true;
     }
 
     // The App ("Builders:{b}:App", "Defaults:App") or the Builder aspect that contains a property (structural).

@@ -78,5 +78,6 @@
     "CK.Configurator.Editor.SecretOptional": "Optionnel (\"$SECRET?\" : sans lui, l'hôte laisse la valeur absente)",
     "CK.Configurator.Editor.SecretInCentral": "La valeur va dans #Dev/Secrets.json sous '{{name}}' (enregistré avec les documents) ; la configuration garde son nom.",
     "CK.Configurator.Editor.SecretInDeployment": "Le déploiement n'écrit que le nom : son hôte reçoit le secret 'Secrets:{{name}}'. La valeur n'est pas écrite.",
-    "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json a déjà '{{name}}' avec une autre valeur : l'écraser, ou choisir un autre nom."
+    "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json a déjà '{{name}}' avec une autre valeur : l'écraser, ou choisir un autre nom.",
+    "CK.Configurator.Editor.LocksHere": "Le \"$LOCK\" ici (motifs relatifs à cet objet) :"
 }

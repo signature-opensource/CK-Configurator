@@ -142,6 +142,23 @@ public interface IUnlockPropertyCommand : ICommand<IEditorState>, ICommandEditor
 }
 
 /// <summary>
+/// Removes an entry of a <c>"$LOCK"</c> in the central configuration, even one that names no property (a literal pattern
+/// that matches no value burns its absence): the <c>"$LOCK"</c> is removed when it becomes empty.
+/// </summary>
+public interface IRemoveLockEntryCommand : ICommand<IEditorState>, ICommandEditorView
+{
+    /// <summary>
+    /// Gets or sets the path of the object that holds the <c>"$LOCK"</c> (an App, a Builder aspect...).
+    /// </summary>
+    string ObjectPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the pattern: the key of the entry.
+    /// </summary>
+    string Pattern { get; set; }
+}
+
+/// <summary>
 /// Makes a value a secret: its place holds a handle, <c>{ "$SECRET": "&lt;Name&gt;" }</c>. In the central configuration,
 /// the value moves to the development secrets (<c>#Dev/Secrets.json</c>, a document of the solution saved with the
 /// others); in a deployment, only the handle is written in its overlay (its host is given the secret).

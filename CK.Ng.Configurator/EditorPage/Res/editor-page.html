@@ -152,6 +152,19 @@
                                 }
                             </span>
                         }
+                        @if ( selectedLocks().length > 0 ) {
+                            <div class="ck-editor-locks">
+                                <span>&#128274; {{ 'CK.Configurator.Editor.LocksHere' | translate }}</span>
+                                @for ( l of selectedLocks(); track l.pattern ) {
+                                    <div class="ck-editor-lock-entry">
+                                        <code>{{ l.pattern }}</code> <b>{{ l.level }}</b>
+                                        @if ( !isDeploymentView() ) {
+                                            <a (click)="removeLockEntryAsync( n.path, l.pattern )">{{ 'CK.Configurator.Editor.Remove' | translate }}</a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
                         @if ( n.secretName ) {
                             <span class="ck-editor-origin-line">
                                 &#128273; {{ 'CK.Configurator.Editor.SecretOf' | translate: { name: n.secretName } }}

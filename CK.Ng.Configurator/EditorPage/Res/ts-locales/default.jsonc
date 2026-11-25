@@ -78,5 +78,6 @@
     "CK.Configurator.Editor.SecretOptional": "Optional (\"$SECRET?\": without it, the host leaves the value absent)",
     "CK.Configurator.Editor.SecretInCentral": "The value moves to #Dev/Secrets.json as '{{name}}' (saved with the documents); the configuration keeps its name.",
     "CK.Configurator.Editor.SecretInDeployment": "The deployment writes the name only: its host is given the secret 'Secrets:{{name}}'. The value is not written.",
-    "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json already has '{{name}}' with another value: overwrite it, or choose another name."
+    "CK.Configurator.Editor.SecretExists": "#Dev/Secrets.json already has '{{name}}' with another value: overwrite it, or choose another name.",
+    "CK.Configurator.Editor.LocksHere": "The \"$LOCK\" here (patterns relative to this object):"
 }

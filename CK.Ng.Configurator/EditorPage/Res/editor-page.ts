@@ -17,7 +17,7 @@ import {
     AddPropertyCommand, CatalogSource, CatalogSourcePicker, CheckSolutionCommand, CloseSolutionCommand, ConfigurableTypeInfo,
     CreateDeploymentCommand, EditorDocument, EditorNode, EditorProblem, EditorState, GetEditorStateQCommand, HttpCrisEndpoint,
     LockPropertyCommand, MakeSecretCommand, MarkdownComponent, OpenSolutionCommand, PickFolderCommand, RedoCommand, ReloadCommand,
-    RemovePropertyCommand, RevertPropertyCommand, SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand,
+    RemoveLockEntryCommand, RemovePropertyCommand, RevertPropertyCommand, SaveCommand, SetCatalogSourceCommand, SetValueCommand, UndoCommand,
     UnlockPropertyCommand
 } from '@local/ck-gen';
 
@@ -26,6 +26,17 @@ export interface EditorRow {
     readonly node: EditorNode;
     readonly errors: number;
     readonly warnings: number;
+}
+
+/** An entry of a "$LOCK": its pattern (relative to the object that holds it) and its level. */
+export interface LockEntry {
+    readonly pattern: string;
+    readonly level: string;
+}
+
+/** Whether a property is a "$LOCK" or in one: the locks are shown on the properties they lock (and by their holder). */
+function isInLock( n: EditorNode ): boolean {
+    return n.path.split( ':' ).includes( '$LOCK' );
 }
 
 /** What the palette offers at the selected property: a configurable type that can be added. */
@@ -126,6 +137,7 @@ export class EditorPage {
         const collapsed = this.collapsed();
         const rows: EditorRow[] = [];
         for( const n of nodes ) {
+            if( isInLock( n ) ) continue;
             let hidden = false;
             for( const c of collapsed ) {
                 if( n.path.startsWith( c + ':' ) ) { hidden = true; break; }
@@ -140,6 +152,24 @@ export class EditorPage {
     readonly selected = computed( () => {
         const path = this.selectedPath();
         return path ? this.state()?.nodes.find( n => n.path === path ) : undefined;
+    } );
+
+    /** The entries of the "$LOCK" of the selected property (an App, a Builder aspect...): its rows are not in the tree. */
+    readonly selectedLocks = computed<ReadonlyArray<LockEntry>>( () => {
+        const n = this.selected();
+        const nodes = this.state()?.nodes ?? [];
+        if( !n ) return [];
+        const i = nodes.findIndex( x => x.path === n.path + ':$LOCK' );
+        if( i < 0 ) return [];
+        const entries: LockEntry[] = [];
+        for( let j = i + 1; j < nodes.length && nodes[j].depth > nodes[i].depth; ++j ) {
+            const e = nodes[j];
+            if( e.depth !== nodes[i].depth + 1 ) continue;
+            let level = e.value ?? '';
+            try { level = JSON.parse( level ); } catch { }
+            entries.push( { pattern: e.name, level } );
+        }
+        return entries;
     } );
 
     readonly selectedProblems = computed( () => {
@@ -392,6 +422,13 @@ export class EditorPage {
     unlockAsync( path: string ): Promise<void> {
         const c = new UnlockPropertyCommand();
         c.path = path;
+        return this.runAsync( c );
+    }
+
+    removeLockEntryAsync( objectPath: string, pattern: string ): Promise<void> {
+        const c = new RemoveLockEntryCommand();
+        c.objectPath = objectPath;
+        c.pattern = pattern;
         return this.runAsync( c );
     }
 

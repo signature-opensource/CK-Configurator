@@ -74,7 +74,9 @@ a view (`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md
   a development secret of the same name.
 - **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
   a party, a feature, a client, an option) with their role, the counts of their errors and warnings, a lock mark (its
-  level and what locks it in a tooltip) and a key mark on a secret. A builder is shown
+  level and what locks it in a tooltip) and a key mark on a secret. The `"$LOCK"` are not rows: the object that holds
+  one (an App, a Builder aspect) lists its entries (pattern and level, "Remove") in the detail pane, a pattern that names
+  no property included. A builder is shown
   without its ".Builder" suffix (in the paths too); the keys of the document don't change. The three panes take the
   height of the window and scroll on their own.
 - **The selected property** (centre): its path, its role and its configurable type, its problems, the comment written
