@@ -13,8 +13,8 @@ using System.Threading.Tasks;
 namespace CK.Configurator;
 
 /// <summary>
-/// The check of the saved configuration of a solution by its builders (the third layer of the validation): each builder
-/// of its "Builders" is built, then run with <c>--check &lt;file&gt;</c> (CK.AppBuilder's <c>CKomposableAppBuilder.CheckArgument</c>:
+/// The check of the saved configuration of a solution by its Builders (the third layer of the validation): the Builder
+/// of each of its "AppContexts" ("{RootPath}/{Name}.Builder") is built, then run with <c>--check &lt;file&gt;</c> (CK.AppBuilder's <c>CKomposableAppBuilder.CheckArgument</c>:
 /// the run stops before the engine). Two builders at a time; a new check cancels the running one.
 /// <para>
 /// A builder runs after its build (CK.AppBuilder.targets): it is built with <c>CKAppBuilderRunAfterBuild=false</c>, and
@@ -34,12 +34,12 @@ sealed class SolutionCheckRunner
     IReadOnlyList<BuilderCheck> _results = [];
 
     /// <summary>
-    /// The result of the check of a builder.
+    /// The result of the check of an AppContext by its Builder.
     /// </summary>
-    /// <param name="Builder">The path of the builder in "Builders".</param>
+    /// <param name="AppContext">The name of the AppContext.</param>
     /// <param name="Entries">The warnings and the errors of its run.</param>
     /// <param name="Failure">Why it couldn't be checked (no result), or null.</param>
-    public sealed record BuilderCheck( string Builder, IReadOnlyList<(string Level, string Text)> Entries, string? Failure )
+    public sealed record BuilderCheck( string AppContext, IReadOnlyList<(string Level, string Text)> Entries, string? Failure )
     {
         public bool HasErrors => Failure != null || Entries.Any( e => e.Level is "Error" or "Fatal" );
     }
@@ -68,11 +68,11 @@ sealed class SolutionCheckRunner
     }
 
     /// <summary>
-    /// Starts the check of the builders of a solution (the running one is canceled).
+    /// Starts the check of the AppContexts of a solution by their Builders (the running one is canceled).
     /// </summary>
     /// <param name="folder">The folder of the solution.</param>
-    /// <param name="builders">The paths of the builders ("Front/Auth3.Front.Builder").</param>
-    public void Start( string folder, IReadOnlyList<string> builders )
+    /// <param name="builders">The AppContexts and the paths of their Builder ("Front/Front.Builder").</param>
+    public void Start( string folder, IReadOnlyList<(string AppContext, string Builder)> builders )
     {
         CancellationTokenSource cts;
         int generation;
@@ -87,7 +87,7 @@ sealed class SolutionCheckRunner
         if( builders.Count > 0 ) _ = RunAsync( folder, builders, generation, cts.Token );
     }
 
-    async Task RunAsync( string folder, IReadOnlyList<string> builders, int generation, CancellationToken cancel )
+    async Task RunAsync( string folder, IReadOnlyList<(string AppContext, string Builder)> builders, int generation, CancellationToken cancel )
     {
         var monitor = new ActivityMonitor( $"Checking the configuration of '{folder}'." );
         try
@@ -98,7 +98,7 @@ sealed class SolutionCheckRunner
                 await slots.WaitAsync( cancel ).ConfigureAwait( false );
                 try
                 {
-                    return await CheckBuilderAsync( monitor, folder, b, cancel ).ConfigureAwait( false );
+                    return await CheckBuilderAsync( monitor, folder, b.AppContext, b.Builder, cancel ).ConfigureAwait( false );
                 }
                 finally
                 {
@@ -132,30 +132,30 @@ sealed class SolutionCheckRunner
         }
     }
 
-    static async Task<BuilderCheck> CheckBuilderAsync( IActivityMonitor monitor, string folder, string builder, CancellationToken cancel )
+    static async Task<BuilderCheck> CheckBuilderAsync( IActivityMonitor monitor, string folder, string appContext, string builder, CancellationToken cancel )
     {
         var projectFolder = Path.GetFullPath( Path.Combine( folder, builder ) );
         var project = Path.Combine( projectFolder, Path.GetFileName( builder.TrimEnd( '/' ) ) + ".csproj" );
         if( !File.Exists( project ) )
         {
-            return new BuilderCheck( builder, [], $"The project '{project}' doesn't exist." );
+            return new BuilderCheck( appContext, [], $"The project '{project}' doesn't exist." );
         }
         var output = new List<string>();
         // A builder runs after its build (CK.AppBuilder.targets): the CK.AppBuilder that it references is checked before
         // it is built, from the restored package, so that an older one is neither built nor run.
         if( await RunAsync( monitor, ["restore", project, "--nologo", "-v", "q"], projectFolder, output, cancel ).ConfigureAwait( false ) != 0 )
         {
-            return new BuilderCheck( builder, [], $"The restore of the builder failed: {Summarize( output )}" );
+            return new BuilderCheck( appContext, [], $"The restore of the Builder failed: {Summarize( output )}" );
         }
         var support = FindAppBuilderSupport( projectFolder );
         if( support != null )
         {
-            return new BuilderCheck( builder, [], support );
+            return new BuilderCheck( appContext, [], support );
         }
         output.Clear();
         if( await RunAsync( monitor, ["build", project, "-c", "Debug", "--nologo", "-v", "q", "-p:CKAppBuilderRunAfterBuild=false"], projectFolder, output, cancel ).ConfigureAwait( false ) != 0 )
         {
-            return new BuilderCheck( builder, [], $"The build of the builder failed: {Summarize( output )}" );
+            return new BuilderCheck( appContext, [], $"The build of the Builder failed: {Summarize( output )}" );
         }
         var resultFile = Path.Combine( Path.GetTempPath(), $"ck-configurator-check-{Guid.NewGuid():N}.json" );
         try
@@ -164,13 +164,13 @@ sealed class SolutionCheckRunner
             await RunAsync( monitor, ["run", "--no-build", "-c", "Debug", "--project", project, "--", _checkArgument, resultFile], projectFolder, output, cancel ).ConfigureAwait( false );
             if( !File.Exists( resultFile ) )
             {
-                return new BuilderCheck( builder, [], $"The builder wrote no result: {Summarize( output )}" );
+                return new BuilderCheck( appContext, [], $"The Builder wrote no result: {Summarize( output )}" );
             }
             using var d = JsonDocument.Parse( File.ReadAllText( resultFile ) );
             var entries = d.RootElement.GetProperty( "Entries" ).EnumerateArray()
                            .Select( e => (e.GetProperty( "Level" ).GetString() ?? "Error", e.GetProperty( "Text" ).GetString() ?? "") )
                            .ToList();
-            return new BuilderCheck( builder, entries, null );
+            return new BuilderCheck( appContext, entries, null );
         }
         finally
         {

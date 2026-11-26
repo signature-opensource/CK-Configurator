@@ -51,7 +51,7 @@ public interface ICloseSolutionCommand : ICommand<IEditorState>
 public interface ISetValueCommand : ICommand<IEditorState>, ICommandEditorView
 {
     /// <summary>
-    /// Gets or sets the path of the property: its names separated by ':' ("Builders:App/App.Builder:App:Local:HttpEndpoint").
+    /// Gets or sets the path of the property: its names separated by ':' ("AppContexts:Front:App:Local:HttpEndpoint").
     /// The names are case insensitive, like the configuration keys.
     /// </summary>
     string Path { get; set; }
@@ -118,7 +118,7 @@ public interface IRevertPropertyCommand : ICommand<IEditorState>, ICommandEditor
 }
 
 /// <summary>
-/// Locks a property in the central configuration: an entry of the <c>"$LOCK"</c> of the App or of the Builder aspect that
+/// Locks a property in the central configuration: an entry of the <c>"$LOCK"</c> of the App or of the AppContext aspect that
 /// contains it (its path relative to it as the pattern). The level can't be above the capability of the code
 /// (<see cref="IEditorNode.MaxLevel"/>).
 /// </summary>
@@ -154,7 +154,7 @@ public interface IUnlockPropertyCommand : ICommand<IEditorState>, ICommandEditor
 public interface IRemoveLockEntryCommand : ICommand<IEditorState>, ICommandEditorView
 {
     /// <summary>
-    /// Gets or sets the path of the object that holds the <c>"$LOCK"</c> (an App, a Builder aspect...).
+    /// Gets or sets the path of the object that holds the <c>"$LOCK"</c> (an App, an AppContext aspect...).
     /// </summary>
     string ObjectPath { get; set; }
 
@@ -440,8 +440,8 @@ public interface IEditorNode : IPoco
     string? Comment { get; set; }
 
     /// <summary>
-    /// Gets or sets what the property is in the configuration, given by the catalog: "Builder", "BuilderAspect",
-    /// "BuilderAspectOption", "App", "AppAspect", "AppAspectOption", "Party", "PartyDefaults", "PartyFeature",
+    /// Gets or sets what the property is in the configuration, given by the catalog: "AppContext", "AppContextAspect",
+    /// "AppContextAspectOption", "App", "AppAspect", "AppAspectOption", "Party", "PartyDefaults", "PartyFeature",
     /// "PartyFeatureOption", "Client", "ClientFeature", "ClientFeatureOption", or null (a key of a section, or no catalog).
     /// </summary>
     string? Role { get; set; }

@@ -50,23 +50,23 @@ static class EditorAnnotations
     public sealed record Lock( string Level, string Source, string? Container, string? Pattern, bool CanUnlock );
 
     /// <summary>
-    /// Whether a path is the one of an App: "Builders:{builder}:App" (or "Defaults:App" when <paramref name="withDefaults"/>
+    /// Whether a path is the one of an App: "AppContexts:{name}:App" (or "Defaults:App" when <paramref name="withDefaults"/>
     /// is true). Structural: it doesn't need the catalog.
     /// </summary>
     public static bool IsAppPath( string path, bool withDefaults )
     {
         var s = path.Split( ':' );
-        return (s.Length == 3 && s[0].Equals( "Builders", StringComparison.OrdinalIgnoreCase ) && s[2].Equals( "App", StringComparison.OrdinalIgnoreCase ))
+        return (s.Length == 3 && s[0].Equals( "AppContexts", StringComparison.OrdinalIgnoreCase ) && s[2].Equals( "App", StringComparison.OrdinalIgnoreCase ))
                || (withDefaults && s.Length == 2 && s[0].Equals( "Defaults", StringComparison.OrdinalIgnoreCase ) && s[1].Equals( "App", StringComparison.OrdinalIgnoreCase ));
     }
 
     /// <summary>
-    /// Whether a path is the one of a Builder aspect: "Builders:{builder}:Aspects:{aspect}".
+    /// Whether a path is the one of an AppContext aspect: "AppContexts:{name}:Aspects:{aspect}".
     /// </summary>
     public static bool IsBuilderAspectPath( string path )
     {
         var s = path.Split( ':' );
-        return s.Length == 4 && s[0].Equals( "Builders", StringComparison.OrdinalIgnoreCase ) && s[2].Equals( "Aspects", StringComparison.OrdinalIgnoreCase )
+        return s.Length == 4 && s[0].Equals( "AppContexts", StringComparison.OrdinalIgnoreCase ) && s[2].Equals( "Aspects", StringComparison.OrdinalIgnoreCase )
                && !s[3].StartsWith( '$' );
     }
 
@@ -284,8 +284,8 @@ static class EditorAnnotations
 
     static string? KindOf( string? role ) => role switch
     {
-        "BuilderAspect" => "AppBuilderAspect",
-        "BuilderAspectOption" => "AppBuilderAspectOption",
+        "AppContextAspect" => "AppContextAspect",
+        "AppContextAspectOption" => "AppContextAspectOption",
         "AppAspect" => "AppAspect",
         "AppAspectOption" => "AppAspectOption",
         "PartyFeature" => "PartyFeature",

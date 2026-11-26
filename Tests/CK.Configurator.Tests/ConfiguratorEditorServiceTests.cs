@@ -20,8 +20,8 @@ public class ConfiguratorEditorServiceTests
           "$configurator": { "World": "https://github.com/signature-opensource/CK-Stack", "Version": "2026.11.24-0.uc.0.ci.0" },
           // The domain of the parties.
           "Domain": "CK",
-          "Builders": {
-            "App/App.Builder": {
+          "AppContexts": {
+            "App": {
               "App": {
                 "Local": {
                   /* The endpoint. */
@@ -36,7 +36,7 @@ public class ConfiguratorEditorServiceTests
         }
         """;
 
-    const string _local = "Builders:App/App.Builder:App:Local";
+    const string _local = "AppContexts:App:App:Local";
 
     static ConfiguratorEditorService CreateEditor() => new( new ConfiguratorCatalogService( new ConfigurationBuilder().Build() ) );
 
@@ -74,7 +74,7 @@ public class ConfiguratorEditorServiceTests
         s.Nodes.Single( n => n.Path == _local + ":Limit" ).Kind.ShouldBe( "Number" );
         s.Nodes.Single( n => n.Path == _local + ":Nothing" ).Kind.ShouldBe( "Null" );
         // Document order: a property is followed by the ones of its value.
-        s.Nodes.Select( n => n.Name ).Take( 6 ).ShouldBe( ["$configurator", "World", "Version", "Domain", "Builders", "App/App.Builder"] );
+        s.Nodes.Select( n => n.Name ).Take( 6 ).ShouldBe( ["$configurator", "World", "Version", "Domain", "AppContexts", "App"] );
     }
 
     [Test]

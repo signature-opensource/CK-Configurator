@@ -33,7 +33,7 @@ otherwise the pages show the picker.
 `CatalogPageComponent` is routed at `ckomposable/catalog` (the `ckomposable/` prefix leaves the other routes to the
 application: a web application can host the page as it is). It shows the opened catalog:
 
-- **the configurable types**, by level (the Builder aspects, the App aspects, the party features, the client features),
+- **the configurable types**, by level (the AppContext aspects, the App aspects, the party features, the client features),
   each option under its owner (`IConfigurableTypeInfo.OptionOwners`) in the level of its owner, with a detail panel
   (section, values per deployment, secrets, restrictions, levels of the properties);
 - **what a selection brings in:** the checked types are the roots of `IGetClosureQCommand` (the candidates are the
@@ -74,13 +74,13 @@ a view (`IEditorState`, see [CK.IO.Configurator](../CK.IO.Configurator/README.md
   Lock (the levels up to the capability of the code) and Unlock, Remove (or Remove here), Copy the path. "Make it a
   secret..." proposes the last two names of the path as the name of the secret, "Optional", and asks before replacing
   a development secret of the same name.
-- **The tree** (left): the properties in document order, the objects collapsible, the typed ones (a builder, an aspect,
+- **The tree** (left): the properties in document order, the objects collapsible, the typed ones (an AppContext, an aspect,
   a party, a feature, a client, an option) with their role, the counts of their errors and warnings, a lock mark (its
   level and what locks it in a tooltip) and a key mark on a secret. The `"$LOCK"` are not rows: the object that holds
-  one (an App, a Builder aspect) has a lock counter (its patterns and levels in a tooltip) and lists its entries
+  one (an App, an AppContext aspect) has a lock counter (its patterns and levels in a tooltip) and lists its entries
   (pattern, level, "Remove") in the detail pane. An absent value that a literal pattern locks is an "(absent)" row in
-  italic at its place (its detail says what its lock means), with Unlock. A builder is shown
-  without its ".Builder" suffix (in the paths too); the keys of the document don't change. The three panes take the
+  italic at its place (its detail says what its lock means), with Unlock. The paths are shown
+  without their "AppContexts:" prefix; the keys of the document don't change. The three panes take the
   height of the window and scroll on their own.
 - **The selected property** (centre): its path, its role and its configurable type, its problems, the comment written
   above it, its value (a switch for a boolean, a text for a string, JSON text otherwise; "Edit as JSON" replaces it by

@@ -8,7 +8,7 @@ namespace CK.Configurator;
 
 /// <summary>
 /// The declarations of the configurable types on the anchors of the Apps, as the build places them
-/// (<c>AppBuilderConfiguration.CollectPerDeploymentKeys</c>, <c>ApplyLocks</c>): a declaration's path is the kind of the
+/// (<c>AppContextConfiguration.CollectPerDeploymentKeys</c>, <c>ApplyLocks</c>): a declaration's path is the kind of the
 /// parties, then the path in the section of the type ("Party:Urls"). Its pattern is, relative to the App, the anchor of
 /// each party of the kind (the local party "Local" and its fallback "Defaults" for "Party" and "Local", each client of
 /// the local party for "Client"; the remotes are not in the editor), then the section of the type (an option: in the
@@ -38,7 +38,7 @@ static class EditorAnchors
                            .Where( t => t.Declarations.Count > 0 )
                            .ToList();
         if( types.Count == 0 ) yield break;
-        foreach( var app in nodes.Where( n => n.Role == "App" && n.Path.StartsWith( "Builders:", StringComparison.OrdinalIgnoreCase ) ) )
+        foreach( var app in nodes.Where( n => n.Role == "App" && n.Path.StartsWith( "AppContexts:", StringComparison.OrdinalIgnoreCase ) ) )
         {
             var clients = nodes.Where( n => n.Role == "Client" && n.Path.StartsWith( app.Path + ":", StringComparison.OrdinalIgnoreCase ) )
                                .Select( n => n.Path.Substring( app.Path.Length + 1 ) )

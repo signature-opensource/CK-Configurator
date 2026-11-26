@@ -19,8 +19,8 @@ public class ConfiguratorLocksAndSecretsTests
         {
           "Domain": "CK",
           "Defaults": { "App": { "$LOCK": { "Local:Demo": "Init" } } },
-          "Builders": {
-            "App/App.Builder": {
+          "AppContexts": {
+            "App": {
               "App": {
                 "Local": {
                   "HttpEndpoint": { "Urls": "http://localhost:5000", "Limit": 10 },
@@ -34,7 +34,7 @@ public class ConfiguratorLocksAndSecretsTests
         }
         """;
 
-    const string _app = "Builders:App/App.Builder:App";
+    const string _app = "AppContexts:App:App";
     const string _local = _app + ":Local";
 
     static ConfiguratorEditorService CreateEditor() => new( new ConfiguratorCatalogService( new ConfigurationBuilder().Build() ) );
@@ -76,7 +76,7 @@ public class ConfiguratorLocksAndSecretsTests
         // After the properties of "Defaults:App".
         var index = s.Nodes.ToList().FindIndex( n => n.Path == "Defaults:App:Local:Demo" );
         s.Nodes[index - 1].Path.ShouldStartWith( "Defaults:App" );
-        s.Nodes[index + 1].Path.ShouldBe( "Builders" );
+        s.Nodes[index + 1].Path.ShouldBe( "AppContexts" );
         // Unlocked: it disappears.
         s = await editor.UnlockPropertyAsync( TestHelper.Monitor, null, "Defaults:App:Local:Demo" );
         s.Nodes.ShouldNotContain( n => n.Kind == "Absent" );
@@ -86,7 +86,7 @@ public class ConfiguratorLocksAndSecretsTests
     [Test]
     public async Task lock_and_unlock_a_property_Async()
     {
-        var folder = CreateSolution( "lock", production: """{ "Builders": { "App/App.Builder": { "App": { "Local": { "HttpEndpoint": { "Urls": "https://*:443" } } } } } }""" );
+        var folder = CreateSolution( "lock", production: """{ "AppContexts": { "App": { "App": { "Local": { "HttpEndpoint": { "Urls": "https://*:443" } } } } } }""" );
         var editor = CreateEditor();
         await editor.OpenAsync( TestHelper.Monitor, folder );
 
@@ -105,7 +105,7 @@ public class ConfiguratorLocksAndSecretsTests
         var p = await editor.GetStateAsync( "#Production" );
         p.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Urls" ).LockLevel.ShouldBe( "Compile" );
         await Should.ThrowAsync<CKException>( () => editor.LockPropertyAsync( TestHelper.Monitor, "#Production", _local + ":HttpEndpoint", "Init" ) );
-        // Outside an App or a Builder aspect.
+        // Outside an App or an AppContext aspect.
         (await Should.ThrowAsync<CKException>( () => editor.LockPropertyAsync( TestHelper.Monitor, null, "Domain", "Compile" ) )).Message.ShouldContain( "can't be locked" );
         await Should.ThrowAsync<CKException>( () => editor.LockPropertyAsync( TestHelper.Monitor, null, _local + ":HttpEndpoint", "Later" ) );
         // Only a literal pattern at the path of the property is unlocked.
@@ -232,15 +232,15 @@ public class ConfiguratorLocksAndSecretsTests
                 ]
             }
         ] );
-        var text = """{ "Builders": { "B": { "App": { "Local": { "HttpEndpoint": { "Urls": "x", "Kestrel": { "A": 1 } } } } } } }""";
+        var text = """{ "AppContexts": { "B": { "App": { "Local": { "HttpEndpoint": { "Urls": "x", "Kestrel": { "A": 1 } } } } } } }""";
         var (typed, _) = ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), catalog );
         var nodes = EditorAnnotations.Annotate( typed, catalog, null, out _ );
-        var kestrel = nodes.Single( n => n.Path == "Builders:B:App:Local:HttpEndpoint:Kestrel:A" );
+        var kestrel = nodes.Single( n => n.Path == "AppContexts:B:App:Local:HttpEndpoint:Kestrel:A" );
         kestrel.LockLevel.ShouldBe( "Compile" );
         kestrel.LockSource.ShouldBe( "[ConfigurationLock( \"Party:Kestrel\" )] of 'HttpEndpoint'" );
         kestrel.CanUnlock.ShouldBeFalse();
-        nodes.Single( n => n.Path == "Builders:B:App:Local:HttpEndpoint:Urls" ).ShouldSatisfyAllConditions( n => n.MaxLevel.ShouldBe( "Init" ),
+        nodes.Single( n => n.Path == "AppContexts:B:App:Local:HttpEndpoint:Urls" ).ShouldSatisfyAllConditions( n => n.MaxLevel.ShouldBe( "Init" ),
                                                                                                           n => n.LockLevel.ShouldBeNull() );
-        nodes.Single( n => n.Path == "Builders:B:App:Local:HttpEndpoint:Kestrel" ).MaxLevel.ShouldBeNull();
+        nodes.Single( n => n.Path == "AppContexts:B:App:Local:HttpEndpoint:Kestrel" ).MaxLevel.ShouldBeNull();
     }
 }

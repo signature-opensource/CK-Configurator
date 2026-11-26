@@ -13,20 +13,20 @@ namespace CK.Configurator;
 /// build, without running anything.
 /// <list type="bullet">
 ///   <item>
-///   The structure: the root keys (<c>$schema</c>, <c>$configurator</c>, <c>Deployment</c>, <c>Builders</c>,
-///   <c>Defaults</c> and the keys that the packages declare: <c>[assembly: CentralConfigurationKey]</c>), the keys of a
-///   builder (<c>App</c>, <c>Apps</c>, <c>Aspects</c>, <c>ProjectCompileKeys</c>), the levels of an App (<c>Aspects</c>,
-///   <c>Local</c>, <c>Defaults</c>).
+///   The structure: the root keys (<c>$schema</c>, <c>$configurator</c>, <c>Deployment</c>, <c>Domain</c>,
+///   <c>GlobalDomainPrefix</c>, <c>AppContexts</c>, <c>Defaults</c> and the keys that the packages declare:
+///   <c>[assembly: CentralConfigurationKey]</c>), the keys of an AppContext (<c>RootPath</c>, <c>App</c>, <c>Apps</c>,
+///   <c>Aspects</c>, <c>ProjectCompileKeys</c>), the levels of an App (<c>Aspects</c>, <c>Local</c>, <c>Defaults</c>).
 ///   </item>
 ///   <item>
-///   The configurable types: a Builder aspect, an App aspect, a party feature, a client feature and their options must be
+///   The configurable types: an AppContext aspect, an App aspect, a party feature, a client feature and their options must be
 ///   known by the catalog (a key of a party that is no feature is left to the run time by the build: a warning); an
 ///   option under another owner is a warning; a required type can't be <c>false</c>; a configurable type is
 ///   <c>true</c>, <c>false</c> or a section.
 ///   </item>
 ///   <item>
 ///   The required types of the options ("only with it", as the build selects the options): an option enabled explicitly
-///   that requires a disabled type (another option of its owner, a party feature, a client feature, an App or a Builder
+///   that requires a disabled type (another option of its owner, a party feature, a client feature, an App or an AppContext
 ///   aspect) is an error; an option enabled by default is disabled with it (an information on its owner), and so are
 ///   the options that require it in turn. A declaration is looked up as the run time does: in the party (or the client,
 ///   the aspects of the App), then in the "Defaults" above it, the central "Defaults:App" merged under each App.
@@ -41,8 +41,8 @@ namespace CK.Configurator;
 public static class ConfigurationChecker
 {
     // "$PER_DEPLOYMENT" markers are accepted on any object (CentralDeployment.PerDeploymentKey).
-    static readonly HashSet<string> _rootKeys = new( StringComparer.OrdinalIgnoreCase ) { "$schema", "$configurator", "$PER_DEPLOYMENT", "Deployment", "Builders", "Defaults" };
-    static readonly HashSet<string> _builderKeys = new( StringComparer.OrdinalIgnoreCase ) { "App", "Apps", "Aspects", "ProjectCompileKeys", "$schema", "$PER_DEPLOYMENT" };
+    static readonly HashSet<string> _rootKeys = new( StringComparer.OrdinalIgnoreCase ) { "$schema", "$configurator", "$PER_DEPLOYMENT", "Deployment", "AppContexts", "Defaults" };
+    static readonly HashSet<string> _appContextKeys = new( StringComparer.OrdinalIgnoreCase ) { "RootPath", "App", "Apps", "Aspects", "ProjectCompileKeys", "$schema", "$PER_DEPLOYMENT" };
     static readonly HashSet<string> _partyKeys = new( StringComparer.OrdinalIgnoreCase ) { "PublicUrl", "Assemblies", "DefaultAssembly" };
     static readonly HashSet<string> _clientKeys = new( StringComparer.OrdinalIgnoreCase ) { "Types", "ExcludedTypes" };
     static readonly HashSet<string> _lockLevels = new( StringComparer.Ordinal ) { "\"Compile\"", "\"Init\"", "\"Run\"" };
@@ -110,9 +110,9 @@ public static class ConfigurationChecker
             foreach( var n in Children( "" ) )
             {
                 if( n.Name.Equals( "$configurator", StringComparison.OrdinalIgnoreCase ) ) CheckConfigurator( n );
-                else if( n.Name.Equals( "Builders", StringComparison.OrdinalIgnoreCase ) ) CheckBuilders( n );
+                else if( n.Name.Equals( "AppContexts", StringComparison.OrdinalIgnoreCase ) ) CheckAppContexts( n );
                 else if( n.Name.Equals( "Defaults", StringComparison.OrdinalIgnoreCase ) ) CheckDefaults( n );
-                // A "$LOCK" is reported by CheckSyntax (it is outside the Apps and the Builder aspects).
+                // A "$LOCK" is reported by CheckSyntax (it is outside the Apps and the AppContext aspects).
                 else if( _isDeployment && n.Name.Equals( "$BASE", StringComparison.OrdinalIgnoreCase ) ) continue;
                 else if( !_rootKeys.Contains( n.Name ) && !_centralKeys.Contains( n.Name ) && !n.Name.Equals( "$LOCK", StringComparison.OrdinalIgnoreCase ) )
                 {
@@ -146,23 +146,23 @@ public static class ConfigurationChecker
             }
         }
 
-        void CheckBuilders( EditorNodeData builders )
+        void CheckAppContexts( EditorNodeData appContexts )
         {
-            foreach( var b in Children( builders.Path ) )
+            foreach( var b in Children( appContexts.Path ) )
             {
-                Roles[b.Path] = ("Builder", null);
+                Roles[b.Path] = ("AppContext", null);
                 if( b.Kind != "Object" )
                 {
-                    Error( b.Path, $"The builder '{b.Name}' must be an object." );
+                    Error( b.Path, $"The AppContext '{b.Name}' must be an object." );
                     continue;
                 }
                 foreach( var k in Children( b.Path ) )
                 {
-                    if( k.Name.Equals( "Aspects", StringComparison.OrdinalIgnoreCase ) ) CheckAspects( k, "AppBuilderAspect", "BuilderAspect", "a Builder aspect" );
+                    if( k.Name.Equals( "Aspects", StringComparison.OrdinalIgnoreCase ) ) CheckAspects( k, "AppContextAspect", "AppContextAspect", "an AppContext aspect" );
                     else if( k.Name.Equals( "App", StringComparison.OrdinalIgnoreCase ) ) CheckApp( k );
-                    else if( !_builderKeys.Contains( k.Name ) )
+                    else if( !_appContextKeys.Contains( k.Name ) )
                     {
-                        Error( k.Path, $"Unknown key '{k.Name}' in the builder '{b.Name}': its keys are App (or Apps), Aspects and ProjectCompileKeys." );
+                        Error( k.Path, $"Unknown key '{k.Name}' in the AppContext '{b.Name}': its keys are RootPath, App (or Apps), Aspects and ProjectCompileKeys." );
                     }
                 }
             }
@@ -326,13 +326,13 @@ public static class ConfigurationChecker
         // level, the first one wins).
         sealed record Scope( IReadOnlyList<string> Levels );
 
-        // The scopes of the owners of options in a builder: its Builder aspects; for its App: the App aspects, the local
+        // The scopes of the owners of options in an AppContext: its AppContext aspects; for its App: the App aspects, the local
         // party and each of its clients.
         sealed record BuilderScopes( Scope BuilderAspects, Scope? AppAspects, Scope? Party, IReadOnlyList<(string Client, Scope Scope)> Clients );
 
         IEnumerable<BuilderScopes> GetScopes()
         {
-            foreach( var b in Roles.Where( r => r.Value.Role == "Builder" ).Select( r => r.Key ) )
+            foreach( var b in Roles.Where( r => r.Value.Role == "AppContext" ).Select( r => r.Key ) )
             {
                 var builderAspects = new Scope( [$"{b}:Aspects"] );
                 var app = $"{b}:App";
@@ -375,7 +375,7 @@ public static class ConfigurationChecker
         {
             foreach( var s in GetScopes() )
             {
-                CheckOwners( s, s.BuilderAspects, "AppBuilderAspect" );
+                CheckOwners( s, s.BuilderAspects, "AppContextAspect" );
                 if( s.AppAspects != null ) CheckOwners( s, s.AppAspects, "AppAspect" );
                 if( s.Party != null ) CheckOwners( s, s.Party, "PartyFeature" );
                 foreach( var (_, client) in s.Clients ) CheckOwners( s, client, "PartyClientFeature", client );
@@ -448,7 +448,7 @@ public static class ConfigurationChecker
                     "PartyFeature" => (scopes.Party, "the party feature"),
                     "PartyClientFeature" => (client, "the client feature"),
                     "AppAspect" => (scopes.AppAspects, "the App aspect"),
-                    "AppBuilderAspect" => (scopes.BuilderAspects, "the Builder aspect"),
+                    "AppContextAspect" => (scopes.BuilderAspects, "the AppContext aspect"),
                     _ => (null, "")
                 };
                 if( scope == null ) continue;
@@ -468,7 +468,7 @@ public static class ConfigurationChecker
                     {
                         if( !IsLockable( ParentPath( n.Path ) ) )
                         {
-                            Error( n.Path, "A \"$LOCK\" restricts the values of an App or of a Builder aspect: it is outside them." );
+                            Error( n.Path, "A \"$LOCK\" restricts the values of an App or of an AppContext aspect: it is outside them." );
                         }
                         else if( n.Kind != "Object" || Children( n.Path ).Any( l => l.Kind != "String" || !_lockLevels.Contains( l.Value! ) ) )
                         {
@@ -493,13 +493,13 @@ public static class ConfigurationChecker
             }
         }
 
-        // The objects where a "$LOCK" can be (AppBuilderConfiguration): in an App ("Builders:{b}:App", "Builders:{b}:Apps",
-        // "Defaults:App") or in a Builder aspect ("Builders:{b}:Aspects:{aspect}", not "Aspects" itself).
+        // The objects where a "$LOCK" can be (AppContextConfiguration): in an App ("AppContexts:{b}:App", "AppContexts:{b}:Apps",
+        // "Defaults:App") or in an AppContext aspect ("AppContexts:{b}:Aspects:{aspect}", not "Aspects" itself).
         static bool IsLockable( string objectPath )
         {
             var s = objectPath.Split( ':' );
             if( s.Length >= 2 && s[0].Equals( "Defaults", StringComparison.OrdinalIgnoreCase ) && s[1].Equals( "App", StringComparison.OrdinalIgnoreCase ) ) return true;
-            if( s.Length < 3 || !s[0].Equals( "Builders", StringComparison.OrdinalIgnoreCase ) ) return false;
+            if( s.Length < 3 || !s[0].Equals( "AppContexts", StringComparison.OrdinalIgnoreCase ) ) return false;
             if( s[2].Equals( "App", StringComparison.OrdinalIgnoreCase ) || s[2].Equals( "Apps", StringComparison.OrdinalIgnoreCase ) ) return true;
             return s.Length >= 4 && s[2].Equals( "Aspects", StringComparison.OrdinalIgnoreCase );
         }

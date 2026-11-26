@@ -21,8 +21,8 @@
       "CK-Monitoring": { "GrandOutput": { "Handlers": { "Console": false } } }
     }
   },
-  "Builders": {
-    "Configurator/Configurator.Builder": {
+  "AppContexts": {
+    "Configurator": {
       "App": {
         // The analyzer of the catalogs is a CK.Configurator.Catalog.Worker package (the one of the opened profile, or
         // the one of this version), not the project of the development solution.

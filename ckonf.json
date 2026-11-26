@@ -1,9 +1,9 @@
 {
   // The central configuration of the solution: one party, the configurator ("CK/$Configurator"), a desktop application.
-  // The ckonf.json of its builder is generated from its entry below when the builder runs (then the appsettings.json of
-  // its host): edit this file, not the projections.
+  // The ckonf.json of its Builder is generated from its AppContext below when the Builder runs (then the appsettings.json
+  // of its host): edit this file, not the projections.
   "Domain": "CK",
-  // The App is named after its party: "Configurator" (Configurator.App, Configurator.Builder, Configurator.Host).
+  // The projects of the Apps leave the whole domain out: the App "$Configurator" is Configurator.App and Configurator.Host.
   "GlobalDomainPrefix": "CK",
 
   "Defaults": {
@@ -16,8 +16,10 @@
     }
   },
 
-  "Builders": {
-    "Configurator/Configurator.Builder": {
+  // The AppContext "Configurator": its Builder is Configurator/Configurator.Builder, its single App "$Configurator".
+  "AppContexts": {
+    "Configurator": {
+      "RootPath": "Configurator",
       "App": {
         "Local": {
           // In process (CK.AppIdentity.HttpEndpoint.InProcess): no port is opened, the desktop window shows

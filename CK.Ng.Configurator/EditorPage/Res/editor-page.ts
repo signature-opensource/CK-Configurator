@@ -155,7 +155,7 @@ export class EditorPage {
         return path ? this.state()?.nodes.find( n => n.path === path ) : undefined;
     } );
 
-    /** The entries of the "$LOCK" by the path of the object that holds it (an App, a Builder aspect...): not rows of the tree. */
+    /** The entries of the "$LOCK" by the path of the object that holds it (an App, an AppContext aspect...): not rows of the tree. */
     readonly lockEntries = computed<ReadonlyMap<string, ReadonlyArray<LockEntry>>>( () => {
         const nodes = this.state()?.nodes ?? [];
         const result = new Map<string, LockEntry[]>();
@@ -243,7 +243,7 @@ export class EditorPage {
             default:
                 if( n.name.toLowerCase() === 'aspects' ) {
                     const parent = this.state()?.nodes.find( p => p.path === n.path.substring( 0, n.path.lastIndexOf( ':' ) ) );
-                    offered = types.filter( t => t.kind === ( parent?.role === 'Builder' ? 'AppBuilderAspect' : 'AppAspect' ) );
+                    offered = types.filter( t => t.kind === ( parent?.role === 'AppContext' ? 'AppContextAspect' : 'AppAspect' ) );
                 }
         }
         return offered.map( type => ( { type, present: present.has( type.name.toLowerCase() ) } ) )
@@ -294,8 +294,8 @@ export class EditorPage {
 
     typeOf( n: EditorNode | undefined ): ConfigurableTypeInfo | undefined {
         if( !n?.typeName ) return undefined;
-        const kind = n.role === 'BuilderAspect' ? 'AppBuilderAspect'
-                   : n.role === 'BuilderAspectOption' ? 'AppBuilderAspectOption'
+        const kind = n.role === 'AppContextAspect' ? 'AppContextAspect'
+                   : n.role === 'AppContextAspectOption' ? 'AppContextAspectOption'
                    : n.role === 'AppAspect' ? 'AppAspect'
                    : n.role === 'AppAspectOption' ? 'AppAspectOption'
                    : n.role === 'PartyFeature' ? 'PartyFeature'
@@ -425,15 +425,15 @@ export class EditorPage {
 
     closeMenu(): void { this.#contextMenu.close(); }
 
-    /** Whether a property is in an App ("Builders:{b}:App", "Defaults:App") or a Builder aspect: it can be locked. */
+    /** Whether a property is in an App ("AppContexts:{b}:App", "Defaults:App") or an AppContext aspect: it can be locked. */
     canLock( n: EditorNode ): boolean {
         if( this.isDeploymentView() ) return false;
         const s = n.path.split( ':' );
         for( let i = s.length - 1; i > 0; --i ) {
             const p = s.slice( 0, i );
-            const isApp = (p.length === 3 && p[0] === 'Builders' && p[2].toLowerCase() === 'app')
+            const isApp = (p.length === 3 && p[0] === 'AppContexts' && p[2].toLowerCase() === 'app')
                           || (p.length === 2 && p[0].toLowerCase() === 'defaults' && p[1].toLowerCase() === 'app');
-            const isAspect = p.length === 4 && p[0] === 'Builders' && p[2].toLowerCase() === 'aspects' && !p[3].startsWith( '$' );
+            const isAspect = p.length === 4 && p[0] === 'AppContexts' && p[2].toLowerCase() === 'aspects' && !p[3].startsWith( '$' );
             if( isApp || isAspect ) return true;
         }
         return false;
@@ -610,22 +610,15 @@ export class EditorPage {
     }
 
     /**
-     * The path of a property as it is shown: without "Builders:" and without the ".Builder" suffix of its builder
-     * ("Auth3/Auth3.Auth3:App:Local:HttpEndpoint"). The keys of the document don't change.
+     * The path of a property as it is shown: without "AppContexts:" ("Auth3:App:Local:HttpEndpoint"). The keys of the
+     * document don't change.
      */
     shortPath( path: string ): string {
-        if( !path.startsWith( 'Builders:' ) ) return path;
-        const rest = path.substring( 9 );
-        const i = rest.indexOf( ':' );
-        return i < 0 ? EditorPage.builderName( rest ) : EditorPage.builderName( rest.substring( 0, i ) ) + rest.substring( i );
+        return path.startsWith( 'AppContexts:' ) ? path.substring( 'AppContexts:'.length ) : path;
     }
 
-    /** The name of a property as it is shown: a builder without its ".Builder" suffix. */
+    /** The name of a property as it is shown. */
     displayName( n: EditorNode ): string {
-        return n.role === 'Builder' || ( n.depth === 1 && n.path.startsWith( 'Builders:' ) ) ? EditorPage.builderName( n.name ) : n.name;
-    }
-
-    static builderName( key: string ): string {
-        return key.replace( /\.Builder$/i, '' );
+        return n.name;
     }
 }

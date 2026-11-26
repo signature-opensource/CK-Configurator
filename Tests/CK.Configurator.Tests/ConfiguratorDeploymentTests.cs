@@ -16,8 +16,8 @@ public class ConfiguratorDeploymentTests
     const string _central = """
         {
           "Domain": "CK",
-          "Builders": {
-            "App/App.Builder": {
+          "AppContexts": {
+            "App": {
               "App": {
                 "Local": {
                   // The endpoint.
@@ -34,8 +34,8 @@ public class ConfiguratorDeploymentTests
     const string _production = """
         {
           // The production.
-          "Builders": {
-            "App/App.Builder": {
+          "AppContexts": {
+            "App": {
               "App": {
                 "Local": {
                   "HttpEndpoint": { "Urls": "https://*:443" },
@@ -50,11 +50,11 @@ public class ConfiguratorDeploymentTests
     const string _staging = """
         {
           "$BASE": "#Production",
-          "Builders": { "App/App.Builder": { "App": { "Local": { "HttpEndpoint": { "Urls": "https://staging:443" } } } } }
+          "AppContexts": { "App": { "App": { "Local": { "HttpEndpoint": { "Urls": "https://staging:443" } } } } }
         }
         """;
 
-    const string _local = "Builders:App/App.Builder:App:Local";
+    const string _local = "AppContexts:App:App:Local";
 
     static ConfiguratorEditorService CreateEditor() => new( new ConfiguratorCatalogService( new ConfigurationBuilder().Build() ) );
 
@@ -125,8 +125,8 @@ public class ConfiguratorDeploymentTests
         s.Nodes.Single( n => n.Path == "Domain" ).Origin.ShouldBe( "Deployment" );
         s = await editor.SetValueAsync( TestHelper.Monitor, "#Production", _local + ":HttpEndpoint:Limit", "20" );
         s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Limit" ).ShouldSatisfyAllConditions( n => n.Value.ShouldBe( "20" ), n => n.Origin.ShouldBe( "Deployment" ) );
-        s = await editor.AddPropertyAsync( TestHelper.Monitor, "#Production", "Builders:App/App.Builder:App", "Aspects", "{ \"Globalization\": true }" );
-        s.Nodes.Single( n => n.Path == "Builders:App/App.Builder:App:Aspects:Globalization" ).Origin.ShouldBe( "Deployment" );
+        s = await editor.AddPropertyAsync( TestHelper.Monitor, "#Production", "AppContexts:App:App", "Aspects", "{ \"Globalization\": true }" );
+        s.Nodes.Single( n => n.Path == "AppContexts:App:App:Aspects:Globalization" ).Origin.ShouldBe( "Deployment" );
         await Should.ThrowAsync<CKException>( () => editor.AddPropertyAsync( TestHelper.Monitor, "#Production", "", "Domain", "1" ) );
         // The central document is unchanged.
         (await editor.GetStateAsync()).Nodes.Single( n => n.Path == "Domain" ).Value.ShouldBe( "\"CK\"" );
@@ -134,7 +134,7 @@ public class ConfiguratorDeploymentTests
         // "Remove here": a null for an inherited property, a removal for one that only the overlay writes.
         s = await editor.RemovePropertyAsync( TestHelper.Monitor, "#Production", _local + ":HttpEndpoint:Limit" );
         s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Limit" ).Origin.ShouldBe( "Removed" );
-        s = await editor.RemovePropertyAsync( TestHelper.Monitor, "#Production", "Builders:App/App.Builder:App:Aspects" );
+        s = await editor.RemovePropertyAsync( TestHelper.Monitor, "#Production", "AppContexts:App:App:Aspects" );
         s.Nodes.ShouldNotContain( n => n.Name == "Aspects" );
 
         // Revert: the inherited value again; the objects that become empty "{}" are removed when an object is inherited.
@@ -143,7 +143,7 @@ public class ConfiguratorDeploymentTests
         s = await editor.RevertPropertyAsync( TestHelper.Monitor, "#Production", _local + ":HttpEndpoint:Urls" );
         s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint" ).Origin.ShouldBe( "Central" );
         s.Nodes.Single( n => n.Path == _local + ":HttpEndpoint:Urls" ).Value.ShouldBe( "\"http://localhost:5000\"" );
-        await Should.ThrowAsync<CKException>( () => editor.RevertPropertyAsync( TestHelper.Monitor, "#Production", "Builders:App/App.Builder:App:Local:HttpEndpoint:Urls" ) );
+        await Should.ThrowAsync<CKException>( () => editor.RevertPropertyAsync( TestHelper.Monitor, "#Production", "AppContexts:App:App:Local:HttpEndpoint:Urls" ) );
         await Should.ThrowAsync<CKException>( () => editor.RevertPropertyAsync( TestHelper.Monitor, null, "Domain" ) );
 
         s = await editor.SaveAsync( TestHelper.Monitor, "#Production", overwrite: false );
@@ -223,7 +223,7 @@ public class ConfiguratorDeploymentTests
         var editor = CreateEditor();
         await editor.OpenAsync( TestHelper.Monitor, CreateSolution( "checks",
                                                                      ("#Production", _production),
-                                                                     ("#Staging", """{ "$BASE": "#Production", "Domain": "X", "Deployment": { "Builders": [ "App/App.Builder", "Nope" ] } }"""),
+                                                                     ("#Staging", """{ "$BASE": "#Production", "Domain": "X", "Deployment": { "AppContexts": [ "App", "Nope" ] } }"""),
                                                                      ("#A", """{ "$BASE": "#B" }"""),
                                                                      ("#B", """{ "$BASE": "#A" }""") ) );
         // #Production writes the value per deployment of the central marker.
@@ -231,9 +231,9 @@ public class ConfiguratorDeploymentTests
         s.Problems.ShouldNotContain( p => p.Severity == "Error" );
         // #Staging inherits it from #Production: an error.
         s = await editor.GetStateAsync( "#Staging" );
-        s.Problems.ShouldContain( p => p.Path == _local + ":HttpEndpoint:Urls" && p.Message.Contains( "inherits \"Builders:App/App.Builder:App:Local:HttpEndpoint:Urls\"" ) );
+        s.Problems.ShouldContain( p => p.Path == _local + ":HttpEndpoint:Urls" && p.Message.Contains( "inherits \"AppContexts:App:App:Local:HttpEndpoint:Urls\"" ) );
         s.Problems.ShouldContain( p => p.Path == "Domain" && p.Message.Contains( "can't be written in a deployment" ) );
-        s.Problems.ShouldContain( p => p.Path == "Deployment:Builders" && p.Message.Contains( "Invalid builder 'Nope'" ) );
+        s.Problems.ShouldContain( p => p.Path == "Deployment:AppContexts" && p.Message.Contains( "Invalid AppContext 'Nope'" ) );
         s.Documents.Single( d => d.Name == "#Staging" ).Errors.ShouldBe( 3 );
         s = await editor.GetStateAsync( "#A" );
         s.Problems.ShouldContain( p => p.Path == "$BASE" && p.Message.Contains( "overlay each other" ) );

@@ -77,14 +77,14 @@ public class ConfiguratorFormsTests
         }
     ] );
 
-    const string _local = "Builders:B:App:Local";
+    const string _local = "AppContexts:B:App:Local";
 
     static EditorProblemData[] Check( string local, string defaults = "{}" )
     {
         var text = $$"""
             {
               "Defaults": { "App": { "Defaults": {{defaults}} } },
-              "Builders": { "B": { "App": { "Local": {{local}} } } }
+              "AppContexts": { "B": { "App": { "Local": {{local}} } } }
             }
             """;
         return ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), _catalog ).Problems.ToArray();
@@ -132,12 +132,12 @@ public class ConfiguratorFormsTests
         var text = """
             {
               "Defaults": { "App": { "Defaults": { "Endpoint": { "Mode": "Strict", "Limits": { "Max": 5 } } } } },
-              "Builders": { "B": { "App": { "Local": { "Endpoint": { "Url": "x" } }, "Defaults": { "Endpoint": { "Retries": 2 } } } } }
+              "AppContexts": { "B": { "App": { "Local": { "Endpoint": { "Url": "x" } }, "Defaults": { "Endpoint": { "Retries": 2 } } } } }
             }
             """;
         var (typed, _) = ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), _catalog );
         var values = EditorDefaults.Compute( typed, _catalog ).Where( v => v.Path.StartsWith( _local ) ).ToList();
-        values.ShouldContain( new EditorDefaultedValueData( _local + ":Endpoint:Retries", "2", "Builders:B:App:Defaults:Endpoint:Retries" ) );
+        values.ShouldContain( new EditorDefaultedValueData( _local + ":Endpoint:Retries", "2", "AppContexts:B:App:Defaults:Endpoint:Retries" ) );
         values.ShouldContain( new EditorDefaultedValueData( _local + ":Endpoint:Mode", "\"Strict\"", "Defaults:App:Defaults:Endpoint:Mode" ) );
         // The keys of a nested model are followed.
         values.ShouldContain( new EditorDefaultedValueData( _local + ":Endpoint:Limits:Max", "5", "Defaults:App:Defaults:Endpoint:Limits:Max" ) );
@@ -152,7 +152,7 @@ public class ConfiguratorFormsTests
         Directory.CreateDirectory( folder );
         File.WriteAllText( Path.Combine( folder, "ckonf.json" ), """
             {
-              "Builders": { "B": { "App": { "Local": { "Endpoint": true } } } }
+              "AppContexts": { "B": { "App": { "Local": { "Endpoint": true } } } }
             }
             """ );
         var editor = new ConfiguratorEditorService( new ConfiguratorCatalogService( new ConfigurationBuilder().Build() ) );

@@ -66,12 +66,12 @@ static class DeploymentChecker
         CheckInherited( centralText, bases, self, nodes, catalog, problems );
     }
 
-    // "Deployment:Builders": the paths of builders of the merged configuration.
+    // "Deployment:AppContexts": the names of AppContexts of the merged configuration.
     static void CheckSettings( IReadOnlyList<EditorNodeData> nodes, List<EditorProblemData> problems )
     {
-        var settingsBuilders = nodes.FirstOrDefault( n => n.Path.Equals( $"{CentralDeployment.SettingsKey}:Builders", StringComparison.OrdinalIgnoreCase ) );
+        var settingsBuilders = nodes.FirstOrDefault( n => n.Path.Equals( $"{CentralDeployment.SettingsKey}:{CentralConfiguration.AppContextsKey}", StringComparison.OrdinalIgnoreCase ) );
         if( settingsBuilders == null || settingsBuilders.Kind == "Null" ) return;
-        var builders = nodes.Where( n => n.Depth == 1 && n.Path.StartsWith( "Builders:", StringComparison.OrdinalIgnoreCase ) ).Select( n => n.Name ).ToList();
+        var builders = nodes.Where( n => n.Depth == 1 && n.Path.StartsWith( "AppContexts:", StringComparison.OrdinalIgnoreCase ) ).Select( n => n.Name ).ToList();
         List<string?>? items = null;
         if( settingsBuilders.Kind == "Array" )
         {
@@ -86,14 +86,14 @@ static class DeploymentChecker
         }
         if( items == null || items.Any( i => i == null ) )
         {
-            problems.Add( new EditorProblemData( settingsBuilders.Path, "Error", $"\"{settingsBuilders.Path}\" is an array of the paths of the builders to deploy (all by default)." ) );
+            problems.Add( new EditorProblemData( settingsBuilders.Path, "Error", $"\"{settingsBuilders.Path}\" is an array of the names of the AppContexts to deploy (all by default)." ) );
             return;
         }
         foreach( var i in items )
         {
             if( !builders.Contains( i!, StringComparer.OrdinalIgnoreCase ) )
             {
-                problems.Add( new EditorProblemData( settingsBuilders.Path, "Error", $"Invalid builder '{i}' in \"{settingsBuilders.Path}\": the builders are '{string.Join( "', '", builders )}'." ) );
+                problems.Add( new EditorProblemData( settingsBuilders.Path, "Error", $"Invalid AppContext '{i}' in \"{settingsBuilders.Path}\": the AppContexts are '{string.Join( "', '", builders )}'." ) );
             }
         }
     }

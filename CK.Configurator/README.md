@@ -50,8 +50,8 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
 - **The catalog of the document** is the one of its `"$configurator"` root key (`ConfiguratorEditorService.SetCatalogSourceAsync`
   writes it: an edit). When it is opened (`ConfiguratorCatalogService.TryGetOpened`: the editor never opens a catalog,
   this takes a minute), [`ConfigurationChecker`](Editor/ConfigurationChecker.cs) types the properties (their role: a
-  builder, a Builder aspect, an App, an App aspect, a party, a party feature, a client, a client feature, an option) and
-  checks the document statically, with the rules of the build: the root keys and the keys of a builder, the
+  AppContext, an AppContext aspect, an App, an App aspect, a party, a party feature, a client, a client feature, an option) and
+  checks the document statically, with the rules of the build: the root keys and the keys of an AppContext, the
   configurable types known by the catalog (a key of a party that is no feature is a warning: the build leaves it to the
   run time), an option under another owner, a required type set to `false`, a configurable type that is not `true`,
   `false` or a section, the syntax of `"$LOCK"`, `"$PER_DEPLOYMENT"` and `{ "$SECRET": "..." }`, a secret written as a
@@ -71,7 +71,7 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
   value is replaced only when asked. In a deployment, only the handle is written in its overlay (its host is given the
   secret).
 - **The locks** are edited in the central configuration: `LockPropertyAsync` writes an entry of the `"$LOCK"` of the App
-  or of the Builder aspect that contains the property (its path relative to it as the pattern), up to the capability of
+  or of the AppContext aspect that contains the property (its path relative to it as the pattern), up to the capability of
   the code; `UnlockPropertyAsync` removes the literal pattern that names it (and the `"$LOCK"` that becomes empty).
   [`EditorAnnotations`](Editor/EditorAnnotations.cs) gives each property of a view its lock (the lowest level of the
   `"$LOCK"` patterns that cover it, a `"$LOCK"` of `Defaults:App` or of the `Defaults` of an App applying like the build
@@ -88,10 +88,10 @@ view, mapped to the `IEditorState` of every editor command by [`ConfiguratorEdit
   [`EditorDefaults`](Editor/EditorDefaults.cs) gives the values that the absent keys of a modeled section take from a
   `Defaults` level (key by key, as the reader of the models), for the forms. `SetValueAsync` with `createPath` writes a
   key with the missing objects of its path (a section that is `true` becomes an object).
-- **Once saved, the builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): each
-  builder of the `"Builders"` is restored, built without running it (`-p:CKAppBuilderRunAfterBuild=false`) and run with
-  `--check <file>` (CK.AppBuilder: the run stops before the engine), two at a time. A builder whose CK.AppBuilder
-  package doesn't have the check is neither built nor run (its build would run the whole builder). Their warnings and
-  errors are the problems of the "Build" layer: on the property that starts their message when it is found, otherwise
-  on their builder; the ones about a deployment are in its view.
+- **Once saved, the Builders check the configuration** ([`SolutionCheckRunner`](Editor/SolutionCheckRunner.cs)): the
+  Builder of each of the `"AppContexts"` (`{RootPath}/{Name}.Builder`) is restored, built without running it
+  (`-p:CKAppBuilderRunAfterBuild=false`) and run with `--check <file>` (CK.AppBuilder: the run stops before the engine),
+  two at a time. A Builder whose CK.AppBuilder package doesn't have the check is neither built nor run (its build would
+  run the whole Builder). Their warnings and errors are the problems of the "Build" layer: on the property that starts
+  their message when it is found, otherwise on their AppContext; the ones about a deployment are in its view.
 - The commands are serialized.

@@ -18,7 +18,7 @@ export interface CatalogRow {
 }
 
 /**
- * A level of the configuration: the Builder aspects, the App aspects, the party features or the client features (an
+ * A level of the configuration: the AppContext aspects, the App aspects, the party features or the client features (an
  * option is in the level of its kind, under its owner), and "Other" for an unknown kind.
  */
 export interface CatalogLevel {
@@ -26,8 +26,8 @@ export interface CatalogLevel {
     readonly rows: ReadonlyArray<CatalogRow>;
 }
 
-/** The levels, in the order of the configuration: the builder, an App, a party, a client application. */
-const levelKinds = ['AppBuilderAspect', 'AppAspect', 'PartyFeature', 'PartyClientFeature'];
+/** The levels, in the order of the configuration: the AppContext, an App, a party, a client application. */
+const levelKinds = ['AppContextAspect', 'AppAspect', 'PartyFeature', 'PartyClientFeature'];
 
 /** The level of a kind: an option ("PartyFeatureOption") is in the level of its owners ("PartyFeature"). */
 function levelOf( kind: string ): string {

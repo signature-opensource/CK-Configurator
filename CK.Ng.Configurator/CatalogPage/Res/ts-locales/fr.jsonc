@@ -5,7 +5,7 @@
     "CK.Configurator.Catalog.Info": "Profil {{version}} : {{packages}} packages, {{types}} types configurables, {{commands}} commandes.",
     "CK.Configurator.Catalog.Types": "Types configurables",
     "CK.Configurator.Catalog.Commands": "Commandes",
-    "CK.Configurator.Catalog.Level.AppBuilderAspect": "Aspects du Builder",
+    "CK.Configurator.Catalog.Level.AppContextAspect": "Aspects de l'AppContext",
     "CK.Configurator.Catalog.Level.AppAspect": "Aspects de l'App",
     "CK.Configurator.Catalog.Level.PartyFeature": "Features des parties",
     "CK.Configurator.Catalog.Level.PartyClientFeature": "Features des clients",

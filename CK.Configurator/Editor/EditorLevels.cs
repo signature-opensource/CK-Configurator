@@ -9,17 +9,17 @@ namespace CK.Configurator;
 /// reader, the options of a feature: the party, then the "Defaults" above it). The central "Defaults:App" is merged under
 /// every App (a JSON merge: key by key too).
 /// <list type="bullet">
-///   <item>"Builders:{b}:App:Local:..." (the local party, its features, their options, its clients): the App's "Local",
+///   <item>"AppContexts:{b}:App:Local:..." (the local party, its features, their options, its clients): the App's "Local",
 ///   the central "Defaults:App:Local", the App's "Defaults", the central "Defaults:App:Defaults".</item>
-///   <item>"Builders:{b}:App:Defaults:...": the App's "Defaults", the central "Defaults:App:Defaults".</item>
-///   <item>"Builders:{b}:App:Aspects:...": the App's "Aspects", the central "Defaults:App:Aspects".</item>
+///   <item>"AppContexts:{b}:App:Defaults:...": the App's "Defaults", the central "Defaults:App:Defaults".</item>
+///   <item>"AppContexts:{b}:App:Aspects:...": the App's "Aspects", the central "Defaults:App:Aspects".</item>
 ///   <item>"Defaults:App:Local:...": itself, then "Defaults:App:Defaults".</item>
 ///   <item>Anything else: itself.</item>
 /// </list>
 /// </summary>
 static partial class EditorLevels
 {
-    [GeneratedRegex( @"^(Builders:[^:]+:App):(Local|Defaults|Aspects)(:.*)?$", RegexOptions.IgnoreCase )]
+    [GeneratedRegex( @"^(AppContexts:[^:]+:App):(Local|Defaults|Aspects)(:.*)?$", RegexOptions.IgnoreCase )]
     private static partial Regex AppSection();
 
     [GeneratedRegex( @"^Defaults:App:Local(:.*)?$", RegexOptions.IgnoreCase )]

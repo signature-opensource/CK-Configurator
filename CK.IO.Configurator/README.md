@@ -61,7 +61,7 @@ from a `Defaults` level (`IEditorDefaultedValue`: path, value, the property that
 | `IAddPropertyCommand` (`ObjectPath`, `Name`, `Json`) | Adds a property at the end of an object, with the indentation of its siblings (enabling an option or a feature). |
 | `IRemovePropertyCommand` (`Path`) | Removes a property with its comma and its comments; in a deployment, an inherited one is removed by a `null`. |
 | `IRevertPropertyCommand` (`Path`) | In a deployment, removes a property from its overlay: it is inherited again. |
-| `ILockPropertyCommand` (`Path`, `Level`) | In the central configuration, locks a property: an entry of the `"$LOCK"` of its App or Builder aspect. |
+| `ILockPropertyCommand` (`Path`, `Level`) | In the central configuration, locks a property: an entry of the `"$LOCK"` of its App or AppContext aspect. |
 | `IUnlockPropertyCommand` (`Path`) | Removes the literal pattern of a `"$LOCK"` that names the property. |
 | `IRemoveLockEntryCommand` (`ObjectPath`, `Pattern`) | Removes an entry of the `"$LOCK"` of an object, even one that names no property. |
 | `IMakeSecretCommand` (`Path`, `Name`, `IsOptional`, `Overwrite`) | Makes a value a secret: its handle in the configuration; in the central one, the value moves to `#Dev/Secrets.json`. |
@@ -73,7 +73,7 @@ from a `Defaults` level (`IEditorDefaultedValue`: path, value, the property that
 | `IReloadCommand` | Reads the documents again (the edits are lost). |
 | `ICloseSolutionCommand` | Closes the solution. |
 
-A path is the property names separated by `:`, case insensitive (`"Builders:App/App.Builder:App:Local:HttpEndpoint"`); a
+A path is the property names separated by `:`, case insensitive (`"AppContexts:Front:App:Local:HttpEndpoint"`); a
 value is JSON text. An edit that fails (a missing path, an existing property, an invalid value) is an error result.
 
 The commands have no authentication part: the configurator is a development tool that runs locally. A hosting that

@@ -34,7 +34,7 @@ public class ConfigurationCheckerTests
                     CentralKeys = [new CentralKey( "Domain", [] )],
                     Types =
                     [
-                        Configurable( "Sample.SqlServerAspect", "AppBuilderAspect", "SqlServer" ),
+                        Configurable( "Sample.SqlServerAspect", "AppContextAspect", "SqlServer" ),
                         Configurable( "Sample.GlobalizationAspect", "AppAspect", "Globalization" ),
                         Configurable( "Sample.HttpEndpoint", "PartyFeature", "HttpEndpoint" ),
                         Configurable( "Sample.InProcess", "PartyFeatureOption", "InProcess", owners: ["Sample.HttpEndpoint"] ),
@@ -55,7 +55,7 @@ public class ConfigurationCheckerTests
         return (nodes.ToArray(), problems.ToArray());
     }
 
-    const string _app = "Builders:App/App.Builder:App";
+    const string _app = "AppContexts:App:App";
 
     [Test]
     public void a_valid_document_is_typed_by_the_catalog()
@@ -66,8 +66,8 @@ public class ConfigurationCheckerTests
               "Domain": "CK",
               "$PER_DEPLOYMENT": [ "Links:[*]:Link:KeyManagement:AutoTrustKey" ],
               "Defaults": { "App": { "Logging": {}, "$LOCK": { "Logging": "Init" } } },
-              "Builders": {
-                "App/App.Builder": {
+              "AppContexts": {
+                "App": {
                   "$PER_DEPLOYMENT": [ "App:Local:PublicUrl" ],
                   "Aspects": { "SqlServer": { "Db": "x", "$LOCK": { "Db": "Compile" }, "$PER_DEPLOYMENT": [ "Db" ] } },
                   "App": {
@@ -87,8 +87,8 @@ public class ConfigurationCheckerTests
             """ );
         problems.ShouldBeEmpty();
         string? Role( string path ) => nodes.Single( n => n.Path == path ).Role;
-        Role( "Builders:App/App.Builder" ).ShouldBe( "Builder" );
-        Role( "Builders:App/App.Builder:Aspects:SqlServer" ).ShouldBe( "BuilderAspect" );
+        Role( "AppContexts:App" ).ShouldBe( "AppContext" );
+        Role( "AppContexts:App:Aspects:SqlServer" ).ShouldBe( "AppContextAspect" );
         Role( _app ).ShouldBe( "App" );
         Role( _app + ":Aspects:Globalization" ).ShouldBe( "AppAspect" );
         Role( _app + ":Local" ).ShouldBe( "Party" );
@@ -103,22 +103,22 @@ public class ConfigurationCheckerTests
 
     [TestCase( """{ "Unknown": 1 }""", "Unknown", "Warning", "Unknown root key 'Unknown'" )]
     [TestCase( """{ "$configurator": { "World": "w" } }""", "$configurator", "Error", "\"$configurator\" must be" )]
-    [TestCase( """{ "Builders": { "B": { "Apps2": [] } } }""", "Builders:B:Apps2", "Error", "Unknown key 'Apps2' in the builder 'B'" )]
-    [TestCase( """{ "Builders": { "B": { "Aspects": { "Oracle": {} } } } }""", "Builders:B:Aspects:Oracle", "Warning", "'Oracle' is not a Builder aspect of the catalog." )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Aspects": { "SqlServer": {} } } } } }""", "Builders:B:App:Aspects:SqlServer", "Warning", "'SqlServer' is not an App aspect of the catalog." )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Local": { "Nope": true } } } } }""", "Builders:B:App:Local:Nope", "Warning", "'Nope' is not a party feature of the catalog" )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Local": { "Core": false } } } } }""", "Builders:B:App:Local:Core", "Error", "'Core' is required: it can't be disabled." )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Local": { "HttpEndpoint": "yes" } } } } }""", "Builders:B:App:Local:HttpEndpoint", "Error", "'HttpEndpoint' must be true, false or a section." )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Local": { "HttpEndpoint": { "Oidc": true } } } } } }""", "Builders:B:App:Local:HttpEndpoint:Oidc", "Warning", "'Oidc' is an option of 'AuthCenter', not of 'HttpEndpoint'." )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Local": { "AuthCenter": { "Oidc": { "G": { "ClientSecret": "s3cr3t" } } } } } } } }""", "Builders:B:App:Local:AuthCenter:Oidc:G:ClientSecret", "Warning", "'ClientSecret' is a secret" )]
-    [TestCase( """{ "Builders": { "B": { "App": { "Local": { "PartyClient": { "App": { "Unknown": true } } } } } } }""", "Builders:B:App:Local:PartyClient:App:Unknown", "Warning", "'Unknown' is not a client feature of the catalog." )]
-    [TestCase( """{ "Builders": { "B": { "Aspects": { "SqlServer": { "$LOCK": { "Db": "Later" } } } } } }""", "Builders:B:Aspects:SqlServer:$LOCK", "Error", "\"$LOCK\" must be an object" )]
-    [TestCase( """{ "Builders": { "B": { "App": { "$LOCK": { "Local:HttpEndpoint:Urls": "Later" } } } } }""", "Builders:B:App:$LOCK", "Error", "\"$LOCK\" must be an object" )]
-    [TestCase( """{ "Builders": { "B": { "App": { "$PER_DEPLOYMENT": [ 1 ] } } } }""", "Builders:B:App:$PER_DEPLOYMENT", "Error", "\"$PER_DEPLOYMENT\" must be an array of paths" )]
-    [TestCase( """{ "Builders": { "B": { "App": { "X": { "$SECRET": "k", "Other": 1 } } } } }""", "Builders:B:App:X:$SECRET", "Error", "must be the only key of its object" )]
+    [TestCase( """{ "AppContexts": { "B": { "Apps2": [] } } }""", "AppContexts:B:Apps2", "Error", "Unknown key 'Apps2' in the AppContext 'B'" )]
+    [TestCase( """{ "AppContexts": { "B": { "Aspects": { "Oracle": {} } } } }""", "AppContexts:B:Aspects:Oracle", "Warning", "'Oracle' is not an AppContext aspect of the catalog." )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Aspects": { "SqlServer": {} } } } } }""", "AppContexts:B:App:Aspects:SqlServer", "Warning", "'SqlServer' is not an App aspect of the catalog." )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Local": { "Nope": true } } } } }""", "AppContexts:B:App:Local:Nope", "Warning", "'Nope' is not a party feature of the catalog" )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Local": { "Core": false } } } } }""", "AppContexts:B:App:Local:Core", "Error", "'Core' is required: it can't be disabled." )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Local": { "HttpEndpoint": "yes" } } } } }""", "AppContexts:B:App:Local:HttpEndpoint", "Error", "'HttpEndpoint' must be true, false or a section." )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Local": { "HttpEndpoint": { "Oidc": true } } } } } }""", "AppContexts:B:App:Local:HttpEndpoint:Oidc", "Warning", "'Oidc' is an option of 'AuthCenter', not of 'HttpEndpoint'." )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Local": { "AuthCenter": { "Oidc": { "G": { "ClientSecret": "s3cr3t" } } } } } } } }""", "AppContexts:B:App:Local:AuthCenter:Oidc:G:ClientSecret", "Warning", "'ClientSecret' is a secret" )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "Local": { "PartyClient": { "App": { "Unknown": true } } } } } } }""", "AppContexts:B:App:Local:PartyClient:App:Unknown", "Warning", "'Unknown' is not a client feature of the catalog." )]
+    [TestCase( """{ "AppContexts": { "B": { "Aspects": { "SqlServer": { "$LOCK": { "Db": "Later" } } } } } }""", "AppContexts:B:Aspects:SqlServer:$LOCK", "Error", "\"$LOCK\" must be an object" )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "$LOCK": { "Local:HttpEndpoint:Urls": "Later" } } } } }""", "AppContexts:B:App:$LOCK", "Error", "\"$LOCK\" must be an object" )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "$PER_DEPLOYMENT": [ 1 ] } } } }""", "AppContexts:B:App:$PER_DEPLOYMENT", "Error", "\"$PER_DEPLOYMENT\" must be an array of paths" )]
+    [TestCase( """{ "AppContexts": { "B": { "App": { "X": { "$SECRET": "k", "Other": 1 } } } } }""", "AppContexts:B:App:X:$SECRET", "Error", "must be the only key of its object" )]
     [TestCase( """{ "Defaults": { "Party": {} } }""", "Defaults:Party", "Warning", "Unknown key 'Party' in \"Defaults\"" )]
     [TestCase( """{ "$LOCK": { "Domain": "Compile" } }""", "$LOCK", "Error", "it is outside them" )]
-    [TestCase( """{ "Builders": { "B": { "Aspects": { "$LOCK": { "X": "Compile" } } } } }""", "Builders:B:Aspects:$LOCK", "Error", "it is outside them" )]
+    [TestCase( """{ "AppContexts": { "B": { "Aspects": { "$LOCK": { "X": "Compile" } } } } }""", "AppContexts:B:Aspects:$LOCK", "Error", "it is outside them" )]
     public void problems( string text, string path, string severity, string message )
     {
         var (_, problems) = Check( text );
@@ -150,8 +150,8 @@ public class ConfigurationCheckerTests
                                    "Sample.PasswordLost" ),
                         Requiring( Configurable( "Sample.Audit", "PartyFeatureOption", "Audit", activation: "ByDefault", owners: ["Sample.AuthCenter"] ),
                                    "Sample.AutoLost" ),
-                        Configurable( "Sample.SqlServer", "AppBuilderAspect", "SqlServer" ),
-                        Requiring( Configurable( "Sample.Pool", "AppBuilderAspectOption", "Pool", owners: ["Sample.SqlServer"] ),
+                        Configurable( "Sample.SqlServer", "AppContextAspect", "SqlServer" ),
+                        Requiring( Configurable( "Sample.Pool", "AppContextAspectOption", "Pool", owners: ["Sample.SqlServer"] ),
                                    "Sample.Globalization" ),
                         Configurable( "Sample.Globalization", "AppAspect", "Globalization", activation: "ByDefault" )
                     ]
@@ -175,7 +175,7 @@ public class ConfigurationCheckerTests
         var text = $$"""
             {
               "Defaults": { "App": { "Defaults": {{defaults}} } },
-              "Builders": { "B": { "Aspects": {{aspects}}, "App": { "Local": {{local}} } } }
+              "AppContexts": { "B": { "Aspects": {{aspects}}, "App": { "Local": {{local}} } } }
             }
             """;
         return ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), _requirements ).Problems.ToArray();
@@ -187,7 +187,7 @@ public class ConfigurationCheckerTests
         var problems = CheckRequirements( """{ "AuthCenter": { "PasswordLost": true } }""" );
         problems.Select( p => (p.Path, p.Severity, p.Message) ).ShouldBe(
         [
-            ("Builders:B:App:Local:AuthCenter:PasswordLost", "Error", "The option 'PasswordLost' requires the option 'Password' that is disabled.")
+            ("AppContexts:B:App:Local:AuthCenter:PasswordLost", "Error", "The option 'PasswordLost' requires the option 'Password' that is disabled.")
         ] );
         // Password is there: MailSender is missing.
         CheckRequirements( """{ "AuthCenter": { "Password": true, "PasswordLost": {} } }""" ).ShouldHaveSingleItem()
@@ -207,8 +207,8 @@ public class ConfigurationCheckerTests
         var problems = CheckRequirements( """{ "AuthCenter": true }""" );
         problems.Select( p => (p.Path, p.Severity, p.Message) ).ShouldBe(
         [
-            ("Builders:B:App:Local:AuthCenter", "Info", "The option 'AutoLost' (enabled by default) is disabled: it requires the option 'PasswordLost' that is disabled."),
-            ("Builders:B:App:Local:AuthCenter", "Info", "The option 'Audit' (enabled by default) is disabled: it requires the option 'AutoLost' that is disabled.")
+            ("AppContexts:B:App:Local:AuthCenter", "Info", "The option 'AutoLost' (enabled by default) is disabled: it requires the option 'PasswordLost' that is disabled."),
+            ("AppContexts:B:App:Local:AuthCenter", "Info", "The option 'Audit' (enabled by default) is disabled: it requires the option 'AutoLost' that is disabled.")
         ], ignoreOrder: true );
         // The options declared in the "Defaults" of the party count.
         CheckRequirements( """{ "AuthCenter": true }""", defaults: """{ "MailSender": true, "AuthCenter": { "Password": true, "PasswordLost": true } }""" ).ShouldBeEmpty();
@@ -217,9 +217,9 @@ public class ConfigurationCheckerTests
     [Test]
     public void the_options_of_the_aspects_are_typed_and_checked()
     {
-        var text = """{ "Builders": { "B": { "Aspects": { "SqlServer": { "Pool": true } }, "App": { "Aspects": { "Globalization": false } } } } }""";
+        var text = """{ "AppContexts": { "B": { "Aspects": { "SqlServer": { "Pool": true } }, "App": { "Aspects": { "Globalization": false } } } } }""";
         var (nodes, problems) = ConfigurationChecker.Check( ConfiguratorEditorService.ReadNodes( text ), _requirements );
-        nodes.Single( n => n.Path == "Builders:B:Aspects:SqlServer:Pool" ).Role.ShouldBe( "BuilderAspectOption" );
+        nodes.Single( n => n.Path == "AppContexts:B:Aspects:SqlServer:Pool" ).Role.ShouldBe( "AppContextAspectOption" );
         problems.ShouldHaveSingleItem().Message.ShouldBe( "The option 'Pool' requires the App aspect 'Globalization' that is disabled." );
         // Globalization is ByDefault: not declared, it is active.
         CheckRequirements( "{}", aspects: """{ "SqlServer": { "Pool": true } }""" ).ShouldBeEmpty();

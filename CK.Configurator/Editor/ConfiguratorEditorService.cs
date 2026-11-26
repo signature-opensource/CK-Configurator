@@ -371,9 +371,19 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
 
     void StartCheck()
     {
-        var builders = EditorTree.Parse( GetCentral().Text ).Find( "Builders" )?.Children?.Select( b => b.Name ).ToList() ?? [];
+        // The Builder of an AppContext is "{RootPath}/{Name}.Builder".
+        var builders = EditorTree.Parse( GetCentral().Text ).Find( "AppContexts" )?.Children?
+                       .Select( c => (c.Name, BuilderPath( c )) )
+                       .ToList() ?? [];
         _checkedTexts = SavedTexts();
         _check.Start( _folder!, builders );
+
+        static string BuilderPath( EditorTree.Node appContext )
+        {
+            var rootPath = ReadString( appContext.Children?.FirstOrDefault( k => k.Name.Equals( CentralConfiguration.RootPathKey, StringComparison.OrdinalIgnoreCase ) ) );
+            rootPath = rootPath?.Replace( '\\', '/' ).Trim().Trim( '/' );
+            return string.IsNullOrEmpty( rootPath ) ? $"{appContext.Name}.Builder" : $"{rootPath}/{appContext.Name}.Builder";
+        }
     }
 
     string SavedTexts() => string.Join( "\0", AllDocuments.Select( d => $"{d.Name}\0{d.SavedText}" ) );
@@ -543,7 +553,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     }
 
     /// <summary>
-    /// Locks a property (central view): an entry of the <c>"$LOCK"</c> of the App or of the Builder aspect that contains
+    /// Locks a property (central view): an entry of the <c>"$LOCK"</c> of the App or of the AppContext aspect that contains
     /// it, its path relative to it as the pattern. The level can't be above the capability of the code (when the catalog
     /// gives it).
     /// </summary>
@@ -564,7 +574,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
             {
                 Throw.CKException( $"'{path}' can't be locked at the level '{level}': the code supports '{n.MaxLevel}' at most." );
             }
-            var container = FindLockContainer( nodes, path ) ?? Throw.CKException<string>( $"'{path}' is not in an App or a Builder aspect: it can't be locked." );
+            var container = FindLockContainer( nodes, path ) ?? Throw.CKException<string>( $"'{path}' is not in an App or an AppContext aspect: it can't be locked." );
             var pattern = path.Substring( container.Length + 1 );
             var lockPath = container.Split( ':' ).Append( "$LOCK" ).ToList();
             var levelJson = System.Text.Json.JsonSerializer.Serialize( level );
@@ -608,7 +618,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
     /// </summary>
     /// <param name="monitor">The monitor.</param>
     /// <param name="view">The view (only the central one).</param>
-    /// <param name="objectPath">The path of the object that holds the "$LOCK" (an App, a Builder aspect...).</param>
+    /// <param name="objectPath">The path of the object that holds the "$LOCK" (an App, an AppContext aspect...).</param>
     /// <param name="pattern">The pattern: the key of the entry.</param>
     /// <returns>The state.</returns>
     public Task<EditorSnapshot> RemoveLockEntryAsync( IActivityMonitor monitor, string? view, string objectPath, string pattern )
@@ -640,7 +650,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         return true;
     }
 
-    // The App ("Builders:{b}:App", "Defaults:App") or the Builder aspect that contains a property (structural).
+    // The App ("AppContexts:{b}:App", "Defaults:App") or the AppContext aspect that contains a property (structural).
     static string? FindLockContainer( IReadOnlyList<EditorNodeData> nodes, string path )
     {
         var p = path;
@@ -1012,20 +1022,20 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
 
     static string? ReadString( EditorTree.Node? n ) => n?.Kind == "String" ? System.Text.Json.JsonSerializer.Deserialize<string>( n.Value! ) : null;
 
-    // The problems of the check by the builders that belong to a view: the ones about a deployment ("The deployment
+    // The problems of the check by the Builders that belong to a view: the ones about a deployment ("The deployment
     // '#Production' ...") to its view, the others to the central one. A problem is put on the property that starts its
-    // message ("\"Builders:...\": ..." or a path of the projection of the builder), otherwise on its builder.
+    // message ("\"AppContexts:...\": ..." or a path of the projection of the AppContext), otherwise on its AppContext.
     static IEnumerable<EditorProblemData> GetBuildProblems( Document d, IReadOnlyList<EditorNodeData> nodes, IReadOnlyList<SolutionCheckRunner.BuilderCheck> results )
     {
         if( results.Count == 0 ) yield break;
         var paths = new HashSet<string>( nodes.Select( n => n.Path ), StringComparer.OrdinalIgnoreCase );
         foreach( var r in results )
         {
-            var builderPath = r.Builder.Length > 0 ? $"Builders:{r.Builder}" : "";
-            if( !paths.Contains( builderPath ) ) builderPath = "";
+            var appContextPath = r.AppContext.Length > 0 ? $"AppContexts:{r.AppContext}" : "";
+            if( !paths.Contains( appContextPath ) ) appContextPath = "";
             if( r.Failure != null )
             {
-                if( d.Name == null ) yield return new EditorProblemData( builderPath, "Error", $"The builder '{r.Builder}' can't check the configuration: {r.Failure}", "Build" );
+                if( d.Name == null ) yield return new EditorProblemData( appContextPath, "Error", $"The Builder of '{r.AppContext}' can't check the configuration: {r.Failure}", "Build" );
                 continue;
             }
             foreach( var (level, text) in r.Entries )
@@ -1033,7 +1043,7 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
                 var deployment = DeploymentOf( text );
                 if( !string.Equals( deployment, d.Name, StringComparison.OrdinalIgnoreCase ) ) continue;
                 var severity = level is "Error" or "Fatal" ? "Error" : "Warning";
-                yield return new EditorProblemData( FindPath( paths, text, r.Builder ) ?? builderPath, severity, $"{r.Builder}: {text}", "Build" );
+                yield return new EditorProblemData( FindPath( paths, text, r.AppContext ) ?? appContextPath, severity, $"{r.AppContext}: {text}", "Build" );
             }
         }
     }
@@ -1047,10 +1057,10 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         return end < 0 ? null : text.Substring( i + prefix.Length, end - i - prefix.Length );
     }
 
-    // The first quoted configuration path of a message ("\"CK-AppIdentity:Local:X\": ..." or "inherits \"Builders:...\""),
-    // mapped to the deepest property of the view: as is, in the builder, or in its App for a path of the projection
+    // The first quoted configuration path of a message ("\"CK-AppIdentity:Local:X\": ..." or "inherits \"AppContexts:...\""),
+    // mapped to the deepest property of the view: as is, in the AppContext, or in its App for a path of the projection
     // of the parties ("CK-AppIdentity:...").
-    static string? FindPath( HashSet<string> paths, string text, string builder )
+    static string? FindPath( HashSet<string> paths, string text, string appContext )
     {
         int start = text.IndexOf( '"' );
         if( start < 0 ) return null;
@@ -1059,8 +1069,8 @@ public sealed class ConfiguratorEditorService : ISingletonAutoService
         var quoted = text.Substring( start + 1, end - start - 1 );
         if( !quoted.Contains( ':' ) || quoted.Contains( ' ' ) ) return null;
         string[] candidates = quoted.StartsWith( "CK-AppIdentity:", StringComparison.OrdinalIgnoreCase )
-                                ? [$"Builders:{builder}:App:{quoted.Substring( 15 )}"]
-                                : [quoted, $"Builders:{builder}:{quoted}", $"Builders:{builder}:App:{quoted}"];
+                                ? [$"AppContexts:{appContext}:App:{quoted.Substring( 15 )}"]
+                                : [quoted, $"AppContexts:{appContext}:{quoted}", $"AppContexts:{appContext}:App:{quoted}"];
         string? best = null;
         foreach( var c in candidates )
         {
@@ -1149,7 +1159,7 @@ public sealed record EditorDocumentData( string? Name, string? Base, string File
 /// <param name="Value">The JSON text of the value (null for an object).</param>
 /// <param name="Comment">The comments above the property, or null.</param>
 /// <param name="Role">
-/// What the property is in the configuration, given by the catalog: "Builder", "BuilderAspect", "BuilderAspectOption",
+/// What the property is in the configuration, given by the catalog: "AppContext", "AppContextAspect", "AppContextAspectOption",
 /// "App", "AppAspect", "AppAspectOption", "Party", "PartyDefaults", "PartyFeature", "PartyFeatureOption", "Client",
 /// "ClientFeature", "ClientFeatureOption", or null (a key).
 /// </param>
