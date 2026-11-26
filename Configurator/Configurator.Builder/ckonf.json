@@ -22,6 +22,8 @@
     "Configurator": {
       "AnalyzerProject": "CK.Configurator.Catalog.Worker/CK.Configurator.Catalog.Worker.csproj"
     },
+    "AppProject": "../Configurator.App",
+    "HostProject": "../Configurator.Host",
     "Logging": {
       "LogLevel": {
         "Default": "Warning"

@@ -30,8 +30,9 @@
       }
     }
   },
-  "Builders": {
-    "Configurator/Configurator.Builder": {
+  "AppContexts": {
+    "Configurator": {
+      "RootPath": "Configurator",
       "App": {
         "Local": {
           "HttpEndpoint": {
