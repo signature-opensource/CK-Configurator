@@ -20,7 +20,8 @@ import { CatalogSource, CatalogSourceSelector } from '@local/ck-gen';
   templateUrl: './app.html',
 })
 export class App {
-  readonly desktopLinks = signal<Type<unknown> | undefined>( undefined );
+  // NgComponentOutlet renders nothing for null.
+  readonly desktopLinks = signal<Type<unknown> | null>( null );
 
   constructor() {
     // The shell shows the catalog (and its picker): the pages don't show their own.
