@@ -4,7 +4,7 @@
     "FullName": "CK/$Configurator/#Dev",
     "Local": {
       "HttpEndpoint": {
-        "InProcess": true
+        "Urls": "http://localhost:5400"
       },
       "PartyClient": {
         "App": {
@@ -12,9 +12,6 @@
           "Hosting": {
             "RequestPath": "/",
             "DevServerPort": 4500
-          },
-          "DesktopWindow": {
-            "Title": "CK Configurator"
           }
         }
       }

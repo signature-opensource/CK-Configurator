@@ -8,6 +8,13 @@
       "SelfContained": true,
       "PublishSingleFile": true,
       "IncludeNativeLibrariesForSelfExtract": true
+    },
+    "Apps": {
+      "$Configurator": {
+        "Packages": [
+          "CK.Ng.AppHost.DesktopNgApp"
+        ]
+      }
     }
   },
   "Defaults": {
@@ -34,22 +41,23 @@
     "Configurator": {
       "RootPath": "Configurator",
       "App": {
+        "Aspects": {
+          "DesktopNgApp": {
+            "Client": "App",
+            "Title": "CK Configurator"
+          }
+        },
         "Local": {
-          "HttpEndpoint": {
-            "InProcess": true
-          },
           "PartyClient": {
             "App": {
               "NgApp": true,
               "Hosting": {
                 "RequestPath": "/",
                 "DevServerPort": 4500
-              },
-              "DesktopWindow": {
-                "Title": "CK Configurator"
               }
             }
-          }
+          },
+          "HttpEndpoint": {}
         },
         "Configurator": {}
       }
