@@ -10,6 +10,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
     <!-- The folder dialog of a desktop window (IPickFolderCommand): the editor page offers it when it is handled. -->
-    <ProjectReference Include="..\CK.IO.AppHost.Desktop\CK.IO.AppHost.Desktop.csproj" />
+    <PackageReference Include="CK.IO.AppHost.Desktop" Version="0.0.1" />
   </ItemGroup>
 </Project>

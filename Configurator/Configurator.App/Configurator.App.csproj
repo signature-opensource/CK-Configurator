@@ -17,8 +17,8 @@
     <ProjectReference Include="..\..\CK.Ng.Configurator\CK.Ng.Configurator.csproj" />
     <ProjectReference Include="..\..\CK.Configurator\CK.Configurator.csproj" />
     <!-- The "DesktopWindow" feature and the handlers of the desktop commands: a desktop application. -->
-    <ProjectReference Include="..\..\CK.AppHost.Desktop\CK.AppHost.Desktop.csproj" />
+    <PackageReference Include="CK.AppHost.Desktop" Version="0.0.1" />
     <!-- The "Last log" and "Open folder" links of the desktop application. -->
-    <ProjectReference Include="..\..\CK.Ng.AppHost.Desktop\CK.Ng.AppHost.Desktop.csproj" />
+    <PackageReference Include="CK.Ng.AppHost.Desktop" Version="0.0.1" />
   </ItemGroup>
 </Project>

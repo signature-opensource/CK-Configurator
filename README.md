@@ -9,9 +9,6 @@ The configurator: an application that edits the Unified Configuration of a CKomp
 | [CK.IO.Configurator](CK.IO.Configurator/README.md) | The commands of the configurator (the catalog, the editor). |
 | [CK.Configurator](CK.Configurator/README.md) | The backend: the command handlers and the opened catalogs. |
 | [CK.Ng.Configurator](CK.Ng.Configurator/README.md) | The Angular side: the opened catalog (`CatalogSource`), its picker and selector, the editor page (`ckomposable/editor`) and the catalog page (`ckomposable/catalog`). |
-| [CK.IO.AppHost.Desktop](CK.IO.AppHost.Desktop/README.md) | The commands of a desktop application: its information, its last log, its log folder. |
-| [CK.AppHost.Desktop](CK.AppHost.Desktop/README.md) | The "DesktopWindow" feature of a client, the bootstrap of a desktop host and the handlers of the desktop commands: a CKomposable application in a native window. |
-| [CK.Ng.AppHost.Desktop](CK.Ng.AppHost.Desktop/README.md) | The Angular side of a desktop application: the "Last log" and "Open folder" links. |
 
 ## The configurator application
 

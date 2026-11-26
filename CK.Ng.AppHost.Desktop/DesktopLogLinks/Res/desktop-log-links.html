@@ -1,6 +1,0 @@
-@if ( visible() ) {
-    <span class="ck-desktop-log-links" [class.ck-desktop-log-error]="!!error()" [attr.title]="error()">
-        <a (click)="openLastLogAsync()">{{ 'CK.AppHost.Desktop.LastLog' | translate }}</a>
-        <a (click)="openFolderAsync()">{{ 'CK.AppHost.Desktop.OpenFolder' | translate }}</a>
-    </span>
-}
