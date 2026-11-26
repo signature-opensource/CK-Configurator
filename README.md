@@ -25,7 +25,7 @@ A development build references the analyzer project of this solution ("Configura
 
 Its deployment, [Deployment/#Production](Deployment/%23Production/ckonf.json), packages it as a desktop application: it
 adds [CK.Ng.AppHost.DesktopNgApp](https://github.com/signature-opensource/CK-AppHost-Desktop/blob/stable/CK.Ng.AppHost.DesktopNgApp/README.md)
-to the App (its "DesktopNgApp" aspect: a window shows the client, the endpoint is in process, no port is opened), as
+to the App (the "DesktopNgApp" option of its client's "NgApp": a window shows the client, the endpoint is in process, no port is opened), as
 one executable (win-x64, self-contained, the native libraries inside it) with its client application next to it. Tested
 on Windows. CKli builds it after the build of
 the repository (`Deployment/GenerateAssets.cs`, CK.AppDeployment): `Deployment/Assets/Production-Configurator`.

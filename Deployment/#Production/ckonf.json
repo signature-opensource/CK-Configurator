@@ -15,7 +15,7 @@
       "IncludeNativeLibrariesForSelfExtract": true
     },
     // The desktop packaging: CK.Ng.AppHost.DesktopNgApp (its version is the "//ck-package" line of GenerateAssets.cs)
-    // brings the "DesktopNgApp" aspect and its runner: a window shows the client, the endpoint is in process.
+    // brings the "DesktopNgApp" option of "NgApp" and its runner: a window shows the client, the endpoint is in process.
     "Apps": { "$Configurator": { "Packages": [ "CK.Ng.AppHost.DesktopNgApp" ] } }
   },
   "Defaults": {
@@ -27,10 +27,12 @@
   "AppContexts": {
     "Configurator": {
       "App": {
-        // The window shows the client application "App".
-        "Aspects": { "DesktopNgApp": { "Client": "App", "Title": "CK Configurator" } },
-        // No port: the runner makes the endpoint in process (the "Urls" of the development are removed).
-        "Local": { "HttpEndpoint": { "Urls": null } },
+        "Local": {
+          // No port: the build makes the endpoint in process (the "Urls" of the development are removed).
+          "HttpEndpoint": { "Urls": null },
+          // The window shows the client application "App".
+          "PartyClient": { "App": { "NgApp": { "DesktopNgApp": { "Title": "CK Configurator" } } } }
+        },
         // The analyzer of the catalogs is a CK.Configurator.Catalog.Worker package (the one of the opened profile, or
         // the one of this version), not the project of the development solution.
         "Configurator": { "AnalyzerProject": null }

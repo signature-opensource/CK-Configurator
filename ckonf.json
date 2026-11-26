@@ -29,8 +29,8 @@
           // Its client application (Configurator.Host/Clients/App), served at "/" (by its dev server in Development).
           "PartyClient": {
             "App": {
-              "NgApp": true,
-              "Hosting": { "RequestPath": "/", "DevServerPort": 4500 }
+              "NgApp": { "RequestPath": "/", "DevServerPort": 4500 },
+              "Hosting": true
             }
           }
         },

@@ -41,23 +41,20 @@
     "Configurator": {
       "RootPath": "Configurator",
       "App": {
-        "Aspects": {
-          "DesktopNgApp": {
-            "Client": "App",
-            "Title": "CK Configurator"
-          }
-        },
         "Local": {
+          "HttpEndpoint": {},
           "PartyClient": {
             "App": {
-              "NgApp": true,
-              "Hosting": {
+              "Hosting": true,
+              "NgApp": {
                 "RequestPath": "/",
-                "DevServerPort": 4500
+                "DevServerPort": 4500,
+                "DesktopNgApp": {
+                  "Title": "CK Configurator"
+                }
               }
             }
-          },
-          "HttpEndpoint": {}
+          }
         },
         "Configurator": {}
       }
