@@ -1,6 +1,6 @@
 {
-  // The "#Production" deployment of the configurator: the desktop application, published as one executable and its
-  // client application (Windows).
+  // The "#Production" deployment of the configurator: the web application packaged as a desktop application, published
+  // as one executable and its client application (Windows).
   // An overlay of the central ckonf.json (a JSON Merge Patch: an object merges, null removes, any other value, an array
   // included, replaces). Its merged configuration is ckonf.merged.json, next to it (generated: do not edit). Its asset is
   // built by Deployment/GenerateAssets.cs (CK.AppDeployment): Deployment/Assets/Production-Configurator.
@@ -13,7 +13,10 @@
       "SelfContained": true,
       "PublishSingleFile": true,
       "IncludeNativeLibrariesForSelfExtract": true
-    }
+    },
+    // The desktop packaging: CK.Ng.AppHost.DesktopNgApp (its version is the "//ck-package" line of GenerateAssets.cs)
+    // brings the "DesktopNgApp" aspect and its runner: a window shows the client, the endpoint is in process.
+    "Apps": { "$Configurator": { "Packages": [ "CK.Ng.AppHost.DesktopNgApp" ] } }
   },
   "Defaults": {
     "App": {
@@ -24,6 +27,10 @@
   "AppContexts": {
     "Configurator": {
       "App": {
+        // The window shows the client application "App".
+        "Aspects": { "DesktopNgApp": { "Client": "App", "Title": "CK Configurator" } },
+        // No port: the runner makes the endpoint in process (the "Urls" of the development are removed).
+        "Local": { "HttpEndpoint": { "Urls": null } },
         // The analyzer of the catalogs is a CK.Configurator.Catalog.Worker package (the one of the opened profile, or
         // the one of this version), not the project of the development solution.
         "Configurator": { "AnalyzerProject": null }

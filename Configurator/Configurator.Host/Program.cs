@@ -1,1 +1,1 @@
-return CK.Core.CKomposableDesktopHost.Run( args );
+return CK.Core.CKomposableAppHost.Run( args );

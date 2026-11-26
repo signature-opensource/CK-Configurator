@@ -4,7 +4,7 @@
     <a routerLink="/ckomposable/catalog" routerLinkActive="app-shell-active">{{ 'CK.Configurator.CatalogPage' | translate }}</a>
   </nav>
   <ck-catalog-source-selector class="app-shell-picker" />
-  <ck-desktop-log-links />
+  <ng-container *ngComponentOutlet="desktopLinks()" />
 </header>
 <main class="app-shell-page">
   <router-outlet />

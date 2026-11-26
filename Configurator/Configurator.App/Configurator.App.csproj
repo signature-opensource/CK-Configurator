@@ -16,9 +16,5 @@
     <!-- The catalog page and its backend. -->
     <ProjectReference Include="..\..\CK.Ng.Configurator\CK.Ng.Configurator.csproj" />
     <ProjectReference Include="..\..\CK.Configurator\CK.Configurator.csproj" />
-    <!-- The "DesktopWindow" feature and the handlers of the desktop commands: a desktop application. -->
-    <PackageReference Include="CK.AppHost.Desktop" Version="0.0.1" />
-    <!-- The "Last log" and "Open folder" links of the desktop application. -->
-    <PackageReference Include="CK.Ng.AppHost.Desktop" Version="0.0.1" />
   </ItemGroup>
 </Project>

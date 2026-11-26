@@ -13,9 +13,9 @@ The configurator: an application that edits the Unified Configuration of a CKomp
 ## The configurator application
 
 `Configurator/` holds the application itself, the party `CK/$Configurator` (Configurator.App, Configurator.Builder,
-Configurator.Host), configured by the central [ckonf.json](ckonf.json): its "HttpEndpoint" in process (no port), its
-client application (the editor and the catalog pages) shown in the window of the desktop application (its
-"DesktopWindow"; the host's `Program.cs` is `return CK.Core.CKomposableDesktopHost.Run( args );`). Tested on Windows:
+Configurator.Host), configured by the central [ckonf.json](ckonf.json). It is a web application: its "HttpEndpoint"
+on `http://localhost:5400` serves its client application (the editor and the catalog pages) in a browser, with the
+live reload of the client's dev server in Development:
 
 ```
 dotnet run --project Configurator/Configurator.Host
@@ -23,7 +23,10 @@ dotnet run --project Configurator/Configurator.Host
 
 A development build references the analyzer project of this solution ("Configurator:AnalyzerProject").
 
-Its deployment, [Deployment/#Production](Deployment/%23Production/ckonf.json), is the desktop application as one
-executable (win-x64, self-contained, the native libraries inside it) with its client application next to it. CKli builds it after the build of
+Its deployment, [Deployment/#Production](Deployment/%23Production/ckonf.json), packages it as a desktop application: it
+adds [CK.Ng.AppHost.DesktopNgApp](https://github.com/signature-opensource/CK-AppHost-Desktop/blob/stable/CK.Ng.AppHost.DesktopNgApp/README.md)
+to the App (its "DesktopNgApp" aspect: a window shows the client, the endpoint is in process, no port is opened), as
+one executable (win-x64, self-contained, the native libraries inside it) with its client application next to it. Tested
+on Windows. CKli builds it after the build of
 the repository (`Deployment/GenerateAssets.cs`, CK.AppDeployment): `Deployment/Assets/Production-Configurator`.
 

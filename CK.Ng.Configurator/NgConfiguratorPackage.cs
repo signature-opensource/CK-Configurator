@@ -13,7 +13,7 @@ namespace CK.Ng.Configurator;
 /// picker (<see cref="CatalogSourcePickerComponent"/>), the catalog page (<see cref="CatalogPageComponent"/>, at
 /// "ckomposable/catalog"), the editor page (<see cref="EditorPageComponent"/>, at "ckomposable/editor") and the commands
 /// they send (CK.IO.Configurator, handled by CK.Configurator; the folder dialog of a desktop window, handled by
-/// CK.AppHost.Desktop).
+/// CK.AppHost.DesktopNgApp when the App is a desktop application).
 /// </summary>
 [TypeScriptPackage]
 [Requires<CrisAspNetPackage, ZorroPackage, MarkdownPackage>]

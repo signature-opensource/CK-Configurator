@@ -1,5 +1,6 @@
 {
-  // The central configuration of the solution: one party, the configurator ("CK/$Configurator"), a desktop application.
+  // The central configuration of the solution: one party, the configurator ("CK/$Configurator"), a web application
+  // (its "#Production" deployment packages it as a desktop application).
   // The ckonf.json of its Builder is generated from its AppContext below when the Builder runs (then the appsettings.json
   // of its host): edit this file, not the projections.
   "Domain": "CK",
@@ -22,18 +23,14 @@
       "RootPath": "Configurator",
       "App": {
         "Local": {
-          // In process (CK.AppIdentity.HttpEndpoint.InProcess): no port is opened, the desktop window shows
-          // "app://localhost/" and relays the requests of its page (CK.AppHost.Desktop). The dev server's live reload
-          // doesn't work on "app://": to have it, run the host on a random local port with
-          // --CK-AppIdentity:Local:HttpEndpoint:InProcess=false --CK-AppIdentity:Local:HttpEndpoint:Urls=http://127.0.0.1:0
-          "HttpEndpoint": { "InProcess": true },
-          // Its client application (Configurator.Host/Clients/App), served at "/", in the window of the desktop
-          // application (CK.AppHost.Desktop): closing the window stops it.
+          // A local port: the client application in a browser (the desktop application of "#Production" has its
+          // endpoint in process, no port).
+          "HttpEndpoint": { "Urls": "http://localhost:5400" },
+          // Its client application (Configurator.Host/Clients/App), served at "/" (by its dev server in Development).
           "PartyClient": {
             "App": {
               "NgApp": true,
-              "Hosting": { "RequestPath": "/", "DevServerPort": 4500 },
-              "DesktopWindow": { "Title": "CK Configurator" }
+              "Hosting": { "RequestPath": "/", "DevServerPort": 4500 }
             }
           }
         },
