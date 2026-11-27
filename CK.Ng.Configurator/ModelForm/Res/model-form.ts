@@ -119,13 +119,23 @@ export class ModelForm {
         return !!this.node( path )?.secretName;
     }
 
-    /** The list of strings of a key (an array, or a comma separated string). */
+    /**
+     * The list of strings of a key (an array, or a comma separated string). The same array is returned while the value of
+     * the key doesn't change: it is the model of a select, a new array at each change detection would never stabilize.
+     */
     stringList( path: string ): string[] {
+        const text = this.node( path )?.value ?? '';
+        const cached = this.#stringLists.get( path );
+        if( cached && cached.text === text ) return cached.list;
         const v = this.value( path );
-        if( Array.isArray( v ) ) return v.map( String );
-        if( typeof v === 'string' ) return v.split( ',' ).map( s => s.trim() ).filter( s => s.length > 0 );
-        return [];
+        const list = Array.isArray( v ) ? v.map( String )
+                   : typeof v === 'string' ? v.split( ',' ).map( s => s.trim() ).filter( s => s.length > 0 )
+                   : [];
+        this.#stringLists.set( path, { text, list } );
+        return list;
     }
+
+    readonly #stringLists = new Map<string, { text: string, list: string[] }>();
 
     /** The JSON text of a key, for the JSON editor of a list or an opaque section. */
     jsonText( path: string ): string {
