@@ -64,6 +64,28 @@ public class ConfiguratorFormsTests
                             Configurable = new ConfigurableType( "PartyFeature", "Endpoint", "Optional" ),
                             ConfigurationSchema = (JsonObject)JsonNode.Parse( _schema )!
                         },
+                        // A feature with a compile time model only ("build time" keys), one without any model, and one
+                        // with a key read on the party's own section only.
+                        new TypeAnalysis
+                        {
+                            FullName = "Sample.Build",
+                            CSharpName = "Build",
+                            Configurable = new ConfigurableType( "PartyFeature", "Build", "Optional" ),
+                            CompileConfigurationSchema = (JsonObject)JsonNode.Parse( """{ "type": "object", "properties": { "Port": { "type": "integer" } }, "additionalProperties": false }""" )!
+                        },
+                        new TypeAnalysis
+                        {
+                            FullName = "Sample.Bare",
+                            CSharpName = "Bare",
+                            Configurable = new ConfigurableType( "PartyFeature", "Bare", "Optional" )
+                        },
+                        new TypeAnalysis
+                        {
+                            FullName = "Sample.Keys",
+                            CSharpName = "Keys",
+                            Configurable = new ConfigurableType( "PartyFeature", "Keys", "Optional" ),
+                            ConfigurationSchema = (JsonObject)JsonNode.Parse( """{ "type": "object", "properties": { "Anchors": { "type": "string", "x-ck-noDefaults": true }, "Days": { "type": "integer" } }, "additionalProperties": false }""" )!
+                        },
                         new TypeAnalysis
                         {
                             FullName = "Sample.Opt",
@@ -171,5 +193,34 @@ public class ConfiguratorFormsTests
         // A value is not a section.
         (await Should.ThrowAsync<CKException>( () => editor.SetValueAsync( TestHelper.Monitor, null, _local + ":Endpoint:Url:Sub", "1", createPath: true ) ))
             .Message.ShouldContain( "is not a section" );
+    }
+
+    [Test]
+    public void the_compile_time_keys_are_checked_against_their_schema()
+    {
+        Check( """{ "Build": { "Port": 4200 } }""" ).ShouldBeEmpty();
+        var p = Check( """{ "Build": { "Port": "x" } }""" ).ShouldHaveSingleItem();
+        p.Path.ShouldBe( _local + ":Build:Port" );
+        p.Message.ShouldContain( "is an integer." );
+        Check( """{ "Build": { "Nope": 1 } }""" ).ShouldContain( e => e.Path == _local + ":Build:Nope" && e.Message.Contains( "Unknown key 'Nope'" ) );
+    }
+
+    [Test]
+    public void a_feature_without_model_has_no_configuration()
+    {
+        Check( """{ "Bare": true }""" ).ShouldBeEmpty();
+        var p = Check( """{ "Bare": { "Size": 3 } }""" ).ShouldHaveSingleItem();
+        p.Path.ShouldBe( _local + ":Bare:Size" );
+        p.Message.ShouldContain( "'Bare' has no configuration of its own" );
+    }
+
+    [Test]
+    public void a_NoDefaults_key_can_not_be_set_in_a_Defaults()
+    {
+        Check( """{ "Keys": { "Anchors": "a", "Days": 3 } }""" ).ShouldBeEmpty();
+        Check( "{}", defaults: """{ "Keys": { "Days": 3 } }""" ).ShouldBeEmpty();
+        var p = Check( "{}", defaults: """{ "Keys": { "Anchors": "a" } }""" ).ShouldHaveSingleItem();
+        p.Path.ShouldEndWith( "Defaults:Keys:Anchors" );
+        p.Message.ShouldContain( "can't be set in a \"Defaults\"" );
     }
 }

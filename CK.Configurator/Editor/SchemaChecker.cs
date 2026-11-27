@@ -46,14 +46,32 @@ sealed class SchemaChecker
     /// <param name="checkRequired">
     /// False for a section of a "Defaults" level: the defaults are partial, a required key is checked where it is used.
     /// </param>
-    public void Check( EditorNodeData section, JsonObject schema, string typeName, IReadOnlySet<string> reserved, bool checkRequired )
+    /// <param name="isDefaults">
+    /// True for a section of a "Defaults" level: a key that is read on its owner's own section only (<c>x-ck-noDefaults</c>)
+    /// is an error.
+    /// </param>
+    public void Check( EditorNodeData section, JsonObject schema, string typeName, IReadOnlySet<string> reserved, bool checkRequired, bool isDefaults = false )
     {
         _checkRequired = checkRequired;
+        _isDefaults = isDefaults;
         var defs = schema["$defs"] as JsonObject;
         CheckModel( section.Path, section.Kind == "Object", schema, defs, typeName, reserved, isRoot: true );
     }
 
     bool _checkRequired;
+    bool _isDefaults;
+
+    /// <summary>
+    /// Gets the names of the properties of a model's schema (empty for a null schema).
+    /// </summary>
+    /// <param name="schema">The schema.</param>
+    /// <returns>The property names (case insensitive).</returns>
+    public static HashSet<string> PropertyNames( JsonObject? schema )
+    {
+        var names = new HashSet<string>( StringComparer.OrdinalIgnoreCase );
+        if( schema?["properties"] is JsonObject properties ) names.UnionWith( properties.Select( kv => kv.Key ) );
+        return names;
+    }
 
     void CheckModel( string path, bool isObject, JsonObject model, JsonObject? defs, string typeName, IReadOnlySet<string> reserved, bool isRoot )
     {
@@ -67,6 +85,11 @@ sealed class SchemaChecker
                 if( p.Key == null )
                 {
                     _error( c.Path, $"Unknown key '{c.Name}' in '{typeName}': its keys are {(properties.Count == 0 ? "none" : $"'{string.Join( "', '", properties.Select( kv => kv.Key ) )}'")}." );
+                    continue;
+                }
+                if( isRoot && _isDefaults && p.Value is JsonObject nd && nd["x-ck-noDefaults"]?.GetValue<bool>() == true )
+                {
+                    _error( c.Path, $"'{c.Name}' can't be set in a \"Defaults\": '{typeName}' reads it on the party's own section only." );
                     continue;
                 }
                 if( p.Value is JsonObject ps ) CheckValue( c, ps, defs, typeName );

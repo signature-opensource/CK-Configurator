@@ -153,6 +153,8 @@ public sealed class ConfiguratorCatalogHandlers : ISingletonAutoService
             i.Remarks = type.Remarks;
             i.ConfigurationModel = type.ConfigurationModel;
             i.ConfigurationSchema = type.ConfigurationSchema?.ToJsonString( _indented );
+            i.CompileConfigurationModel = type.CompileConfigurationModel;
+            i.CompileConfigurationSchema = type.CompileConfigurationSchema?.ToJsonString( _indented );
             i.SourceUrl = GetPageUrl( package, type, type.SourceUrl );
             i.ConfigurationModelSourceUrl = GetPageUrl( package, type, type.ConfigurationModelSourceUrl );
         } );

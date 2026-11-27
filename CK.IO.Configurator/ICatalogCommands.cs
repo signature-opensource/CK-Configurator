@@ -250,6 +250,17 @@ public interface IConfigurableTypeInfo : IPoco
     /// Gets or sets the JSON Schema of the configuration model (indented JSON text). Null when the type has no model.
     /// </summary>
     string? ConfigurationSchema { get; set; }
+
+    /// <summary>
+    /// Gets or sets the full name of the compile time configuration model of the type (<c>[CompileConfiguration&lt;TModel&gt;]</c>):
+    /// its "build time" keys. Null when the type has none.
+    /// </summary>
+    string? CompileConfigurationModel { get; set; }
+
+    /// <summary>
+    /// Gets or sets the JSON Schema of the compile time configuration model (indented JSON text). Null when the type has none.
+    /// </summary>
+    string? CompileConfigurationSchema { get; set; }
 }
 
 /// <summary>

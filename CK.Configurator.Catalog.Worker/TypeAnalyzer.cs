@@ -48,6 +48,7 @@ sealed class TypeAnalyzer
     const string _centralKey = "CK.Core.CentralConfigurationKeyAttribute";
     // Read by name: an older CK.Abstractions (in an older profile) doesn't have it.
     const string _configuration = "CK.Core.ConfigurationAttribute`1";
+    const string _compileConfiguration = "CK.Core.CompileConfigurationAttribute`1";
 
     readonly IActivityMonitor _monitor;
     readonly GlobalTypeCache _typeCache;
@@ -162,6 +163,7 @@ sealed class TypeAnalyzer
         bool isPrivate = false;
         string? externalName = null;
         Type? modelType = null;
+        Type? compileModelType = null;
 
         foreach( var a in t.AttributesData )
         {
@@ -187,6 +189,10 @@ sealed class TypeAnalyzer
             else if( aType.IsGenericType && aType.GetGenericTypeDefinition().FullName == _configuration )
             {
                 modelType = aType.GetGenericArguments()[0];
+            }
+            else if( aType.IsGenericType && aType.GetGenericTypeDefinition().FullName == _compileConfiguration )
+            {
+                compileModelType = aType.GetGenericArguments()[0];
             }
             else if( aType.FullName == _partyClientFact )
             {
@@ -257,13 +263,14 @@ sealed class TypeAnalyzer
 
         if( configurable == null && section == null && locks == null && secrets == null && perDeployment == null
             && relations == null && facts == null && typeScriptPackage == null && levels == null && command == null
-            && optionOwners == null && modelType == null
+            && optionOwners == null && modelType == null && compileModelType == null
             && groupKind == ResourceGroupKind.None )
         {
             return null;
         }
         var documentation = XmlDocumentationReader.GetDocumentationFor( _monitor, type, _documentationCache );
         var schema = modelType != null ? GetSchema( type, modelType ) : null;
+        var compileSchema = compileModelType != null ? GetSchema( type, compileModelType ) : null;
         return new TypeAnalysis
         {
             FullName = type.FullName,
@@ -282,6 +289,8 @@ sealed class TypeAnalyzer
             Command = command,
             ConfigurationModel = modelType?.FullName,
             ConfigurationSchema = schema,
+            CompileConfigurationModel = compileModelType?.FullName,
+            CompileConfigurationSchema = compileSchema,
             SourceUrl = _sources.GetSourceUrl( type ),
             ConfigurationModelSourceUrl = modelType != null ? _sources.GetSourceUrl( modelType ) : null,
             Summary = ToMarkdown( documentation?.Element( "summary" ) ),

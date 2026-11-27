@@ -281,14 +281,44 @@ public static class ConfigurationChecker
                 Error( n.Path, $"'{n.Name}' is required: it can't be disabled." );
             }
             if( n.Kind == "Object" && partyKind != null ) CheckSecrets( n, t, partyKind );
-            // A modeled section: its keys against the schema of its model (true is its defaults).
-            if( t.ConfigurationSchema != null && (n.Kind == "Object" || n.Value == "true") )
+            if( n.Kind != "Object" && n.Value != "true" ) return;
+            // The keys of a section: its options, the keys of its model and the keys of its compile time model ("build
+            // time"). Each model is checked against its schema (true is its defaults), the other keys reserved.
+            var options = AllTypes.Where( o => o.OptionOwners.Contains( t.FullName ) && o.Configurable != null )
+                                  .Select( o => o.Configurable!.Name )
+                                  .ToHashSet( StringComparer.OrdinalIgnoreCase );
+            bool isDefaults = n.Path.StartsWith( "Defaults:", StringComparison.OrdinalIgnoreCase ) || n.Path.Contains( ":Defaults:", StringComparison.OrdinalIgnoreCase );
+            var checker = new SchemaChecker( Children, p => _byPath.GetValueOrDefault( p ), Error );
+            if( t.ConfigurationSchema != null )
             {
-                var reserved = AllTypes.Where( o => o.OptionOwners.Contains( t.FullName ) && o.Configurable != null )
-                                       .Select( o => o.Configurable!.Name )
-                                       .ToHashSet( StringComparer.OrdinalIgnoreCase );
-                bool isDefaults = n.Path.StartsWith( "Defaults:", StringComparison.OrdinalIgnoreCase ) || n.Path.Contains( ":Defaults:", StringComparison.OrdinalIgnoreCase );
-                new SchemaChecker( Children, p => _byPath.GetValueOrDefault( p ), Error ).Check( n, t.ConfigurationSchema, t.Configurable.Name, reserved, checkRequired: !isDefaults );
+                checker.Check( n, t.ConfigurationSchema, t.Configurable.Name, Reserved( options, t.CompileConfigurationSchema ), checkRequired: !isDefaults, isDefaults );
+            }
+            if( t.CompileConfigurationSchema != null )
+            {
+                checker.Check( n, t.CompileConfigurationSchema, t.Configurable.Name, Reserved( options, t.ConfigurationSchema ), checkRequired: !isDefaults, isDefaults );
+            }
+            // No model, no configuration: a party component without model has only its options (and its compile time keys).
+            // "PartyClient" is the set of the clients of the party: its keys are the clients.
+            if( t.ConfigurationSchema == null
+                && t.Configurable.Kind is "PartyFeature" or "PartyClientFeature"
+                && !t.Configurable.Name.Equals( "PartyClient", StringComparison.OrdinalIgnoreCase ) )
+            {
+                var compileKeys = SchemaChecker.PropertyNames( t.CompileConfigurationSchema );
+                foreach( var k in Children( n.Path ) )
+                {
+                    if( k.Name.StartsWith( '$' ) || options.Contains( k.Name ) || compileKeys.Contains( k.Name ) ) continue;
+                    // An option of another owner is reported by the check of the options.
+                    if( _catalog.FindConfigurable( k.Name ).Any( c => c.Type.Configurable!.Kind is "PartyFeatureOption" or "PartyClientFeatureOption" ) ) continue;
+                    Error( k.Path, $"Unknown key '{k.Name}': '{t.Configurable.Name}' has no configuration of its own, its keys are its options ({(options.Count > 0 ? $"'{string.Join( "', '", options )}'" : "none")})." );
+                }
+            }
+
+            // The options and the keys of the other model of the section.
+            static HashSet<string> Reserved( HashSet<string> options, System.Text.Json.Nodes.JsonObject? other )
+            {
+                var r = new HashSet<string>( options, StringComparer.OrdinalIgnoreCase );
+                r.UnionWith( SchemaChecker.PropertyNames( other ) );
+                return r;
             }
         }
 

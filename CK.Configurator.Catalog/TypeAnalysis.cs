@@ -67,6 +67,18 @@ public sealed class TypeAnalysis
     public JsonObject? ConfigurationSchema { get; init; }
 
     /// <summary>
+    /// Gets the full name of the compile time configuration model of the type (<c>[CompileConfiguration&lt;TModel&gt;]</c>):
+    /// the keys of its section that the build reads (the run time ignores them). Null when the type has none.
+    /// </summary>
+    public string? CompileConfigurationModel { get; init; }
+
+    /// <summary>
+    /// Gets the JSON Schema of the <see cref="CompileConfigurationModel"/> (see <see cref="ConfigurationSchema"/>): the
+    /// "build time" keys of the section of the type. Null when the type has none.
+    /// </summary>
+    public JsonObject? CompileConfigurationSchema { get; init; }
+
+    /// <summary>
     /// Gets the raw URL of the source file of the type, from the SourceLink of the PDB of its assembly (see
     /// <see cref="SourceFileUrl"/>). Null when the assembly has no PDB, no SourceLink or the type no source document.
     /// </summary>
