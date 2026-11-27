@@ -36,7 +36,6 @@ Package: `CK.AppIdentity.PartyClient`
 
 ## The client 'App' of '$Configurator'
 
-
 ### Client feature `NgApp`
 
 Package: `CK.TS.Angular`
