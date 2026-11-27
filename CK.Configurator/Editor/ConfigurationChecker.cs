@@ -16,7 +16,7 @@ namespace CK.Configurator;
 ///   The structure: the root keys (<c>$schema</c>, <c>$configurator</c>, <c>Deployment</c>, <c>Domain</c>,
 ///   <c>GlobalDomainPrefix</c>, <c>AppContexts</c>, <c>Defaults</c> and the keys that the packages declare:
 ///   <c>[assembly: CentralConfigurationKey]</c>), the keys of an AppContext (<c>RootPath</c>, <c>App</c>, <c>Apps</c>,
-///   <c>Aspects</c>, <c>ProjectCompileKeys</c>), the levels of an App (<c>Aspects</c>, <c>Local</c>, <c>Defaults</c>).
+///   <c>Aspects</c>), the levels of an App (<c>Aspects</c>, <c>Local</c>, <c>Defaults</c>).
 ///   </item>
 ///   <item>
 ///   The configurable types: an AppContext aspect, an App aspect, a party feature, a client feature and their options must be
@@ -42,7 +42,7 @@ public static class ConfigurationChecker
 {
     // "$PER_DEPLOYMENT" markers are accepted on any object (CentralDeployment.PerDeploymentKey).
     static readonly HashSet<string> _rootKeys = new( StringComparer.OrdinalIgnoreCase ) { "$schema", "$configurator", "$PER_DEPLOYMENT", "Deployment", "AppContexts", "Defaults" };
-    static readonly HashSet<string> _appContextKeys = new( StringComparer.OrdinalIgnoreCase ) { "RootPath", "App", "Apps", "Aspects", "ProjectCompileKeys", "$schema", "$PER_DEPLOYMENT" };
+    static readonly HashSet<string> _appContextKeys = new( StringComparer.OrdinalIgnoreCase ) { "RootPath", "App", "Apps", "Aspects", "$schema", "$PER_DEPLOYMENT" };
     static readonly HashSet<string> _partyKeys = new( StringComparer.OrdinalIgnoreCase ) { "PublicUrl", "Assemblies", "DefaultAssembly" };
     static readonly HashSet<string> _clientKeys = new( StringComparer.OrdinalIgnoreCase ) { "Types", "ExcludedTypes" };
     static readonly HashSet<string> _lockLevels = new( StringComparer.Ordinal ) { "\"Compile\"", "\"Init\"", "\"Run\"" };
@@ -162,7 +162,7 @@ public static class ConfigurationChecker
                     else if( k.Name.Equals( "App", StringComparison.OrdinalIgnoreCase ) ) CheckApp( k );
                     else if( !_appContextKeys.Contains( k.Name ) )
                     {
-                        Error( k.Path, $"Unknown key '{k.Name}' in the AppContext '{b.Name}': its keys are RootPath, App (or Apps), Aspects and ProjectCompileKeys." );
+                        Error( k.Path, $"Unknown key '{k.Name}' in the AppContext '{b.Name}': its keys are RootPath, App (or Apps) and Aspects." );
                     }
                 }
             }
