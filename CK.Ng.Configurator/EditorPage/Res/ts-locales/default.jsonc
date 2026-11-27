@@ -50,6 +50,8 @@
     "CK.Configurator.Editor.Origin.Deployment": "written here",
     "CK.Configurator.Editor.Origin.Removed": "removed here",
     "CK.Configurator.Editor.OriginOf": "Inherited from {{name}}",
+    "CK.Configurator.Editor.BuildTime": "Build time",
+    "CK.Configurator.Editor.BuildTimeInfo": "Read by the build: a change takes effect at the next build of the App.",
     "CK.Configurator.Editor.Revert": "Revert to inherited",
     "CK.Configurator.Editor.RemoveHere": "Remove here",
     "CK.Configurator.Editor.Check": "Check",

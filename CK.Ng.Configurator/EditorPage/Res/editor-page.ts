@@ -376,6 +376,13 @@ export class EditorPage {
         return n && schema && (n.kind === 'Object' || n.value === 'true') ? schema : undefined;
     } );
 
+    /** Whether the selected property is a section of a type that has a compile time model: its "build time" form is shown. */
+    readonly selectedCompileSchema = computed( () => {
+        const n = this.selected();
+        const schema = this.selectedType()?.compileConfigurationSchema;
+        return n && schema && (n.kind === 'Object' || n.value === 'true') ? schema : undefined;
+    } );
+
     /** A key written by the form of a model: its section and the missing objects of its path are created. */
     writeKeyAsync( w: { path: string, json: string } ): Promise<void> {
         const c = new SetValueCommand();

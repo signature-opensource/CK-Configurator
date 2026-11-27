@@ -18,7 +18,7 @@ export interface SchemaKey {
     readonly schemaUri?: string;
     readonly required: boolean;
     readonly defaultValue?: string;
-    /** The level when it is not Init, "secret", "per deployment". */
+    /** The level when it is not Init, "secret", "per deployment", "no defaults". */
     readonly flags: ReadonlyArray<string>;
     readonly description?: string;
 }
@@ -152,6 +152,7 @@ export function schemaKeys( schemaText: string ): ReadonlyArray<SchemaKey> {
             if( p['x-ck-level'] ) flags.push( p['x-ck-level'] );
             if( p['x-ck-secret'] ) flags.push( 'secret' );
             if( p['x-ck-perDeployment'] ) flags.push( 'per deployment' );
+            if( p['x-ck-noDefaults'] ) flags.push( 'no defaults' );
             const path = prefix + name;
             // The nested model (a section, the items of a list, the entries of a dictionary) and its path.
             let nested: { schema: JsonSchema, def?: string, path: string } | undefined;

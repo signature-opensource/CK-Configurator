@@ -94,7 +94,22 @@
                             </dl>
                             @if ( t.configurationSchema ) {
                                 <span class="sub">{{ 'CK.Configurator.Catalog.Keys' | translate }}</span>
-                                <nz-table #keysTable class="ck-catalog-keys" nzSize="small" [nzData]="currentKeys()" [nzShowPagination]="false" [nzFrontPagination]="false">
+                                <ng-container *ngTemplateOutlet="keysTpl; context: { $implicit: currentKeys() }" />
+                                <details class="ck-catalog-schema-raw">
+                                    <summary>{{ 'CK.Configurator.Catalog.Schema' | translate }}</summary>
+                                    <pre class="ck-catalog-schema">{{ t.configurationSchema }}</pre>
+                                </details>
+                            }
+                            @if ( t.compileConfigurationSchema ) {
+                                <span class="sub">{{ 'CK.Configurator.Catalog.BuildTimeKeys' | translate }}</span>
+                                <ng-container *ngTemplateOutlet="keysTpl; context: { $implicit: currentCompileKeys() }" />
+                                <details class="ck-catalog-schema-raw">
+                                    <summary>{{ 'CK.Configurator.Catalog.Schema' | translate }}</summary>
+                                    <pre class="ck-catalog-schema">{{ t.compileConfigurationSchema }}</pre>
+                                </details>
+                            }
+                            <ng-template #keysTpl let-keys>
+                                <nz-table #keysTable class="ck-catalog-keys" nzSize="small" [nzData]="keys" [nzShowPagination]="false" [nzFrontPagination]="false">
                                     <thead>
                                         <tr>
                                             <th>{{ 'CK.Configurator.Catalog.Key' | translate }}</th>
@@ -120,11 +135,7 @@
                                         }
                                     </tbody>
                                 </nz-table>
-                                <details class="ck-catalog-schema-raw">
-                                    <summary>{{ 'CK.Configurator.Catalog.Schema' | translate }}</summary>
-                                    <pre class="ck-catalog-schema">{{ t.configurationSchema }}</pre>
-                                </details>
-                            }
+                            </ng-template>
                         </div>
                     }
                 </div>

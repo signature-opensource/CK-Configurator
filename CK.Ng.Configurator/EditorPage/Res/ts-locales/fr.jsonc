@@ -50,6 +50,8 @@
     "CK.Configurator.Editor.Origin.Deployment": "écrit ici",
     "CK.Configurator.Editor.Origin.Removed": "supprimé ici",
     "CK.Configurator.Editor.OriginOf": "Hérité de {{name}}",
+    "CK.Configurator.Editor.BuildTime": "Compilation",
+    "CK.Configurator.Editor.BuildTimeInfo": "Lues par la construction : un changement prend effet à la prochaine construction de l'App.",
     "CK.Configurator.Editor.Revert": "Revenir à l'hérité",
     "CK.Configurator.Editor.RemoveHere": "Supprimer ici",
     "CK.Configurator.Editor.Check": "Vérifier",

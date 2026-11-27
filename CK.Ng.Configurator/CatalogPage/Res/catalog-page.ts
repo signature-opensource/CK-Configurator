@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -43,6 +44,7 @@ function levelOf( kind: string ): string {
 @Component( {
     selector: 'ck-catalog-page',
     imports: [
+        NgTemplateOutlet,
         FormsModule,
         TranslatePipe,
         NzAlertModule,
@@ -100,6 +102,11 @@ export class CatalogPage {
     /** The keys of the configuration model of the current type (empty without a model). */
     readonly currentKeys = computed( () => {
         const schema = this.current()?.configurationSchema;
+        return schema ? schemaKeys( schema ) : [];
+    } );
+    /** The keys of the compile time model of the current type ("build time" keys: empty without one). */
+    readonly currentCompileKeys = computed( () => {
+        const schema = this.current()?.compileConfigurationSchema;
         return schema ? schemaKeys( schema ) : [];
     } );
 

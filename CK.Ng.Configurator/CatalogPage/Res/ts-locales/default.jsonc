@@ -24,6 +24,7 @@
     "CK.Configurator.Catalog.Levels": "Levels of its properties",
     "CK.Configurator.Catalog.Model": "The configuration model",
     "CK.Configurator.Catalog.Schema": "Its JSON Schema",
+    "CK.Configurator.Catalog.BuildTimeKeys": "The keys read by the build of the App (build time)",
     "CK.Configurator.Catalog.Keys": "The keys of its section",
     "CK.Configurator.Catalog.Key": "Key",
     "CK.Configurator.Catalog.KeyType": "Type",

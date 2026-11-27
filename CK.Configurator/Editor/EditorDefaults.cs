@@ -28,9 +28,12 @@ static class EditorDefaults
         foreach( var n in nodes )
         {
             if( n.TypeName == null || n.Kind is not ("Object" or "Boolean") || n.Value == "false" ) continue;
-            var schema = EditorAnnotations.FindType( catalog, n.TypeName, n.Role )?.ConfigurationSchema;
-            if( schema == null ) continue;
-            Walk( n.Path, schema, schema["$defs"] as JsonObject, byPath, result, [] );
+            var t = EditorAnnotations.FindType( catalog, n.TypeName, n.Role );
+            // The run time model and the compile time one ("build time" keys): the keys of one section.
+            foreach( var schema in new[] { t?.ConfigurationSchema, t?.CompileConfigurationSchema } )
+            {
+                if( schema != null ) Walk( n.Path, schema, schema["$defs"] as JsonObject, byPath, result, [] );
+            }
         }
         return result;
     }

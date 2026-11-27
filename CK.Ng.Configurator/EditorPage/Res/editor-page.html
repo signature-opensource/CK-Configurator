@@ -204,6 +204,16 @@
                                            (write)="writeKeyAsync( $event )" (reset)="resetKeyAsync( $event )"
                                            (makeSecret)="startSecret( $event )" (selectPath)="select( $event )" />
                         }
+                        @if ( selectedCompileSchema(); as compileSchema ) {
+                            <div class="ck-editor-build-time">
+                                <h4>{{ 'CK.Configurator.Editor.BuildTime' | translate }}</h4>
+                                <nz-alert nzType="info" nzShowIcon [nzMessage]="'CK.Configurator.Editor.BuildTimeInfo' | translate" />
+                                <ck-model-form [schema]="compileSchema" [path]="n.path" [nodes]="s.nodes" [defaulted]="s.defaultedValues"
+                                               [deploymentView]="isDeploymentView()" [disabled]="busy()"
+                                               (write)="writeKeyAsync( $event )" (reset)="resetKeyAsync( $event )"
+                                               (makeSecret)="startSecret( $event )" (selectPath)="select( $event )" />
+                            </div>
+                        }
 
                         @if ( isAbsent( n ) ) {
                             <nz-alert nzType="info" nzShowIcon [nzMessage]="('CK.Configurator.Editor.AbsentLocked.' + n.lockLevel) | translate" />
