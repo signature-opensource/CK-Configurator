@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- The editor edits the JSON(C) document with the JSON language of CK.Transform (the comments and the layout are kept). -->
-    <PackageReference Include="CK.TypeScript.Transform" Version="3.0.1-0.uc.1" />
+    <PackageReference Include="CK.TypeScript.Transform" Version="3.0.1-0.uc.1.ci.23" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
