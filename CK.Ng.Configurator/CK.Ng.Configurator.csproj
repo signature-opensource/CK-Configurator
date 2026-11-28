@@ -3,13 +3,13 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.4.ci.224" />
-    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.4.ci.136" />
-    <PackageReference Include="CK.Ng.Markdown" Version="3.0.1-0.uc.4.ci.136" />
+    <PackageReference Include="CK.Ng.Cris.AspNet" Version="3.0.0-0.uc.4.ci.229" />
+    <PackageReference Include="CK.Ng.Zorro" Version="3.0.1-0.uc.4.ci.141" />
+    <PackageReference Include="CK.Ng.Markdown" Version="3.0.1-0.uc.4.ci.141" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CK.IO.Configurator\CK.IO.Configurator.csproj" />
     <!-- The folder dialog of a desktop window (IPickFolderCommand): the editor page offers it when it is handled. -->
-    <PackageReference Include="CK.IO.AppHost.Desktop" Version="0.0.1-0.uc.0.ci.12" />
+    <PackageReference Include="CK.IO.AppHost.Desktop" Version="0.0.1-0.uc.0.ci.15" />
   </ItemGroup>
 </Project>
